@@ -203,7 +203,7 @@ declare module 'flargs' {
 
 - **Runtime:** `Runtime.create` and `flargs/vite` take `definitions` from this module. No runtime reads the flags file from disk, so edge runtimes need no file system.
 - **Types:** `flags`, `runtime.get`, `runtime.evaluate`, and `useFlag` read `Register`. `Register` is an `interface`, since declaration merging requires it.
-- **Content mappers:** a TypeScript 7.1 content mapper can replace the generated module later, with `import definitions from './flags.json'`. See [Out of Scope](#out-of-scope).
+- **Content mappers:** a TypeScript 7.1 content mapper can replace the generated module later. See [Out of Scope](#out-of-scope).
 
 ### Growth
 
@@ -708,7 +708,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 - **Vercel Toolbar compatibility:** a `/.well-known/vercel/flags` adapter. Add it when a host uses the Toolbar.
 - **Audit log and history:** a host store can record writes. Add an API when two hosts need the same shape.
 - **Real-time updates:** the client refreshes on request. Add a stream when a page must change without a reload.
-- **Content mapper:** a TypeScript 7.1 content mapper (`flargs/content-mapper`) that types `import definitions from './flags.json'` with no generated module. Add it when content mappers leave the prototype stage.
+- **Content mapper:** a TypeScript 7.1 content mapper (`flargs/content-mapper`) that types the flags file with no generated module. Mappers match files by extension, and TypeScript handles `.json` itself, so a mapper cannot claim `flags.json`. Add it when mappers match a compound extension such as `.flags.json`. Type checks with a mapper also need `tsc --runExternalCode`, and VS Code needs workspace trust and mapper permission.
 
 ## Open Questions
 
