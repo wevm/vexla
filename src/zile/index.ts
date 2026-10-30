@@ -28,7 +28,7 @@ export default function transform(code: string, file: string): string {
       `${file}:${remaining.line} reads ${remaining.key || 'a flag with a computed key'}, which is not a build flag.`,
       {
         steps: [
-          'Set `build: true` on the flag in flags.json, since a library resolves build flags only.',
+          'Add `@build` to the flag in .env.flags, since a library resolves build flags only.',
         ],
       },
     )

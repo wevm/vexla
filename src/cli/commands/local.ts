@@ -1,4 +1,4 @@
-/** @module Commands that read the flags file: `generate`, `env`, `check`, and `stale`. */
+/** @module Commands that read the flags file: `generate`, `check`, and `stale`. */
 import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 import { Cli, z } from 'incur'
@@ -8,7 +8,7 @@ import * as Context from '../Context.js'
 
 /** `flargs generate`: writes `flargs.gen.ts` from the flags file, or from the manifest of `--url`. */
 export const generate = Cli.command({
-  description: 'Writes flargs.gen.ts from flags.json, or from the manifest of a running server.',
+  description: 'Writes flargs.gen.ts from .env.flags, or from the manifest of a running server.',
   options: Context.file.extend({
     ...Context.server.shape,
     out: z.string().optional().describe('Path of the generated module. Default: flargs.gen.ts'),
@@ -40,38 +40,6 @@ export const generate = Cli.command({
         out,
         written,
       }
-    } catch (error) {
-      return c.error(Context.error(error))
-    }
-  },
-})
-
-/** `flargs env`: writes `.env.example` with each variable, its default, and its description. */
-export const env = Cli.command({
-  description: 'Writes .env.example: each flag variable, its default, and its description.',
-  options: Context.file.extend({
-    out: z.string().optional().describe('Path of the file. Default: .env.example'),
-  }),
-  run(c) {
-    try {
-      const definitions = Context.definitions(c.options)
-      const lines = Object.entries(definitions).flatMap((entry) => {
-        const definition = entry[1]
-        const notes = [
-          ...(definition.description ? [definition.description] : []),
-          definition.type === 'select'
-            ? `One of: ${definition.options!.join(', ')}.`
-            : `Type: ${definition.type}.`,
-        ]
-        return [
-          ...notes.map((note) => `# ${note}`),
-          `${definition.env}=${Definitions.encode(definition.default)}`,
-          '',
-        ]
-      })
-      const out = Path.resolve(Context.root(c.options), c.options.out ?? '.env.example')
-      Fs.writeFileSync(out, lines.join('\n'))
-      return { flags: Object.keys(definitions).length, out }
     } catch (error) {
       return c.error(Context.error(error))
     }

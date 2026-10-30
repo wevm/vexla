@@ -65,12 +65,11 @@ export default Cli.command({
 
       if (!c.options.dryRun) {
         const path = Path.resolve(root, c.options.path ?? Files.defaultPath)
-        const input = JSON.parse(Fs.readFileSync(path, 'utf8')) as Record<string, unknown>
-        delete input[c.args.key]
-        Fs.writeFileSync(path, `${JSON.stringify(input, null, 2)}\n`)
+        const text = Definitions.removeFromFile(Fs.readFileSync(path, 'utf8'), c.args.key)
+        Fs.writeFileSync(path, text)
 
         const out = Path.resolve(root, Files.defaultOut)
-        if (Fs.existsSync(out)) Files.write(Definitions.parse(input), { root })
+        if (Fs.existsSync(out)) Files.write(Definitions.parseFile(text), { root })
 
         if (c.options.url)
           await Context.api(c.options, 'DELETE', `/values/${encodeURIComponent(c.args.key)}`).catch(

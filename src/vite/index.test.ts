@@ -10,13 +10,21 @@ const src = Path.resolve(import.meta.dirname, '..')
 function fixture(main: string) {
   const root = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'flargs-vite-'))
   Fs.writeFileSync(
-    Path.join(root, 'flags.json'),
-    JSON.stringify({
-      maintenanceBanner: { build: true, default: false, public: true, type: 'boolean' },
-      newCheckout: { default: false, public: true, type: 'boolean' },
-      pricing: { default: 'a', options: ['a', 'b'], type: 'select' },
-      secretBuild: { build: true, default: false, type: 'boolean' },
-    }),
+    Path.join(root, '.env.flags'),
+    [
+      '# @type {boolean} @build @public',
+      'FEATURE_MAINTENANCE_BANNER=false',
+      '',
+      '# @type {boolean} @public',
+      'FEATURE_NEW_CHECKOUT=false',
+      '',
+      "# @type {'a' | 'b'}",
+      'FEATURE_PRICING=a',
+      '',
+      '# @type {boolean} @build',
+      'FEATURE_SECRET_BUILD=false',
+      '',
+    ].join('\n'),
   )
   Fs.writeFileSync(Path.join(root, 'main.ts'), main)
   return root

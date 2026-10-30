@@ -1,8 +1,10 @@
 /**
- * @module Flag definitions: validation of `flags.json` and `flags.toml`, zero-config inference
- * from `FEATURE_*` variables, the mapping between keys and environment variables, the decoding of
- * variable values, the manifest of the admin API, and the generated `flargs.gen.ts` module.
+ * @module Flag definitions: the `.env.flags` file, validation of definition objects (the store and
+ * the admin API), zero-config inference from `FEATURE_*` variables, the mapping between keys and
+ * environment variables, the decoding of variable values, the manifest of the admin API, and the
+ * generated `flargs.gen.ts` module.
  */
+import * as EnvFile from './internal/EnvFile.js'
 import * as Errors from './internal/Errors.js'
 
 /** The type of a flag. */
@@ -82,8 +84,8 @@ const fields = ['build', 'default', 'description', 'env', 'expires', 'options', 
 const types: readonly Type[] = ['boolean', 'json', 'number', 'select', 'string']
 
 /**
- * Returns the definitions of a parsed `flags.json` or `flags.toml`. Keys in `snake_case`, as in
- * TOML, map to `camelCase`. Every flag must declare `type` and `default`.
+ * Returns the definitions in a definition object, the format of the store and of the admin API.
+ * Keys in `snake_case` map to `camelCase`. Every flag must declare `type` and `default`.
  *
  * @throws {InvalidDeclarationError} When a declaration does not follow the schema.
  */
@@ -124,6 +126,138 @@ export declare namespace parse {
     /** The prefix of flag environment variables. @default 'FEATURE_' */
     envPrefix?: string | undefined
   }
+}
+
+/**
+ * Returns the definitions in the text of `.env.flags`. Each `FEATURE_*` variable declares a flag,
+ * and its value is the default. Comment lines directly above it hold the description and tags:
+ *
+ * - `@type {boolean}`, `{number}`, `{string}`, `{json}`, or a union of string literals such as
+ *   `{'a' | 'b'}` for a select flag. Required.
+ * - `@public`: the value may reach a browser.
+ * - `@build`: the value resolves when the bundle builds.
+ * - `@expires 2027-01-31`: the date after which the flag is due for retirement.
+ *
+ * Several tags may share a line. Comment lines without a tag form the description.
+ *
+ * @throws {InvalidDeclarationError} When a line or a declaration is invalid.
+ */
+export function parseFile(text: string, options: parseFile.Options = {}): Definitions {
+  const prefix = options.envPrefix ?? envPrefix
+  const scanned = EnvFile.scan(text)
+
+  const invalid = scanned.invalid[0]
+  if (invalid !== undefined)
+    throw new InvalidDeclarationError({
+      key: `line ${invalid}`,
+      reason: `Line ${invalid} is not a comment or a NAME=value line.`,
+    })
+
+  const input: Record<string, unknown> = {}
+
+  for (const entry of scanned.entries) {
+    const fail = (key: string, reason: string) =>
+      new InvalidDeclarationError({
+        key,
+        reason: `${reason.replace(/\.$/, '')} (line ${entry.line}).`,
+      })
+
+    if (!entry.name.startsWith(prefix) || entry.name.length === prefix.length)
+      throw fail(entry.name, `The variable ${entry.name} does not start with ${prefix}.`)
+    const key = keyOf(entry.name, prefix)
+
+    const description: string[] = []
+    const declaration: Record<string, unknown> = { env: entry.name }
+
+    for (const comment of entry.comments) {
+      const found = EnvFile.tags(comment)
+      if (!found) {
+        if (comment.trim() !== '') description.push(comment.trim())
+        continue
+      }
+
+      for (const tag of found) {
+        if (tag.name === 'type') {
+          if (!tag.argument)
+            throw fail(key, `\`@type\` of ${key} needs a type in braces, such as {boolean}.`)
+          Object.assign(
+            declaration,
+            typeOf(tag.argument, () =>
+              fail(key, `\`@type {${tag.argument}}\` of ${key} is not a flag type.`),
+            ),
+          )
+        } else if (tag.name === 'public' || tag.name === 'build') {
+          if (tag.argument !== undefined)
+            throw fail(key, `\`@${tag.name}\` of ${key} takes no value.`)
+          declaration[tag.name] = true
+        } else if (tag.name === 'expires') {
+          if (!tag.argument)
+            throw fail(key, `\`@expires\` of ${key} needs a date in the form YYYY-MM-DD.`)
+          declaration['expires'] = tag.argument
+        } else throw fail(key, `The tag \`@${tag.name}\` of ${key} is not a Flargs tag.`)
+      }
+    }
+
+    if (description.length > 0) declaration['description'] = description.join(' ')
+    if (!('type' in declaration))
+      throw fail(key, `The flag ${key} needs a \`@type\` tag, such as \`# @type {boolean}\`.`)
+
+    declaration['default'] = (() => {
+      const type = declaration['type']
+      if (type === 'boolean')
+        return entry.value === 'true' ? true : entry.value === 'false' ? false : entry.value
+      if (type === 'number') return entry.value.trim() === '' ? entry.value : Number(entry.value)
+      if (type === 'json') {
+        try {
+          return JSON.parse(entry.value) as unknown
+        } catch {
+          return undefined
+        }
+      }
+      return entry.value
+    })()
+
+    if (key in input) throw fail(key, `The flag ${key} is declared twice.`)
+    input[key] = declaration
+  }
+
+  try {
+    return parse(input, { envPrefix: prefix })
+  } catch (error) {
+    if (error instanceof InvalidDeclarationError) {
+      const entry = scanned.entries.find((entry) => keyOf(entry.name, prefix) === error.key)
+      if (entry)
+        throw new InvalidDeclarationError({
+          key: error.key,
+          reason: `${error.details.replace(/\.$/, '')} (line ${entry.line}).`,
+        })
+    }
+    throw error
+  }
+}
+
+export declare namespace parseFile {
+  type Options = {
+    /** The prefix of flag environment variables. @default 'FEATURE_' */
+    envPrefix?: string | undefined
+  }
+}
+
+/**
+ * Returns `text` without the declaration of `key`: its comment lines, its variable, and one blank
+ * line after it. Returns `text` unchanged when no variable declares `key`.
+ */
+export function removeFromFile(text: string, key: string, options: parseFile.Options = {}): string {
+  const prefix = options.envPrefix ?? envPrefix
+  const entry = EnvFile.scan(text).entries.find(
+    (entry) => entry.name.startsWith(prefix) && keyOf(entry.name, prefix) === key,
+  )
+  if (!entry) return text
+
+  const lines = text.split('\n')
+  const end = lines[entry.end + 1]?.trim() === '' ? entry.end + 2 : entry.end + 1
+  lines.splice(entry.start, end - entry.start)
+  return lines.join('\n')
 }
 
 /**
@@ -380,7 +514,7 @@ export class InvalidDeclarationError extends Errors.BaseError {
   constructor(options: InvalidDeclarationError.Options) {
     super(options.reason, {
       steps: [
-        `Fix the declaration of ${options.key} in the flags file, as the JSON Schema describes.`,
+        `Fix the declaration of ${options.key} in \`.env.flags\`, or in the store definition.`,
       ],
     })
     this.key = options.key
@@ -499,6 +633,20 @@ function declare(key: string, declaration: unknown, prefix: string): Definition 
     )
 
   return definition
+}
+
+// Maps the text in the braces of `@type` to a type, and the options of a select flag.
+function typeOf(text: string, fail: () => Error): { options?: string[]; type: Type } {
+  const type = text.trim()
+  if (type === 'boolean' || type === 'json' || type === 'number' || type === 'string')
+    return { type }
+
+  const options = type.split('|').map((part) => {
+    const match = /^\s*(['"])(.*)\1\s*$/.exec(part)
+    if (!match) throw fail()
+    return match[2]!
+  })
+  return { options, type: 'select' }
 }
 
 function infer(raw: string): { type: Type; value: Json } {

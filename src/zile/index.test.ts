@@ -7,11 +7,8 @@ import transform from 'flargs/zile'
 function inProject<result>(fn: () => result): result {
   const root = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'flargs-zile-'))
   Fs.writeFileSync(
-    Path.join(root, 'flags.json'),
-    JSON.stringify({
-      newEncoder: { build: true, default: false, type: 'boolean' },
-      pricing: { default: 'a', options: ['a', 'b'], type: 'select' },
-    }),
+    Path.join(root, '.env.flags'),
+    "# @type {boolean} @build\nFEATURE_NEW_ENCODER=false\n\n# @type {'a' | 'b'}\nFEATURE_PRICING=a\n",
   )
   const cwd = process.cwd()
   process.chdir(root)
@@ -47,7 +44,7 @@ export function encode(value) {
       .toThrowErrorMatchingInlineSnapshot(`
       [Error: dist/pricing.js:2 reads pricing, which is not a build flag.
 
-      To resolve: Set \`build: true\` on the flag in flags.json, since a library resolves build flags only.]
+      To resolve: Add \`@build\` to the flag in .env.flags, since a library resolves build flags only.]
     `)
   })
 

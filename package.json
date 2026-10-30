@@ -82,7 +82,6 @@
   },
   "files": [
     "dist",
-    "schema.json",
     "src",
     "!src/**/*.test-d.ts",
     "!src/**/*.test.ts"

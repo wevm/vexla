@@ -4,19 +4,16 @@ import * as Path from 'node:path'
 import * as Definitions from '../Definitions.js'
 
 /** The default path of the flags file. */
-export const defaultPath = 'flags.json'
+export const defaultPath = '.env.flags'
 
 /** The default path of the generated module. */
 export const defaultOut = 'flargs.gen.ts'
 
-/**
- * Returns the definitions in the flags file at `path`, relative to `root`. JSON only: a
- * `flags.toml` serves Rust.
- */
+/** Returns the definitions in the flags file at `path`, relative to `root`. */
 export function read(options: read.Options): Definitions.Definitions {
   const file = Path.resolve(options.root, options.path ?? defaultPath)
   const text = Fs.readFileSync(file, 'utf8')
-  return Definitions.parse(JSON.parse(text) as unknown, { envPrefix: options.envPrefix })
+  return Definitions.parseFile(text, { envPrefix: options.envPrefix })
 }
 
 export declare namespace read {

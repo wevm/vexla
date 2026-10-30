@@ -7,7 +7,7 @@ import * as Files from '../internal/Files.js'
 
 /** Options of the commands that read the flags file. */
 export const file = z.object({
-  path: z.string().optional().describe('Path of the flags file. Default: flags.json'),
+  path: z.string().optional().describe('Path of the flags file. Default: .env.flags'),
   root: z.string().optional().describe('Project root. Default: the working directory'),
 })
 
@@ -82,7 +82,7 @@ export function error(cause: unknown): { code: string; exitCode?: number; messag
   if (cause instanceof Error && 'code' in cause && cause.code === 'ENOENT')
     return {
       code: 'NO_FLAGS_FILE',
-      message: 'The flags file does not exist. To resolve: Create flags.json, or pass `--path`.',
+      message: 'The flags file does not exist. To resolve: Create .env.flags, or pass `--path`.',
     }
   return { code: 'ERROR', message: cause instanceof Error ? cause.message : String(cause) }
 }

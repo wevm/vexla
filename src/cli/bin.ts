@@ -29,7 +29,6 @@ const cli = Cli.create('flargs', {
   .command('check', Local.check)
   .command('define', Remote.define)
   .command('dev', dev)
-  .command('env', Local.env)
   .command('generate', Local.generate)
   .command('get', Remote.get)
   .command('link', Remote.link)

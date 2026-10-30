@@ -7,7 +7,7 @@ import * as Store from '../../server/Store.js'
 import * as Context from '../Context.js'
 
 export default Cli.command({
-  description: 'Serves the dev route for flags.json, for an application with no TypeScript server.',
+  description: 'Serves the dev route for .env.flags, for an application with no TypeScript server.',
   options: Context.file.extend({
     port: z.number().optional().describe('Port. Default: 4000'),
   }),

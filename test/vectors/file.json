@@ -1,0 +1,134 @@
+{
+  "parseFile": [
+    {
+      "name": "every type, tags on separate lines and on one line",
+      "text": "# Flags of the checkout service.\n\n# Use the new checkout flow.\n# @type {boolean}\n# @public\nFEATURE_NEW_CHECKOUT=false\n\n# Pricing page variant.\n# @type {'a' | 'b' | 'c'}\nFEATURE_PRICING=a\n\n# @type {number}\nFEATURE_RETRIES=3\n\n# @type {json}\nFEATURE_LIMITS={\"requests\":100}\n\n# Show the maintenance banner.\n# @type {boolean} @build @public @expires 2027-01-31\nFEATURE_MAINTENANCE_BANNER=false\n\n# @type {string}\nFEATURE_TITLE=\"Hello, world\"\n",
+      "output": {
+        "limits": {
+          "build": false,
+          "default": {
+            "requests": 100
+          },
+          "env": "FEATURE_LIMITS",
+          "public": false,
+          "type": "json"
+        },
+        "maintenanceBanner": {
+          "build": true,
+          "default": false,
+          "description": "Show the maintenance banner.",
+          "env": "FEATURE_MAINTENANCE_BANNER",
+          "expires": "2027-01-31",
+          "public": true,
+          "type": "boolean"
+        },
+        "newCheckout": {
+          "build": false,
+          "default": false,
+          "description": "Use the new checkout flow.",
+          "env": "FEATURE_NEW_CHECKOUT",
+          "public": true,
+          "type": "boolean"
+        },
+        "pricing": {
+          "build": false,
+          "default": "a",
+          "description": "Pricing page variant.",
+          "env": "FEATURE_PRICING",
+          "options": ["a", "b", "c"],
+          "public": false,
+          "type": "select"
+        },
+        "retries": {
+          "build": false,
+          "default": 3,
+          "env": "FEATURE_RETRIES",
+          "public": false,
+          "type": "number"
+        },
+        "title": {
+          "build": false,
+          "default": "Hello, world",
+          "env": "FEATURE_TITLE",
+          "public": false,
+          "type": "string"
+        }
+      }
+    },
+    {
+      "name": "description over two lines, and double quoted select options",
+      "text": "# Pricing page\n# variant.\n# @type {\"a\" | \"b\"}\nFEATURE_PRICING='b'\n",
+      "output": {
+        "pricing": {
+          "build": false,
+          "default": "b",
+          "description": "Pricing page variant.",
+          "env": "FEATURE_PRICING",
+          "options": ["a", "b"],
+          "public": false,
+          "type": "select"
+        }
+      }
+    },
+    {
+      "name": "missing type",
+      "text": "FEATURE_BETA=false\n",
+      "error": "beta"
+    },
+    {
+      "name": "a blank line detaches the comment",
+      "text": "# @type {boolean}\n\nFEATURE_BETA=false\n",
+      "error": "beta"
+    },
+    {
+      "name": "unknown type",
+      "text": "# @type {date}\nFEATURE_BETA=2026-01-01\n",
+      "error": "beta"
+    },
+    {
+      "name": "unknown tag",
+      "text": "# @type {boolean} @owner\nFEATURE_BETA=false\n",
+      "error": "beta"
+    },
+    {
+      "name": "default of the wrong type",
+      "text": "# @type {number}\nFEATURE_RETRIES=three\n",
+      "error": "retries"
+    },
+    {
+      "name": "default outside options",
+      "text": "# @type {'a' | 'b'}\nFEATURE_PRICING=c\n",
+      "error": "pricing"
+    },
+    {
+      "name": "invalid JSON default",
+      "text": "# @type {json}\nFEATURE_LIMITS={requests\n",
+      "error": "limits"
+    },
+    {
+      "name": "invalid expiry",
+      "text": "# @type {boolean} @expires soon\nFEATURE_BETA=false\n",
+      "error": "beta"
+    },
+    {
+      "name": "tag with a value that takes none",
+      "text": "# @type {boolean} @public yes\nFEATURE_BETA=false\n",
+      "error": "beta"
+    },
+    {
+      "name": "variable without the prefix",
+      "text": "# @type {boolean}\nBETA=false\n",
+      "error": "BETA"
+    },
+    {
+      "name": "invalid line",
+      "text": "# @type {boolean}\nFEATURE_BETA false\n",
+      "error": "line 2"
+    },
+    {
+      "name": "declared twice",
+      "text": "# @type {boolean}\nFEATURE_BETA=false\n# @type {boolean}\nFEATURE_BETA=true\n",
+      "error": "beta"
+    }
+  ]
+}

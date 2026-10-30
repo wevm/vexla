@@ -9,17 +9,18 @@ import { Definitions } from 'flargs'
 import { Flargs, Store } from 'flargs/server'
 import * as Http from '../../test/Http.js'
 
-const flags = {
-  maintenanceBanner: { build: true, default: false, public: true, type: 'boolean' },
-  newCheckout: {
-    default: false,
-    description: 'Use the new checkout flow.',
-    expires: '2026-01-31',
-    public: true,
-    type: 'boolean',
-  },
-  pricing: { default: 'a', options: ['a', 'b', 'c'], type: 'select' },
-}
+const file = [
+  '# @type {boolean} @build @public',
+  'FEATURE_MAINTENANCE_BANNER=false',
+  '',
+  '# Use the new checkout flow.',
+  '# @type {boolean} @public @expires 2026-01-31',
+  'FEATURE_NEW_CHECKOUT=false',
+  '',
+  "# @type {'a' | 'b' | 'c'}",
+  'FEATURE_PRICING=a',
+  '',
+].join('\n')
 
 let bin: string
 let dir: string
@@ -45,7 +46,7 @@ afterAll(() => {
 
 function project(files: Record<string, string> = {}) {
   const root = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'flargs-cli-'))
-  Fs.writeFileSync(Path.join(root, 'flags.json'), JSON.stringify(flags, null, 2))
+  Fs.writeFileSync(Path.join(root, '.env.flags'), file)
   for (const [file, content] of Object.entries(files)) {
     Fs.mkdirSync(Path.dirname(Path.join(root, file)), { recursive: true })
     Fs.writeFileSync(Path.join(root, file), content)
@@ -85,9 +86,8 @@ describe('flargs', () => {
       Commands:
         check     Fails when the environment sets an undeclared or invalid FEATURE_* variable. Reports stale flags.
         define    Creates or replaces a flag in the store, for a project with no flags file.
-        dev       Serves the dev route for flags.json, for an application with no TypeScript server.
-        env       Writes .env.example: each flag variable, its default, and its description.
-        generate  Writes flargs.gen.ts from flags.json, or from the manifest of a running server.
+        dev       Serves the dev route for .env.flags, for an application with no TypeScript server.
+        generate  Writes flargs.gen.ts from .env.flags, or from the manifest of a running server.
         get       Returns one flag of a running server, with its definition, value, and source.
         link      Returns a signed link that overrides flags, including private flags, until it expires.
         list      Lists every flag of a running server, with its value and source.
@@ -122,32 +122,13 @@ describe('flargs', () => {
 })
 
 describe('generate', () => {
-  test('writes flargs.gen.ts from flags.json', async () => {
+  test('writes flargs.gen.ts from .env.flags', async () => {
     const root = project()
     const result = await run(['generate'], { cwd: root })
     expect(result.status).toMatchInlineSnapshot(`0`)
     const generated = Fs.readFileSync(Path.join(root, 'flargs.gen.ts'), 'utf8')
     expect(generated).toContain('"FEATURE_NEW_CHECKOUT"')
     expect(generated).toContain("declare module 'flargs'")
-  })
-})
-
-describe('env', () => {
-  test('writes .env.example', async () => {
-    const root = project()
-    expect((await run(['env'], { cwd: root })).status).toMatchInlineSnapshot(`0`)
-    expect(Fs.readFileSync(Path.join(root, '.env.example'), 'utf8')).toMatchInlineSnapshot(`
-      "# Type: boolean.
-      FEATURE_MAINTENANCE_BANNER=false
-
-      # Use the new checkout flow.
-      # Type: boolean.
-      FEATURE_NEW_CHECKOUT=false
-
-      # One of: a, b, c.
-      FEATURE_PRICING=a
-      "
-    `)
   })
 })
 
@@ -195,7 +176,7 @@ describe('admin API', () => {
     const flargs = Flargs.create({
       authorize: (request) =>
         request.headers.get('authorization') === 'Bearer secret-token' ? 'write' : undefined,
-      definitions: Definitions.parse(flags),
+      definitions: Definitions.parseFile(file),
       secret: 'test-secret',
       store,
     })
@@ -308,12 +289,13 @@ export function useLabel(): string {
       }
       "
     `)
-    expect(Object.keys(JSON.parse(Fs.readFileSync(Path.join(root, 'flags.json'), 'utf8'))))
-      .toMatchInlineSnapshot(`
-      [
-        "maintenanceBanner",
-        "pricing",
-      ]
+    expect(Fs.readFileSync(Path.join(root, '.env.flags'), 'utf8')).toMatchInlineSnapshot(`
+      "# @type {boolean} @build @public
+      FEATURE_MAINTENANCE_BANNER=false
+
+      # @type {'a' | 'b' | 'c'}
+      FEATURE_PRICING=a
+      "
     `)
 
     const program = ts.createProgram(

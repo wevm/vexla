@@ -1,5 +1,5 @@
 /**
- * @module Vite entry: reads `flags.json`, writes `flargs.gen.ts`, and replaces each read of a
+ * @module Vite entry: reads `.env.flags`, writes `flargs.gen.ts`, and replaces each read of a
  * build flag with a literal, so dead branches drop from the bundle.
  */
 import * as Fs from 'node:fs'
@@ -96,7 +96,7 @@ export declare namespace flargs {
     envPrefix?: string | undefined
     /** The path of the generated module, relative to the Vite root. @default 'flargs.gen.ts' */
     out?: string | undefined
-    /** The path of the flags file, relative to the Vite root. @default 'flags.json' */
+    /** The path of the flags file, relative to the Vite root. @default '.env.flags' */
     path?: string | undefined
     /** A store whose values take precedence over the environment for build flags, such as `Store.http`. */
     store?: Pick<Store.Store, 'get'> | undefined

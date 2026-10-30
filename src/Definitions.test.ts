@@ -1,6 +1,7 @@
 /** @module Runs the definitions vectors, which TypeScript and Rust share. */
 import { Definitions } from 'flargs'
 import vectors from '../test/vectors/definitions.json' with { type: 'json' }
+import fileVectors from '../test/vectors/file.json' with { type: 'json' }
 
 describe('parse', () => {
   for (const vector of vectors.parse)
@@ -26,7 +27,7 @@ describe('parse', () => {
     ).toThrowErrorMatchingInlineSnapshot(`
       [Definitions.InvalidDeclarationError: The default of pricing is not one of its options.
 
-      To resolve: Fix the declaration of pricing in the flags file, as the JSON Schema describes.]
+      To resolve: Fix the declaration of pricing in \`.env.flags\`, or in the store definition.]
     `)
   })
 
@@ -159,6 +160,49 @@ describe('generate', () => {
           definitions: typeof definitions
         }
       }
+      "
+    `)
+  })
+})
+
+describe('parseFile', () => {
+  for (const vector of fileVectors.parseFile)
+    test(vector.name, () => {
+      if ('error' in vector) {
+        const error = (() => {
+          try {
+            Definitions.parseFile(vector.text)
+          } catch (error) {
+            return error
+          }
+        })()
+        expect(error).toBeInstanceOf(Definitions.InvalidDeclarationError)
+        expect((error as Definitions.InvalidDeclarationError).key).toBe(vector.error)
+        return
+      }
+      expect(Definitions.parseFile(vector.text)).toEqual(vector.output)
+    })
+
+  test('error message names the line', () => {
+    expect(() => Definitions.parseFile('# @type {number}\nFEATURE_RETRIES=three\n'))
+      .toThrowErrorMatchingInlineSnapshot(`
+      [Definitions.InvalidDeclarationError: The default of retries is not a number value (line 2).
+
+      To resolve: Fix the declaration of retries in \`.env.flags\`, or in the store definition.]
+    `)
+  })
+})
+
+describe('removeFromFile', () => {
+  test('removes the comments, the variable, and one blank line', () => {
+    const text =
+      '# @type {boolean}\nFEATURE_A=false\n\n# Beta.\n# @type {boolean}\nFEATURE_BETA=false\n\n# @type {boolean}\nFEATURE_C=true\n'
+    expect(Definitions.removeFromFile(text, 'beta')).toMatchInlineSnapshot(`
+      "# @type {boolean}
+      FEATURE_A=false
+
+      # @type {boolean}
+      FEATURE_C=true
       "
     `)
   })
