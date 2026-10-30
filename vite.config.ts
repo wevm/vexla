@@ -45,7 +45,8 @@ export default defineConfig({
     },
   },
   fmt: {
-    ignorePatterns: ['.claude/**', 'dist/**', 'target/**'],
+    // Cargo manifests follow Rust conventions, not oxfmt.
+    ignorePatterns: ['.claude/**', '**/Cargo.toml', 'dist/**', 'target/**'],
     printWidth: 100,
     semi: false,
     singleQuote: true,
