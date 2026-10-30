@@ -15,6 +15,7 @@ function fixture(main: string) {
       maintenanceBanner: { build: true, default: false, public: true, type: 'boolean' },
       newCheckout: { default: false, public: true, type: 'boolean' },
       pricing: { default: 'a', options: ['a', 'b'], type: 'select' },
+      secretBuild: { build: true, default: false, type: 'boolean' },
     }),
   )
   Fs.writeFileSync(Path.join(root, 'main.ts'), main)
@@ -70,6 +71,15 @@ describe('flargs', () => {
     const root = fixture(`import { flags } from 'flargs'\nconsole.log(flags.pricing)\n`)
     await expect(bundle(root)).rejects.toThrow(
       'Browser code reads the private flag pricing in main.ts:2.',
+    )
+  })
+
+  test('a private build flag read in browser code fails the build', async () => {
+    const root = fixture(
+      `import { flags } from 'flargs'\nif (flags.secretBuild) console.log('SECRET')\n`,
+    )
+    await expect(bundle(root)).rejects.toThrow(
+      'Browser code reads the private flag secretBuild in main.ts:2.',
     )
   })
 

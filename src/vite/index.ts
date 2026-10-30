@@ -61,11 +61,17 @@ export default function flargs(options: flargs.Options = {}): Plugin {
       if (!Fs.existsSync(id.split('?')[0]!)) return undefined
 
       const browser = !(transformOptions?.ssr ?? false)
+      // Browser code receives public build flags only, so a private build flag read stays and fails.
+      const inlined = browser
+        ? Object.fromEntries(
+            Object.entries(values).filter((entry) => definitions[entry[0]]?.public),
+          )
+        : values
       const result = Inline.transform(code, {
         browser,
         definitions,
         file: id.split('?')[0]!,
-        values,
+        values: inlined,
       })
 
       const leak = result.findings.find((finding) => finding.reason === 'private')

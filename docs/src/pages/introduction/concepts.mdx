@@ -30,7 +30,7 @@ A build flag accepts no `decide`, and accepts an override only in dev mode. [`fl
 - **Private (default):** the value stays on the server. Only the admin API returns it, to a request that `authorize` grants `read` or `write`.
 - **Public (`"public": true`):** the values endpoint and `flargs.script` contain the value. An unsigned override applies in production.
 
-In a browser, a private flag has no value, so its read returns `undefined`. With `flargs/vite`, a read of a private runtime flag in browser code fails the build.
+In a browser, a private flag has no value, so its read returns `undefined`. With `flargs/vite`, a read of a private flag in browser code fails the build.
 
 ## Resolution Order
 

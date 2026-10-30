@@ -73,7 +73,7 @@ export default defineConfig({
 
 ### Private Flags
 
-In browser code, a read of a private runtime flag throws at build time. The error names the key, the file, and the line. Server code (`ssr`) may read any flag.
+In browser code, a read of a private flag, runtime or build, throws at build time. The error names the key, the file, and the line. Server code (`ssr`) may read any flag.
 
 ```txt
 Browser code reads the private flag pricing in main.ts:3.
