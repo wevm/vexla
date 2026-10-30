@@ -4,10 +4,6 @@
 
 The `flargs` crate reads the same flags file, override format, and signatures as the TypeScript packages. `flargs::flags!` parses `.env.flags` at compile time and generates typed flags, so Rust needs no generated file. A bad declaration fails the build.
 
-:::note
-The Rust support is partial. The crate has `flargs::flags!`, `flargs::definitions`, and `flargs::overrides`. `Runtime`, `Store`, and the `axum`, `build`, `client`, and `server` features are not merged yet. A Rust service reads its runtime flag values from the environment, or from the admin API of a TypeScript server.
-:::
-
 | Crate                | Contents                                                                           |
 | -------------------- | ---------------------------------------------------------------------------------- |
 | `flargs`             | `Key`, `flargs::definitions`, `flargs::overrides`, and `flargs::flags!`            |

@@ -80,7 +80,9 @@ export default function flargs(options: flargs.Options = {}): Plugin {
           new Errors.BaseError(
             `Browser code reads the private flag ${leak.key} in ${Path.relative(root, id)}:${leak.line}.`,
             {
-              steps: [`Read ${leak.key} on the server, or set \`public: true\` on the flag.`],
+              steps: [
+                `Read ${leak.key} on the server, or add \`@public\` to the flag in .env.flags.`,
+              ],
             },
           ),
         )
