@@ -7,7 +7,7 @@ import { useFlag } from 'flargs/react'
 
 export function Checkout() {
   // 'a' | 'b' | 'c', from flargs.gen.ts
-  const pricing = useFlag('pricing')
+  const pricing = useFlag('PRICING')
   return <Price plan={pricing} />
 }
 ```

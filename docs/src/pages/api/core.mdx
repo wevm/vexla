@@ -8,7 +8,7 @@ import { Card, Cards } from 'vocs'
 import { flags } from 'flargs'
 
 // The values of the current request on the server, or of the page in a browser.
-if (flags.newCheckout) renderNewCheckout()
+if (flags.NEW_CHECKOUT) renderNewCheckout()
 ```
 
 ## Exports
@@ -60,7 +60,7 @@ if (flags.newCheckout) renderNewCheckout()
 Every error of Flargs extends one base class. `details` holds what failed, and `steps` holds the sentences that resolve it. The message lists the steps under `To resolve:`.
 
 ```txt
-The default of pricing is not one of its options.
+The default of PRICING is not one of its options.
 
-To resolve: Fix the declaration of pricing in `.env.flags`, or in the store definition.
+To resolve: Fix the declaration of PRICING in `.env.flags`, or in the store definition.
 ```

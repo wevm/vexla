@@ -3,8 +3,8 @@
 `flargs undefine` calls `DELETE /.flags/definitions/:key`, which needs `write` access. The store deletes the definition and the value. Reads of the key remain in the code until the next `flargs generate --url` shows them as type errors.
 
 ```sh
-# Deletes the store definition of beta
-npx flargs undefine beta
+# Deletes the store definition of BETA
+npx flargs undefine BETA
 ```
 
 ## Signature
@@ -20,7 +20,7 @@ flargs undefine <key> [options]
 
 - **Type:** `string`
 
-Key of the flag, such as `newCheckout`.
+Key of the flag, such as `NEW_CHECKOUT`.
 
 ## Options
 
@@ -33,7 +33,7 @@ The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs undefine newCheckout --url https://api.example.com/.flags
+npx flargs undefine NEW_CHECKOUT --url https://api.example.com/.flags
 ```
 
 ## Output

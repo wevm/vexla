@@ -6,7 +6,7 @@ The `flargs/vite` plugin reads `.env.flags`, writes `flargs.gen.ts`, and replace
 
 An app with build flags only needs no server. The plugin resolves every value at build time.
 
-A bundler `define` cannot replace a member of an imported binding, such as `flags.maintenanceBanner`. The plugin therefore rewrites reads with the TypeScript compiler API, so `typescript` must be installed.
+A bundler `define` cannot replace a member of an imported binding, such as `flags.MAINTENANCE_BANNER`. The plugin therefore rewrites reads with the TypeScript compiler API, so `typescript` must be installed.
 
 ## Walkthrough
 
@@ -17,7 +17,7 @@ The `@build` tag makes a build flag.
 ```sh [.env.flags]
 # Show the maintenance banner.
 # @type {boolean} @build @public
-FEATURE_MAINTENANCE_BANNER=false
+MAINTENANCE_BANNER=false
 ```
 
 ### Add the Plugin
@@ -38,7 +38,7 @@ export default defineConfig({
 import { flags } from 'flargs'
 
 // Becomes `if (false)` in the bundle, so the branch drops.
-if (flags.maintenanceBanner) showBanner()
+if (flags.MAINTENANCE_BANNER) showBanner()
 ```
 
 ### Set the Value
@@ -47,7 +47,7 @@ Each build flag value resolves from the store, then its variable, then its defau
 
 ```sh
 # Builds with the banner on
-FEATURE_MAINTENANCE_BANNER=true npx vite build
+MAINTENANCE_BANNER=true npx vite build
 ```
 
 ## Recipes
@@ -79,9 +79,9 @@ export default defineConfig({
 In browser code, a read of a private flag, runtime or build, throws at build time. The error names the key, the file, and the line. Server code (`ssr`) may read any flag.
 
 ```txt
-Browser code reads the private flag pricing in main.ts:3.
+Browser code reads the private flag PRICING in main.ts:3.
 
-To resolve: Read pricing on the server, or add `@public` to the flag in .env.flags.
+To resolve: Read PRICING on the server, or add `@public` to the flag in .env.flags.
 ```
 
 ### Paths

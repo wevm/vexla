@@ -26,15 +26,15 @@ Without a generated module, `flags` has the values of any definitions, and each 
 | ----------------------------- | -------------------------------------------------------------------------------------- |
 | Inside `Values.run`           | the values of the request, from `AsyncLocalStorage`                                    |
 | A browser (`document` exists) | the response of the last `Values.load`, else the `#__flargs` script of `flargs.script` |
-| Elsewhere                     | zero config: the `FEATURE_*` variables of `process.env`                                |
+| Elsewhere                     | every variable of `process.env`, with the type that its text implies                   |
 
 - **Missing keys:** a key with no value in the source reads as `undefined`, not as its default. In a browser, every private flag reads as `undefined`.
-- **Zero config:** outside a request, a declared flag whose variable is unset reads as `undefined`. A set variable reads with the type that its text implies.
+- **No server:** outside a request, `flags.BETA` reads the variable `BETA` through [`Definitions.infer`](/api/core/definitions). An unset variable reads as `undefined`, not as its default.
 - **Integrations:** `flargs/hono` and `Request.toNodeListener` of `flargs/node` call `Values.run` for each request.
 
 ## Build Flags
 
-`flargs/vite` and `flargs/zile` replace each read of a build flag with a literal. The read `flags.maintenanceBanner` becomes `false` in the bundle.
+`flargs/vite` and `flargs/zile` replace each read of a build flag with a literal. The read `flags.MAINTENANCE_BANNER` becomes `false` in the bundle.
 
 ## Retirement
 

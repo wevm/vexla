@@ -3,8 +3,8 @@
 `flargs link` calls `POST /.flags/links`, which needs `write` access and a `secret` on the server. The link overrides runtime flags, including private flags, for each browser that opens it. A build flag is rejected.
 
 ```sh
-# Returns a link that sets pricing to c for one week
-npx flargs link https://app.example.com/checkout pricing=c
+# Returns a link that sets PRICING to c for one week
+npx flargs link https://app.example.com/checkout PRICING=c
 ```
 
 ## Signature
@@ -26,7 +26,7 @@ The page to link, such as `https://app.example.com/checkout`. The `--url` option
 
 - **Type:** `string[]`
 
-Overrides as `key=value`, such as `pricing=c`. A boolean, number, or JSON value is JSON text.
+Overrides as `key=value`, such as `PRICING=c`. A boolean, number, or JSON value is JSON text.
 
 ## Options
 
@@ -39,7 +39,7 @@ The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs link https://app.example.com/ newCheckout=true --url https://api.example.com/.flags
+npx flargs link https://app.example.com/ NEW_CHECKOUT=true --url https://api.example.com/.flags
 ```
 
 ### --expires
@@ -51,7 +51,7 @@ The lifetime of the link: a number and `m`, `h`, or `d`.
 
 ```sh
 # A link that expires in one hour
-npx flargs link https://app.example.com/ newCheckout=true --expires 1h
+npx flargs link https://app.example.com/ NEW_CHECKOUT=true --expires 1h
 ```
 
 ## Output
@@ -60,7 +60,7 @@ npx flargs link https://app.example.com/ newCheckout=true --expires 1h
 - **`url`:** the signed link.
 
 ```txt
-https://app.example.com/checkout?flag.pricing=c&flag.exp=1767225600&flag.sig=3q2-7w
+https://app.example.com/checkout?flag.PRICING=c&flag.exp=1767225600&flag.sig=3q2-7w
 ```
 
 ## Errors

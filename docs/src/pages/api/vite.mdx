@@ -21,12 +21,11 @@ flargs(options?: flargs.Options): Plugin
 
 ## Options
 
-| Option      | Type                 | Default           | Meaning                                                      |
-| ----------- | -------------------- | ----------------- | ------------------------------------------------------------ |
-| `envPrefix` | `string`             | `'FEATURE_'`      | the prefix of flag environment variables                     |
-| `out`       | `string`             | `'flargs.gen.ts'` | the generated module, relative to the Vite root              |
-| `path`      | `string`             | `'.env.flags'`    | the flags file, relative to the Vite root                    |
-| `store`     | `Pick<Store, 'get'>` | none              | a store whose values precede the environment for build flags |
+| Option  | Type                 | Default           | Meaning                                                      |
+| ------- | -------------------- | ----------------- | ------------------------------------------------------------ |
+| `out`   | `string`             | `'flargs.gen.ts'` | the generated module, relative to the Vite root              |
+| `path`  | `string`             | `'.env.flags'`    | the flags file, relative to the Vite root                    |
+| `store` | `Pick<Store, 'get'>` | none              | a store whose values precede the environment for build flags |
 
 ## Behavior
 

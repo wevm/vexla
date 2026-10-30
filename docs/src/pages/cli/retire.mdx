@@ -3,8 +3,8 @@
 `flargs retire` rewrites each read of the flag in the source files of the project, removes dead branches and unused imports, deletes the declaration from `.env.flags`, and writes `flargs.gen.ts` again if it exists. [Retirement](/guides/retirement) describes the rewrite.
 
 ```sh
-# Replaces each read of newCheckout with true
-npx flargs retire newCheckout --value true
+# Replaces each read of NEW_CHECKOUT with true
+npx flargs retire NEW_CHECKOUT --value true
 ```
 
 ## Signature
@@ -20,7 +20,7 @@ flargs retire <key> [options]
 
 - **Type:** `string`
 
-Key of the flag, such as `newCheckout`.
+Key of the flag, such as `NEW_CHECKOUT`.
 
 ## Options
 
@@ -33,7 +33,7 @@ The path of the flags file, relative to the root.
 
 ```sh
 # Reads a flags file in another directory
-npx flargs retire newCheckout --path config/.env.flags
+npx flargs retire NEW_CHECKOUT --path config/.env.flags
 ```
 
 ### --root
@@ -45,7 +45,7 @@ The project root.
 
 ```sh
 # Runs in the app package of a monorepo
-npx flargs retire newCheckout --root apps/web
+npx flargs retire NEW_CHECKOUT --root apps/web
 ```
 
 ### --url
@@ -57,7 +57,7 @@ The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs retire newCheckout --url https://api.example.com/.flags
+npx flargs retire NEW_CHECKOUT --url https://api.example.com/.flags
 ```
 
 ### --value
@@ -69,7 +69,7 @@ The final value, as the text of a variable.
 
 ```sh
 # Keeps option b of the select flag
-npx flargs retire pricing --value b
+npx flargs retire PRICING --value b
 ```
 
 ### --dry-run
@@ -80,8 +80,8 @@ npx flargs retire pricing --value b
 Writes nothing. The output lists the files that the command would change.
 
 ```sh
-# Lists the files with a read of newCheckout
-npx flargs retire newCheckout --dry-run
+# Lists the files with a read of NEW_CHECKOUT
+npx flargs retire NEW_CHECKOUT --dry-run
 ```
 
 ## Output

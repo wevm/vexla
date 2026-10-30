@@ -56,7 +56,7 @@ flowchart LR
 - **Override:** from the `flargs` cookie, then the `flag.*` search parameters of the request. Search parameters take precedence.
 - **Store value:** written through the admin API or the CLI.
 - **`decide`:** called with the context that `identify` returns. It returns `undefined` to fall through. A build flag skips this step.
-- **Variable:** the environment variable of the flag, such as `FEATURE_NEW_CHECKOUT`.
+- **Variable:** the environment variable of the same name as the flag, such as `NEW_CHECKOUT`.
 - **Default:** required on every declaration.
 
 An invalid store value, `decide` result, or variable never selects a value. The instance passes the error to `onError` and continues with the next step. The `source` field of the [manifest](/guides/admin-api) names the step that selected each value: `override`, `store`, `decide`, `env`, or `default`.
@@ -71,8 +71,8 @@ An override sets a value for one browser. The search parameter `flag.<key>=<valu
 | Production        | signed only          | unsigned or signed  | rejected   |
 
 ```txt
-https://app.example.com/checkout?flag.newCheckout=true
-https://app.example.com/checkout?flag.pricing=c&flag.exp=1767225600&flag.sig=3q2-7w
+https://app.example.com/checkout?flag.NEW_CHECKOUT=true
+https://app.example.com/checkout?flag.PRICING=c&flag.exp=1767225600&flag.sig=3q2-7w
 https://app.example.com/?flag.reset
 ```
 
@@ -89,7 +89,7 @@ A store holds the values that the admin API writes. Some stores also hold defini
 | Store                                      | Values                 | Definitions | Use                                      |
 | ------------------------------------------ | ---------------------- | ----------- | ---------------------------------------- |
 | [`Store.memory`](/api/server/store/memory) | read, write            | yes         | dev mode and tests                       |
-| [`Store.env`](/api/server/store/env)       | read only              | no          | values from `FEATURE_*` variables        |
+| [`Store.env`](/api/server/store/env)       | read only              | no          | values from environment variables        |
 | [`Store.http`](/api/server/store/http)     | read, write            | yes         | the admin API of another Flargs instance |
 | [`Store.kv`](/api/server/store/kv)         | read, write            | yes         | a Cloudflare KV namespace                |
 | [`Store.from`](/api/server/store/from)     | as the host implements | optional    | a table in the database of the host      |

@@ -14,20 +14,20 @@ The `flargs` crate reads the same flags file, override format, and signatures as
 
 ### Declare the Flags
 
-The crate reads the same `.env.flags` as the TypeScript packages. `FEATURE_NEW_CHECKOUT` declares the key `newCheckout`.
+The crate reads the same `.env.flags` as the TypeScript packages. Each variable name is the key of its flag, so `NEW_CHECKOUT` declares `Flags::NEW_CHECKOUT`.
 
 ```sh [.env.flags]
 # Show the maintenance banner.
 # @type {boolean} @build @public
-FEATURE_MAINTENANCE_BANNER=false
+MAINTENANCE_BANNER=false
 
 # Use the new checkout flow.
 # @type {boolean} @public
-FEATURE_NEW_CHECKOUT=false
+NEW_CHECKOUT=false
 
 # Pricing page variant.
 # @type {'a' | 'b' | 'c'}
-FEATURE_PRICING=a
+PRICING=a
 ```
 
 ### Generate the Flags
@@ -42,7 +42,7 @@ flargs::flags!(".env.flags");
 | Generated item                | Example                                                                              |
 | ----------------------------- | ------------------------------------------------------------------------------------ |
 | `Flags`                       | a struct with one typed field for each runtime flag, and `Default` from the defaults |
-| a `Key` for each runtime flag | `Flags::NEW_CHECKOUT`, with `key()` and `env()`                                      |
+| a `Key` for each runtime flag | `Flags::NEW_CHECKOUT`, with `key()`                                                  |
 | a const for each build flag   | `Flags::MAINTENANCE_BANNER`, from its variable at compile time, then its default     |
 | an enum for each select flag  | `Pricing::A`, with `as_str()`                                                        |
 
@@ -96,24 +96,15 @@ async fn checkout(flags: flargs::axum::Flags<Flags>) -> Result<String, flargs::E
 `flargs::overrides::parse` applies the same rules as `Override.parse` in TypeScript. It verifies the signature before it parses values.
 
 ```rust [src/overrides.rs]
-use flargs::definitions::{self, ENV_PREFIX};
+use flargs::definitions;
 use flargs::overrides::{self, ParseOptions};
 
 // Parses the query string of a request against the flags file.
-let definitions = definitions::parse_file(include_str!("../.env.flags"), ENV_PREFIX)?;
+let definitions = definitions::parse_file(include_str!("../.env.flags"))?;
 let overrides = overrides::parse(
-    "flag.pricing=c&flag.exp=1767225600&flag.sig=3q2-7w",
+    "flag.PRICING=c&flag.exp=1767225600&flag.sig=3q2-7w",
     &ParseOptions { definitions: &definitions, dev: false, now, secret: Some(&secret) },
 )?;
-```
-
-### Environment Prefix
-
-`env_prefix` replaces `FEATURE_` for every variable of the file.
-
-```rust [src/flags.rs]
-// Each variable of the file starts with APP_, such as APP_NEW_CHECKOUT.
-flargs::flags!(".env.flags", env_prefix = "APP_");
 ```
 
 ### Remote Store

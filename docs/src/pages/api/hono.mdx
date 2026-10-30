@@ -12,7 +12,7 @@ const app = new Hono<Env<typeof flargs>>()
 // Serves /.flags, and sets flags and c.var.flags for every other request.
 app.use(middleware(flargs))
 
-app.get('/pricing', async (c) => c.json({ pricing: await c.var.flags.get('pricing') }))
+app.get('/pricing', async (c) => c.json({ pricing: await c.var.flags.get('PRICING') }))
 ```
 
 ## Signature

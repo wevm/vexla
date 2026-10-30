@@ -11,7 +11,7 @@ export const flargs = Flargs.create({
   authorize: async (request) => ((await Admin.verify(request)) ? 'write' : undefined),
   decide: {
     // Returns undefined to fall through to the variable and the default.
-    pricing: (user: { plan: string } | undefined) =>
+    PRICING: (user: { plan: string } | undefined) =>
       user?.plan === 'enterprise' ? 'c' : undefined,
   },
   definitions,
@@ -33,28 +33,27 @@ Outside dev mode, `Flargs.create` throws a `TypeError` when `secret` is not set.
 
 ## Options
 
-| Option        | Type                                                             | Default                     |
-| ------------- | ---------------------------------------------------------------- | --------------------------- |
-| `authorize`   | `(request) => Access \| Response \| Promise<Access \| Response>` | no access                   |
-| `cors`        | `{ origins: readonly string[] }`                                 | none                        |
-| `decide`      | functions keyed by runtime flag                                  | none                        |
-| `definitions` | `Definitions`                                                    | the store, then zero config |
-| `dev`         | `boolean`                                                        | `false`                     |
-| `env`         | `Record<string, string \| undefined>`                            | `process.env`               |
-| `envPrefix`   | `string`                                                         | `'FEATURE_'`                |
-| `identify`    | `(request) => unknown`                                           | none                        |
-| `now`         | `() => number`                                                   | `Date.now`                  |
-| `onError`     | `(error: unknown) => void`                                       | none                        |
-| `path`        | `string`                                                         | `'/.flags'`                 |
-| `secret`      | `string`                                                         | required outside dev mode   |
-| `store`       | `Store`                                                          | none                        |
+| Option        | Type                                                             | Default                   |
+| ------------- | ---------------------------------------------------------------- | ------------------------- |
+| `authorize`   | `(request) => Access \| Response \| Promise<Access \| Response>` | no access                 |
+| `cors`        | `{ origins: readonly string[] }`                                 | none                      |
+| `decide`      | functions keyed by runtime flag                                  | none                      |
+| `definitions` | `Definitions`                                                    | the store definitions     |
+| `dev`         | `boolean`                                                        | `false`                   |
+| `env`         | `Record<string, string \| undefined>`                            | `process.env`             |
+| `identify`    | `(request) => unknown`                                           | none                      |
+| `now`         | `() => number`                                                   | `Date.now`                |
+| `onError`     | `(error: unknown) => void`                                       | none                      |
+| `path`        | `string`                                                         | `'/.flags'`               |
+| `secret`      | `string`                                                         | required outside dev mode |
+| `store`       | `Store`                                                          | none                      |
 
 - **`authorize`:** returns the access of an admin request. [Admin API](/guides/admin-api) lists each return value. In dev mode, every request has `'write'`, and `authorize` does not run.
 - **`cors`:** origins that receive CORS headers on the values endpoint. Admin routes return none.
 - **`decide`:** receives the context of `identify`, and returns a value of the flag or `undefined`. A key of a build flag is a type error.
-- **`definitions`:** from `flargs.gen.ts` or `Definitions.parse`. Without it, the store definitions apply. Without both, each `FEATURE_*` variable declares a private flag.
+- **`definitions`:** from `flargs.gen.ts` or `Definitions.parseFile`. Without it, the store definitions apply. Without both, the instance has no flags.
 - **`dev`:** dev mode. Every flag accepts an unsigned override, and the dev route is open. Never inferred from a hostname or a header.
-- **`env`:** the source of `FEATURE_*` values.
+- **`env`:** the environment. The variable of the same name as a flag, such as `NEW_CHECKOUT`, sets its value.
 - **`onError`:** receives invalid overrides, store values, variables, and `decide` results, and the errors of `decide`, `authorize`, and the store.
 - **`secret`:** the HMAC secret of overrides, the cookie, and links, such as `FLARGS_SECRET`. It never authenticates a request.
 
@@ -74,7 +73,7 @@ Outside dev mode, `Flargs.create` throws a `TypeError` when `secret` is not set.
 
 ```ts
 // The element that flags reads in a browser
-'<script type="application/json" id="__flargs">{"newCheckout":false}</script>'
+'<script type="application/json" id="__flargs">{"NEW_CHECKOUT":false}</script>'
 ```
 
 ## Routes

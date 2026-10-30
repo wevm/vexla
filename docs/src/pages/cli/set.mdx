@@ -3,8 +3,8 @@
 `flargs set` calls `PUT /.flags/values/:key`, which needs `write` access. The value applies to every request until `flargs unset`, unless an override applies first.
 
 ```sh
-# Sets pricing to b for every request
-npx flargs set pricing b
+# Sets PRICING to b for every request
+npx flargs set PRICING b
 ```
 
 ## Signature
@@ -20,7 +20,7 @@ flargs set <key> <value> [options]
 
 - **Type:** `string`
 
-Key of the flag, such as `newCheckout`.
+Key of the flag, such as `NEW_CHECKOUT`.
 
 ### value
 
@@ -39,7 +39,7 @@ The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs set newCheckout true --url https://api.example.com/.flags
+npx flargs set NEW_CHECKOUT true --url https://api.example.com/.flags
 ```
 
 ## Output

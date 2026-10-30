@@ -34,7 +34,7 @@ export const flargs = Flargs.create({
 A store definition is a JSON object with the fields of a [`Definition`](/api/core/definitions): `type` and `default` are required, and `public`, `build`, `options`, `description`, and `expires` are optional. The instance validates it on each write and each read.
 
 ```http
-PUT /.flags/definitions/newCheckout
+PUT /.flags/definitions/NEW_CHECKOUT
 Content-Type: application/json
 
 { "default": false, "public": true, "type": "boolean" }
@@ -42,7 +42,7 @@ Content-Type: application/json
 
 ```sh
 # The same write from the CLI. FLARGS_TOKEN holds a token with write access.
-npx flargs define newCheckout --type boolean --default false --public --url https://api.example.com/.flags
+npx flargs define NEW_CHECKOUT --type boolean --default false --public --url https://api.example.com/.flags
 ```
 
 ### Generate the Types

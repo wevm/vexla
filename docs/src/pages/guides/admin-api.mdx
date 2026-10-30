@@ -40,14 +40,14 @@ export const flargs = Flargs.create({
 ### Write a Value
 
 ```http
-PUT /.flags/values/newCheckout
+PUT /.flags/values/NEW_CHECKOUT
 Content-Type: application/json
 
 { "value": true }
 ```
 
 ```json
-{ "key": "newCheckout", "value": true }
+{ "key": "NEW_CHECKOUT", "value": true }
 ```
 
 The instance validates the value against the definition. A value of the wrong type, or outside `options`, returns `400` with `invalid_value`. An unknown key returns `404` with `unknown_flag`.
@@ -63,11 +63,10 @@ GET /.flags/manifest
 ```json
 {
   "flags": {
-    "newCheckout": {
+    "NEW_CHECKOUT": {
       "build": false,
       "default": false,
       "description": "Use the new checkout flow.",
-      "env": "FEATURE_NEW_CHECKOUT",
       "override": null,
       "public": true,
       "source": "store",
@@ -145,11 +144,11 @@ FLARGS_TOKEN=$(handshakes token example) npx flargs list --url https://api.examp
 POST /.flags/links
 Content-Type: application/json
 
-{ "expiresAt": 1767225600000, "url": "/checkout", "values": { "pricing": "c" } }
+{ "expiresAt": 1767225600000, "url": "/checkout", "values": { "PRICING": "c" } }
 ```
 
 ```json
-{ "url": "https://app.example.com/checkout?flag.pricing=c&flag.exp=1767225600&flag.sig=3q2-7w" }
+{ "url": "https://app.example.com/checkout?flag.PRICING=c&flag.exp=1767225600&flag.sig=3q2-7w" }
 ```
 
 ### CORS

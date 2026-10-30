@@ -3,8 +3,8 @@
 `flargs unset` calls `DELETE /.flags/values/:key`, which needs `write` access. The flag then resolves from `decide`, its variable, or its default. The command also deletes the orphan value of a removed flag.
 
 ```sh
-# Deletes the store value of pricing
-npx flargs unset pricing
+# Deletes the store value of PRICING
+npx flargs unset PRICING
 ```
 
 ## Signature
@@ -20,7 +20,7 @@ flargs unset <key> [options]
 
 - **Type:** `string`
 
-Key of the flag, such as `newCheckout`.
+Key of the flag, such as `NEW_CHECKOUT`.
 
 ## Options
 
@@ -33,7 +33,7 @@ The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs unset newCheckout --url https://api.example.com/.flags
+npx flargs unset NEW_CHECKOUT --url https://api.example.com/.flags
 ```
 
 ## Output

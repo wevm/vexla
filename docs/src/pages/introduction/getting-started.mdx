@@ -59,7 +59,7 @@ A server is optional. A project with build flags only needs a bundler plugin and
 ```sh [.env.flags]
 # Show the maintenance banner.
 # @type {boolean} @build @public
-FEATURE_MAINTENANCE_BANNER=false
+MAINTENANCE_BANNER=false
 ```
 
 ### Add the Plugin
@@ -84,7 +84,7 @@ The read needs no server. The bundle holds the value as a literal, so a minifier
 import { flags } from 'flargs'
 
 // Becomes `if (false)` in the bundle.
-if (flags.maintenanceBanner) showBanner()
+if (flags.MAINTENANCE_BANNER) showBanner()
 ```
 
 ### Set the Value
@@ -93,7 +93,7 @@ The plugin reads the variable from the environment of the build, then the defaul
 
 ```sh
 # Builds with the banner on
-FEATURE_MAINTENANCE_BANNER=true npx vite build
+MAINTENANCE_BANNER=true npx vite build
 ```
 
 :::
@@ -110,11 +110,11 @@ FEATURE_MAINTENANCE_BANNER=true npx vite build
 ```sh [.env.flags]
 # Use the new checkout flow.
 # @type {boolean} @public
-FEATURE_NEW_CHECKOUT=false
+NEW_CHECKOUT=false
 
 # Pricing page variant.
 # @type {'a' | 'b' | 'c'}
-FEATURE_PRICING=a
+PRICING=a
 ```
 
 ### Generate the Types
@@ -180,12 +180,12 @@ export function checkout() {
 
 ## Environment Variables
 
-Each flag links to its environment variable. `newCheckout` reads `FEATURE_NEW_CHECKOUT`. `.env`, `.env.local`, or the deploy environment set the values that differ from the defaults.
+A flag reads the environment variable of the same name, so `NEW_CHECKOUT` reads `NEW_CHECKOUT`. `.env`, `.env.local`, or the deploy environment set the values that differ from the defaults.
 
 ```sh [.env]
 # Values for this environment only. The file is not committed.
-FEATURE_NEW_CHECKOUT=true
-FEATURE_PRICING=b
+NEW_CHECKOUT=true
+PRICING=b
 ```
 
 A `.gitignore` entry such as `.env*` also ignores `.env.flags`. Add `!.env.flags` after it, so Git tracks the flags file.
@@ -201,7 +201,7 @@ A `.gitignore` entry such as `.env*` also ignores `.env.flags`. Add `!.env.flags
 <Cards>
   <Card
     title="Flags File"
-    description="Every tag of a declaration in .env.flags, and the link to environment variables."
+    description="Every tag of a declaration in .env.flags, and the environment variables that set values."
     icon="file-json"
     to="/guides/flags-file"
   />

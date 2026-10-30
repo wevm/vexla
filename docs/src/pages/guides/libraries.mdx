@@ -15,7 +15,7 @@ The `@build` tag makes a build flag.
 ```sh [.env.flags]
 # Use the new encoder.
 # @type {boolean} @build
-FEATURE_NEW_ENCODER=false
+NEW_ENCODER=false
 ```
 
 ### Read the Flag
@@ -25,7 +25,7 @@ import { flags } from 'flargs'
 
 export function encode(value: string) {
   // Becomes `if (false)` in the published files. The bundler of the consumer drops the branch.
-  if (flags.newEncoder) return encodeV2(value)
+  if (flags.NEW_ENCODER) return encodeV2(value)
   return encodeV1(value)
 }
 ```
@@ -61,7 +61,7 @@ Each value resolves from its variable in the environment of the build, then its 
 
 ```sh
 # Publishes a build with the new encoder on
-FEATURE_NEW_ENCODER=true pnpm build
+NEW_ENCODER=true pnpm build
 ```
 
 ### Runtime Flags
@@ -69,7 +69,7 @@ FEATURE_NEW_ENCODER=true pnpm build
 A read of a runtime flag, or a read with a computed key, fails the build. The error names the file and the line.
 
 ```txt
-dist/pricing.js:2 reads pricing, which is not a build flag.
+dist/pricing.js:2 reads PRICING, which is not a build flag.
 
 To resolve: Add `@build` to the flag in .env.flags, since a library resolves build flags only.
 ```

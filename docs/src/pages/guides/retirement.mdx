@@ -20,7 +20,7 @@ flowchart LR
 ```sh [.env.flags]
 # Use the new checkout flow.
 # @type {boolean} @public @expires 2027-01-31
-FEATURE_NEW_CHECKOUT=false
+NEW_CHECKOUT=false
 ```
 
 A flag is stale from the day after its `@expires` date, in UTC. The dev route marks a stale flag, and the manifest sets `stale: true`.
@@ -33,7 +33,7 @@ npx flargs stale
 ```
 
 ```json
-{ "stale": [{ "expires": "2027-01-31", "key": "newCheckout" }] }
+{ "stale": [{ "expires": "2027-01-31", "key": "NEW_CHECKOUT" }] }
 ```
 
 `flargs check` also reports stale flags. With `--strict`, a stale flag fails the check, so CI enforces the expiry.
@@ -41,8 +41,8 @@ npx flargs stale
 ### Retire the Flag
 
 ```sh
-# Replaces each read of newCheckout with true, and deletes its declaration
-npx flargs retire newCheckout --value true
+# Replaces each read of NEW_CHECKOUT with true, and deletes its declaration
+npx flargs retire NEW_CHECKOUT --value true
 ```
 
 Before:
@@ -52,7 +52,7 @@ import { flags } from 'flargs'
 
 export function checkout(): string {
   // A read of the flag in an if statement
-  if (flags.newCheckout) {
+  if (flags.NEW_CHECKOUT) {
     return 'new'
   } else {
     return 'old'
@@ -77,7 +77,7 @@ export function checkout(): string {
 
 ```sh
 # Uses the store value of the running server as the final value
-FLARGS_TOKEN=... npx flargs retire newCheckout --url https://api.example.com/.flags
+FLARGS_TOKEN=... npx flargs retire NEW_CHECKOUT --url https://api.example.com/.flags
 ```
 
 With `--url`, the command also deletes the store value. A failure of this request does not fail the command.
@@ -87,13 +87,13 @@ With `--url`, the command also deletes the store value. A failure of this reques
 `--dry-run` writes nothing. The output lists the files that the command would change.
 
 ```sh
-# Lists the files that contain a read of newCheckout
-npx flargs retire newCheckout --dry-run
+# Lists the files that contain a read of NEW_CHECKOUT
+npx flargs retire NEW_CHECKOUT --dry-run
 ```
 
 ### Rewrites
 
-- **Reads:** `flags.newCheckout`, `flags['newCheckout']`, and `useFlag('newCheckout')` become the literal value.
+- **Reads:** `flags.NEW_CHECKOUT`, `flags['NEW_CHECKOUT']`, and `useFlag('NEW_CHECKOUT')` become the literal value.
 - **Branches:** an `if` statement or a conditional expression with a literal condition keeps only the branch that runs.
 - **Imports:** the `flags` and `useFlag` imports are removed when no read remains.
 - **Dynamic reads:** a read with a computed key stays. The `unresolved` field lists its file and line.

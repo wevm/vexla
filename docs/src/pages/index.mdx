@@ -31,20 +31,20 @@ The flags file, `.env.flags`, declares each flag with its type and its default. 
 ```sh [.env.flags]
 # Use the new checkout flow.
 # @type {boolean} @public
-FEATURE_NEW_CHECKOUT=false
+NEW_CHECKOUT=false
 
 # Pricing page variant.
 # @type {'a' | 'b' | 'c'}
-FEATURE_PRICING=a
+PRICING=a
 ```
 
-Each flag links to one environment variable. A build flag resolves when the bundle builds, with no server. A runtime flag resolves on the server for each request.
+A flag reads the environment variable of the same name. A build flag resolves when the bundle builds, with no server. A runtime flag resolves on the server for each request.
 
 ```ts [app.ts]
 import { flags } from 'flargs'
 
 // Typed from flargs.gen.ts. The read is synchronous and takes no request argument.
-if (flags.newCheckout) renderNewCheckout()
+if (flags.NEW_CHECKOUT) renderNewCheckout()
 ```
 
 ## Documentation

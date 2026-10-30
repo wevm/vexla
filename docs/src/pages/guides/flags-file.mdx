@@ -2,7 +2,7 @@
 
 ## Overview
 
-The flags file, `.env.flags`, is the committed list of every flag. It uses dotenv syntax. Each `FEATURE_*` variable declares one flag, and its value is the default. The comment lines directly above the variable hold the description and the tags.
+The flags file, `.env.flags`, is the committed list of every flag. It uses dotenv syntax. Each variable declares one flag. Its name is the key of the flag, and its value is the default. The comment lines directly above the variable hold the description and the tags.
 
 TypeScript and Rust read the same file. `.env`, `.env.local`, or the deploy environment set the values that differ from the defaults. A project with no Flargs instance and no store uses environment variables only.
 
@@ -10,25 +10,25 @@ TypeScript and Rust read the same file. `.env`, `.env.local`, or the deploy envi
 
 ### Declare a Flag
 
-Every flag needs a `@type` tag. The key comes from the variable name, so `FEATURE_NEW_CHECKOUT` declares `newCheckout`.
+Every flag needs a `@type` tag. The variable name is the key, so `NEW_CHECKOUT` declares the flag that `flags.NEW_CHECKOUT` reads.
 
 ```sh [.env.flags]
 # Use the new checkout flow.
 # @type {boolean}
 # @public
 # @expires 2027-01-31
-FEATURE_NEW_CHECKOUT=false
+NEW_CHECKOUT=false
 
 # Pricing page variant.
 # @type {'a' | 'b' | 'c'}
-FEATURE_PRICING=a
+PRICING=a
 
 # @type {json}
-FEATURE_LIMITS={"requests":100}
+LIMITS={"requests":100}
 
 # Show the maintenance banner. Several tags may share one line.
 # @type {boolean} @build @public
-FEATURE_MAINTENANCE_BANNER=false
+MAINTENANCE_BANNER=false
 ```
 
 | Tag        | Meaning                                                                          | Default  |
@@ -71,13 +71,13 @@ npx flargs generate
 
 ### Set Variables
 
-`.env.flags` holds the defaults. `.env`, `.env.local`, or the deploy environment set the values for one environment. The `envPrefix` option replaces `FEATURE_`.
+`.env.flags` holds the defaults. `.env`, `.env.local`, or the deploy environment set the values for one environment. A flag reads the variable of the same name.
 
 ```sh [.env]
 # Values for this environment. The file is not committed.
-FEATURE_LIMITS={"requests":5}
-FEATURE_NEW_CHECKOUT=true
-FEATURE_PRICING=b
+LIMITS={"requests":5}
+NEW_CHECKOUT=true
+PRICING=b
 ```
 
 | `@type`        | Variable text                         |
@@ -88,15 +88,18 @@ FEATURE_PRICING=b
 | `{'a' \| 'b'}` | one of the options                    |
 | `{string}`     | any text                              |
 
-The instance reads the variable after the override, the store value, and `decide`. An invalid value never selects a value. The instance passes `Definitions.InvalidValueError` to `onError`, and the error names the variable but never holds the value.
+The instance reads the variable after the override, the store value, and `decide`. An invalid value never selects a value. The instance passes `Definitions.InvalidValueError` to `onError`, and the error names the key but never holds the value.
 
 ### Check the Environment
 
-`flargs check` fails when the environment sets a `FEATURE_*` variable that no flag declares, or a value that is not a value of its flag. A typo such as `FEATURE_NEW_CHEKOUT` therefore fails CI.
+`flargs check` fails when a variable holds a value that is not a value of its flag. With `--prefix`, it also fails on an undeclared variable with that prefix, so a typo such as `FEATURE_NEW_CHEKOUT` fails CI.
 
 ```sh
 # Checks the process environment and the .env file
 npx flargs check --env-file .env
+
+# Also fails on a FEATURE_ variable that no flag declares
+npx flargs check --env-file .env --prefix FEATURE_
 ```
 
 ## Recipes
@@ -110,22 +113,22 @@ npx flargs check --env-file .env
 flargs::flags!(".env.flags");
 ```
 
-### Zero Config
+### No Server
 
-With no definitions, `Flargs.create` declares a private flag for each `FEATURE_*` variable. The type comes from the value: `true` and `false` make a boolean, a number makes a number, a JSON object or array makes a JSON flag, and other text makes a string. The value is also the default.
+Outside `Values.run`, `flags` reads the process environment. `flags.BETA` reads the variable `BETA`, and its type comes from the text: `true` and `false` are a boolean, a number is a number, a JSON object or array is JSON, and other text is a string.
 
-```ts [flags.ts]
-import { Flargs } from 'flargs/server'
+```ts [script.ts]
+import { flags } from 'flargs'
 
-// No flags file: FEATURE_BETA=true declares the private boolean flag beta.
-export const flargs = Flargs.create({ dev: true })
+// BETA=true node script.ts reads the boolean true. An unset variable reads as undefined.
+if (flags.BETA) enableBeta()
 ```
 
-Zero config has no options, no public flags, and no typo check. A flags file adds them later, with no change to reads of `flags`.
+Without `.env.flags` or store definitions, `Flargs.create` declares no flags. A flags file adds defaults, options, and public flags, with no change to reads of `flags`.
 
 ## More
 
-- **Function:** [`Definitions`](/api/core/definitions) lists `parseFile`, `fromEnv`, `check`, and the other helpers.
+- **Function:** [`Definitions`](/api/core/definitions) lists `parseFile`, `infer`, `check`, and the other helpers.
 - **Commands:** [`generate`](/cli/generate) and [`check`](/cli/check).
 - **Build flags:** [Vite](/guides/vite) and [Libraries](/guides/libraries).
 - **Rust:** [Rust](/guides/rust) reads the same file.

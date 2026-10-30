@@ -37,7 +37,7 @@ import { useFlag } from 'flargs/react'
 
 export function App() {
   // boolean, from the embedded values in a browser.
-  const newCheckout = useFlag('newCheckout')
+  const newCheckout = useFlag('NEW_CHECKOUT')
   return newCheckout ? <NewCheckout /> : <Checkout />
 }
 ```
@@ -67,7 +67,7 @@ The browser receives public values only. A private flag reads as `undefined` in 
 
 ### Retirement
 
-`flargs retire` replaces `useFlag('newCheckout')` with the final value, and removes the `useFlag` import when no read remains.
+`flargs retire` replaces `useFlag('NEW_CHECKOUT')` with the final value, and removes the `useFlag` import when no read remains.
 
 ## More
 

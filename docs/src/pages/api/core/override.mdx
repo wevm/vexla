@@ -7,7 +7,7 @@ import { Override } from 'flargs'
 
 // Signed search parameters that override a private flag for one week.
 const params = await Override.serialize(
-  { pricing: 'c' },
+  { PRICING: 'c' },
   { expiresAt: Date.now() + 7 * 86_400_000, secret: process.env.FLARGS_SECRET },
 )
 const url = `https://app.example.com/checkout?${params}`
@@ -55,7 +55,7 @@ With `secret`, it adds `flag.exp` and `flag.sig`, and `expiresAt` is required. W
 `flag.sig` is the base64url HMAC-SHA256 of the canonical string. The string holds each `key=value` pair in key order, then `exp=<seconds>`, joined with `&`. The values are the text of the search parameters.
 
 ```txt
-pricing=c&exp=1767225600
+PRICING=c&exp=1767225600
 ```
 
 ## Constants

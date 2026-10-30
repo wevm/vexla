@@ -21,7 +21,7 @@ npx flargs list --url https://api.example.com/.flags
 
 | Command                     | Description                                                                            |
 | --------------------------- | -------------------------------------------------------------------------------------- |
-| [`check`](/cli/check)       | Fails when the environment sets an undeclared or invalid `FEATURE_*` variable.         |
+| [`check`](/cli/check)       | Fails when the environment sets an invalid flag value, and reports stale flags.        |
 | [`define`](/cli/define)     | Creates or replaces a flag in the store, for a project with no flags file.             |
 | [`dev`](/cli/dev)           | Serves the dev route for `.env.flags`, for an application with no TypeScript server.   |
 | [`generate`](/cli/generate) | Writes `flargs.gen.ts` from `.env.flags`, or from the manifest of a running server.    |

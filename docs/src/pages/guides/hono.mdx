@@ -11,7 +11,7 @@ sequenceDiagram
   participant M as middleware
   participant R as flargs
   participant A as Route
-  B->>M: GET /checkout?flag.newCheckout=true
+  B->>M: GET /checkout?flag.NEW_CHECKOUT=true
   M->>R: Values.run(flargs, request)
   R-->>M: Values of the request
   M->>A: next(), with flags set
@@ -60,8 +60,8 @@ export default app
 `Values.run` evaluates every runtime flag, so it runs every `decide`. A route with an expensive `decide` reads one flag through `c.var.flags.get`, which runs `decide` for that flag only.
 
 ```ts [app.ts]
-// Runs decide for pricing only. The instance caches the result for the request.
-app.get('/pricing', async (c) => c.json({ pricing: await c.var.flags.get('pricing') }))
+// Runs decide for PRICING only. The instance caches the result for the request.
+app.get('/pricing', async (c) => c.json({ pricing: await c.var.flags.get('PRICING') }))
 ```
 
 ## Recipes
@@ -84,7 +84,7 @@ A `flag.*` search parameter overrides a value for the request. The middleware th
 
 ```sh
 # Overrides a public flag in production. A private flag needs a signed link.
-curl -i 'https://app.example.com/checkout?flag.newCheckout=true'
+curl -i 'https://app.example.com/checkout?flag.NEW_CHECKOUT=true'
 ```
 
 ### Admin Access

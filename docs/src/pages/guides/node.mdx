@@ -48,7 +48,7 @@ curl http://localhost:3000/.flags/values
 ```
 
 ```json
-{ "newCheckout": false }
+{ "NEW_CHECKOUT": false }
 ```
 
 ## Recipes
@@ -66,7 +66,7 @@ const app = express()
 
 app.get('/checkout', async (req, res) => {
   // The fetch Request holds the URL and the cookie header of the node:http request.
-  const newCheckout = await flargs.get(Request.fromNodeListener(req), 'newCheckout')
+  const newCheckout = await flargs.get(Request.fromNodeListener(req), 'NEW_CHECKOUT')
   res.send(newCheckout ? 'New checkout' : 'Checkout')
 })
 ```
