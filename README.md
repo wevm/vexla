@@ -27,7 +27,7 @@ FEATURE_NEW_CHECKOUT=true
 ```
 
 ```ts
-import { flags } from 'flargs/values'
+import { flags } from 'flargs'
 
 // Typed from flags.json. Resolves on the server, or from the page in a browser.
 if (flags.newCheckout) renderNewCheckout()
@@ -110,7 +110,7 @@ A `FEATURE_*` variable that `flags.json` does not declare throws at startup, so 
 `flargs generate` reads `flags.json` and writes `flargs.gen.ts`, which holds the definitions and their types. `flargs/vite` runs the same step on each change of `flags.json`.
 
 ```ts
-import { flags } from 'flargs/values'
+import { flags } from 'flargs'
 
 flags.newCheckout // boolean
 flags.pricing // 'a' | 'b' | 'c'
@@ -162,10 +162,10 @@ Http.createServer(Request.toNodeListener(runtime.fetch, { runtime })).listen(300
 
 ### Values
 
-`flargs/values` exports `flags`. A read is synchronous and takes no request argument. On the server, `flags` holds the values of the current request. In a browser, it holds the public values that the server embeds in the page.
+`flargs` exports `flags`. A read is synchronous and takes no request argument. On the server, `flags` holds the values of the current request. In a browser, it holds the public values that the server embeds in the page.
 
 ```tsx
-import { flags } from 'flargs/values'
+import { flags } from 'flargs'
 import { useFlag } from 'flargs/react'
 
 // A plain read, on the server or in a browser.

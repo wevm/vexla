@@ -44,11 +44,6 @@
       "src": "./src/server/index.ts",
       "types": "./dist/server/index.d.ts",
       "default": "./dist/server/index.js"
-    },
-    "./values": {
-      "src": "./src/values/index.ts",
-      "types": "./dist/values/index.d.ts",
-      "default": "./dist/values/index.js"
     }
   },
   "files": [

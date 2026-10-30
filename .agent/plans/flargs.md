@@ -147,7 +147,7 @@ FEATURE_PRICING=b
 ```
 
 ```ts
-import { flags } from 'flargs/values'
+import { flags } from 'flargs'
 
 // Typed from flags.json. Resolves from the environment, then the default.
 flags.newCheckout // boolean
@@ -454,12 +454,12 @@ The dev route page lists every flag with its source (`override`, `store`, `decid
 
 The page is one HTML document with inline styles and script, no runtime dependency, and no external request. A host admin UI, such as Tempo API Admin, calls the same HTTP API.
 
-### `flargs/values`
+### Values
 
-`flargs/values` exports `flags`, the typed values of the current page or request. A read is synchronous and needs no `request` argument. Package export conditions select the source, with no bundler plugin.
+`flargs` exports `flags`, the typed values of the current page or request. A read is synchronous and needs no `request` argument. Package export conditions select the source, with no bundler plugin.
 
 ```ts
-import { flags } from 'flargs/values'
+import { flags } from 'flargs'
 
 // The same read in browser code and in server code.
 if (flags.newCheckout) newCheckout()
@@ -478,7 +478,7 @@ if (flags.maintenanceBanner) showBanner()
 | `Values.run(runtime, request, fn)` | server    | evaluates every runtime flag for `request`, then runs `fn` with those values in `flags` |
 | `Values.subscribe(fn)`             | `browser` | calls `fn` after each `Values.load`, and returns an unsubscribe function                |
 
-- **Page state:** in a browser, the page is the lifecycle of the values, so `flargs/values` keeps one snapshot for the page. This is the only module-scope state in Flargs.
+- **Page state:** in a browser, the page is the lifecycle of the values, so `flargs` keeps one snapshot for the page. This is the only module-scope state in Flargs.
 - **Server state:** `flargs/hono` and `Request.toNodeListener` of `flargs/node` call `Values.run` for every request. Other fetch runtimes call it directly.
 - **Eager evaluation:** `Values.run` runs every `decide`. A flag with an expensive `decide` uses `runtime.get(request, key)` in place of `flags`.
 - **Build flags:** `runtime.script` and the values endpoint also contain public build flag values, so `flags` works with no bundler. `flargs/vite` replaces build flag reads with literals.
@@ -496,7 +496,7 @@ export default {
 A client on another origin, such as a frontend for the Tempo API, has no embedded script. It loads the values from the API before the first read.
 
 ```ts
-import { flags, Values } from 'flargs/values'
+import { flags, Values } from 'flargs'
 
 // Request the values from the API. Reads before this resolves return the defaults.
 await Values.load({ url: 'https://api.example.com/.flags' })
@@ -550,7 +550,7 @@ export default defineConfig({
 
 - The plugin writes `flargs.gen.ts` at startup and on each change of `flags.json`.
 - A build flag value resolves from its variable in the environment, then `store`, then the default in `flags.json`. `store` takes the same `Store` contract as `Runtime.create`, such as `Store.http`.
-- The plugin replaces `flags.<key>` with a literal for every build flag, where `flags` is the import from `flargs/values`. Dead branches drop from the bundle.
+- The plugin replaces `flags.<key>` with a literal for every build flag, where `flags` is the import from `flargs`. Dead branches drop from the bundle.
 - A read of a private flag in browser code is a build error.
 - In dev mode, the dev route also lists build flags. A change writes an override file and triggers a full reload.
 - `Definitions.defines(definitions, options)` returns the same replacements for esbuild, Rollup, and webpack `DefinePlugin`.
@@ -649,7 +649,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 ### Phase 0: Scaffold
 
 - Package with zile, Vite Plus, the `catalog:` workspace, `tsconfig.json` paths, and test aliases.
-- Entries: `flargs`, `flargs/server`, `flargs/values`.
+- Entries: `flargs` and `flargs/server`.
 - **Gate:** `pnpm check`, `pnpm check:types`, `pnpm test`, and `pnpm build` pass on an empty entry. Done in `65f286a`.
 
 ### Phase 1: Definitions and Overrides
@@ -673,7 +673,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 
 ### Phase 4: Values and React
 
-- `flargs/values` in every condition, `Values.run` in `flargs/hono` and `flargs/node`, and `flargs/react`.
+- `flags` and `Values` in every condition of `flargs`, `Values.run` in `flargs/hono` and `flargs/node`, and `flargs/react`.
 - **Gate:** browser tests read embedded values with no request, and `Values.load` from another origin with CORS and a stored override. Server tests read `flags` inside `Values.run` in Node and in `wrangler dev`, with two concurrent requests that resolve different values.
 
 ### Phase 5: Build Flags

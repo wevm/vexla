@@ -9,7 +9,7 @@ Source commit: `78decd57e6823ec5de899a5acb8bbdb9c227b3a3`. Retrieved 2026-10-30.
 
 - Flargs is a self-hosted feature flag library. It declares flags in a committed `flags.json` or `flags.toml` file, evaluates them on the server, and serves a dev route and an admin API from the host application. It is a self-hosted alternative to the Vercel Flags SDK.
 - Flargs supports trunk-based development. Unfinished work merges to `main` behind a flag, and the flag, not the branch, controls the release.
-- Flargs covers four roles: the definitions (`flags.json` or `flags.toml`, validated by `Definitions` in `flargs`), the runtime instance (`Runtime.create` in `flargs/server`, served through `runtime.fetch`), the values (`flags` in `flargs/values`), and the build (`flargs/vite`). The CLI and the Rust crate use the same wire format. Stay general purpose. Never add code for one product or one deployment.
+- Flargs covers four roles: the definitions (`flags.json` or `flags.toml`, validated by `Definitions` in `flargs`), the runtime instance (`Runtime.create` in `flargs/server`, served through `runtime.fetch`), the values (`flags` in `flargs`), and the build (`flargs/vite`). The CLI and the Rust crate use the same wire format. Stay general purpose. Never add code for one product or one deployment.
 - A flag resolves at one of two times. A `build` flag resolves when the bundle is built, compiles to a literal, and never reaches the API. A `runtime` flag resolves on the server for each request.
 - `flags.json` (TypeScript) or `flags.toml` (Rust) declares each flag with its default, following one JSON Schema. Each flag links to a `FEATURE_*` environment variable. A gitignored `.env` or the deploy environment sets values.
 - `public: true`, not a variable prefix, controls whether a value reaches the browser. Flargs configuration variables use the `FLARGS_` prefix.
@@ -18,8 +18,8 @@ Source commit: `78decd57e6823ec5de899a5acb8bbdb9c227b3a3`. Retrieved 2026-10-30.
 - A flag is `private` unless it declares `visibility: 'public'`. A private flag value never leaves the server, except through the authorized admin API.
 - In dev mode, every flag accepts an override. In production, an unsigned override applies only to a public runtime flag. A private flag accepts only a signed override. A build flag accepts no override.
 - The dev route sets personal overrides in a cookie. The admin API writes the store, which applies to every request. Keep these two paths separate.
-- Keep `flargs`, `flargs/server`, and the `browser` condition of `flargs/values` free of dependencies and of Node built-ins, so they run in Node, Bun, Deno, edge runtimes, and browsers. Sign and verify with WebCrypto. The server condition of `flargs/values` uses only `AsyncLocalStorage` from `node:async_hooks`.
-- The browser snapshot in `flargs/values` is the only module-scope state. Every other module follows the instance conventions below.
+- Keep `flargs/server` and the `browser` condition of `flargs` free of dependencies and of Node built-ins, so they run in Node, Bun, Deno, edge runtimes, and browsers. Sign and verify with WebCrypto. The server condition of `flargs` uses only `AsyncLocalStorage` from `node:async_hooks`, which Node, Bun, Deno, and Workers (`nodejs_compat`) provide.
+- The browser snapshot of `flags` in `flargs` is the only module-scope state. Every other module follows the instance conventions below.
 - The flags file schema and the JSON manifest of the admin API are the contract between TypeScript, the CLI, and Rust. Shared vectors in `test/vectors/` prove that every implementation evaluates, parses, and signs the same way.
 - `.agent/plans/flargs.md` defines the public API, the phases, and the acceptance gates. Update it in the same change as an API decision.
 
@@ -221,8 +221,8 @@ The `flargs` crate evaluates the same manifest, overrides, and signatures as the
 
 ## Repository Layout
 
-- `src/`: flat PascalCase modules of the core entry (`Definitions`, `Override`), with colocated tests. `src/index.ts` re-exports them as namespaces.
-- `src/hono/`, `src/node/`, `src/react/`, `src/server/`, `src/values/`, `src/vite/`: the `flargs/hono`, `flargs/node`, `flargs/react`, `flargs/server`, `flargs/values`, and `flargs/vite` entries.
+- `src/`: flat PascalCase modules of the core entry (`Definitions`, `Override`, `Values`), with colocated tests. `src/index.ts` re-exports them as namespaces, and exports `flags` directly.
+- `src/hono/`, `src/node/`, `src/react/`, `src/server/`, `src/vite/`: the `flargs/hono`, `flargs/node`, `flargs/react`, `flargs/server`, and `flargs/vite` entries.
 - `src/server/ui/`: the dev route page, one HTML document with inline styles and no runtime dependency.
 - `src/cli/`: the incur CLI. `bin.ts` is the entry, and each command lives in its own file.
 - `src/internal/`: helpers that no entry exports.

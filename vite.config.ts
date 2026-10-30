@@ -9,10 +9,6 @@ export default defineConfig({
         find: 'flargs/server',
         replacement: Path.resolve(import.meta.dirname, 'src/server/index.ts'),
       },
-      {
-        find: 'flargs/values',
-        replacement: Path.resolve(import.meta.dirname, 'src/values/index.ts'),
-      },
       { find: /^flargs$/, replacement: Path.resolve(import.meta.dirname, 'src/index.ts') },
     ],
     globals: true,
