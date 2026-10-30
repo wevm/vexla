@@ -1,7 +1,7 @@
 <h1 align="center">Flargs</h1>
 
 <p align="center">
-  Self-hosted feature flags for TypeScript and Rust
+  Feature flags for trunk-based development
 </p>
 
 <p align="center">
