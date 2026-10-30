@@ -33,6 +33,8 @@ export default defineConfig({
     ],
     exclude: ['.claude/**', 'dist/**', 'node_modules/**'],
     globals: true,
+    // CLI tests start processes, which take longer on CI runners.
+    testTimeout: 30_000,
   },
   lint: {
     ignorePatterns: ['.claude/**', 'dist/**'],

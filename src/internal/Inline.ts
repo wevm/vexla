@@ -125,6 +125,15 @@ export function transform(code: string, options: transform.Options): Result {
       }
     }
 
+    // `!flags.key` with a boolean value folds to the opposite literal.
+    if (ts.isPrefixUnaryExpression(node) && node.operator === ts.SyntaxKind.ExclamationToken) {
+      const value = constant(node)
+      if (value !== undefined) {
+        edits.push({ end: node.getEnd(), start: node.getStart(source), text: String(value) })
+        return
+      }
+    }
+
     const key = read(node)
     if (key !== undefined) {
       const definition = options.definitions[key]
@@ -205,9 +214,13 @@ function imports(source: ts.SourceFile): {
 
     const only = bindings.elements.length === 1 && !statement.importClause?.name
     if (only) {
-      const end =
-        source.text[statement.getEnd()] === '\n' ? statement.getEnd() + 1 : statement.getEnd()
-      result.edits.push({ end, start: statement.getStart(source), text: '' })
+      // The import line, and one blank line after it, are removed.
+      const newlines = /^\n\n?/.exec(source.text.slice(statement.getEnd()))?.[0].length ?? 0
+      result.edits.push({
+        end: statement.getEnd() + newlines,
+        start: statement.getStart(source),
+        text: '',
+      })
       continue
     }
 

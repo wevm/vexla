@@ -1,6 +1,6 @@
 # Flargs Plan
 
-Status: phases 1 to 5 done. Phase 6 is next.
+Status: phases 1 to 6 done. Phase 7 is next.
 
 Flargs is a self-hosted feature flag library for TypeScript and Rust. It declares flags in a committed `flags.json` or `flags.toml` file, evaluates them on the server, and serves a dev route and an admin API from the host application. This plan defines the public API, the phases, and the acceptance gate of each phase.
 
@@ -315,6 +315,8 @@ type Store = {
   delete: (key: string) => Promise<void>
   get: (keys: readonly string[]) => Promise<Record<string, unknown>>
   set: (key: string, value: unknown) => Promise<void>
+  // Optional: lists every key with a value, so `flargs prune` finds orphan values.
+  keys?: () => Promise<readonly string[]>
   // Required only for store definitions, when Runtime.create has no `definitions`.
   definitions?: {
     delete: (key: string) => Promise<void>
@@ -657,7 +659,7 @@ A flag exists to merge unfinished work, so each flag has an end. Retirement repl
 ```
 
 ```bash
-# Lists flags past their `expires` date, and flags whose value has not changed for 30 days.
+# Lists flags past their `expires` date.
 flargs stale
 
 # Replaces each read of newCheckout with true, deletes the declaration, and prunes the store.
@@ -720,7 +722,7 @@ flargs list --url https://api-admin.example.com/.flags
 | `flargs undefine <key>`            | deletes a store definition                                                                                                 |
 | `flargs prune`                     | lists stored values and definitions of undeclared keys. `--yes` deletes them                                               |
 | `flargs retire <key>`              | replaces each read with the final value, deletes the declaration, and prunes the store. `--value` and `--dry-run`          |
-| `flargs stale`                     | lists flags past `expires`, and flags whose value has not changed for 30 days                                              |
+| `flargs stale`                     | lists flags past `expires`                                                                                                 |
 | `flargs link <url> <key=value...>` | returns a signed share URL. `--expires` sets the lifetime                                                                  |
 | `flargs check`                     | validates the environment against the flags file, for CI                                                                   |
 | `flargs env`                       | writes `.env.example` from the flags file                                                                                  |
