@@ -13,35 +13,39 @@
 
 ## Overview
 
-```ts
-import { f, Flags } from 'flargs'
+```bash
+# flags.env (committed): declares each flag and its default.
 
-// Declares every flag in one record. The default applies when no other source has a value.
-export const definitions = Flags.define({
-  newCheckout: f.boolean({ default: false, visibility: 'public' }),
-  pricing: f.select({ default: 'a', options: ['a', 'b', 'c'] }),
-})
+# Use the new checkout flow.
+# @public
+FEATURE_NEW_CHECKOUT=false
+
+# @options a b c
+FEATURE_PRICING=a
 ```
 
 ```bash
-# Sets a flag for one deploy, with no server and no store.
+# .env (gitignored), or the deploy environment: sets a value for this environment.
 FEATURE_NEW_CHECKOUT=true
 ```
 
 ```ts
 import { flags } from 'flargs/values'
 
-// Typed from the definitions. Resolves on the server, or from the page in a browser.
+// Typed from flags.env. Resolves on the server, or from the page in a browser.
 if (flags.newCheckout) renderNewCheckout()
+flags.pricing // 'a' | 'b' | 'c'
 ```
 
-The same definitions and reads scale from environment variables to a dev route, personal overrides, and an admin API on the database of the application.
+The same `flags.env` and the same reads scale from environment variables to a dev route, personal overrides, and an admin API on the database of the application.
 
 ## Motivation
 
 Feature branches drift from `main`, end in large and risky merges, and keep finished work out of production. The fix is to push small changes to `main` continuously, with unfinished work behind a feature flag.
 
 Extra work such as feature flags, staged migrations, and two configurations at once was once tedious, but coding agents now write it at almost no cost. Flargs makes each flag one typed line that is easy to add, preview, release, and remove, on infrastructure that the application already owns.
+
+The [Vercel Flags SDK](https://flags-sdk.dev) established flags as code. Flargs keeps that model and replaces the hosted parts: a store in place of a provider, a dev route in place of a toolbar, and build flags in place of precompute.
 
 ## Agent Prompt
 
@@ -51,21 +55,20 @@ Paste this prompt into a coding agent:
 Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished work behind flags so it merges to main.
 ```
 
-The [Vercel Flags SDK](https://flags-sdk.dev) established flags as code. Flargs keeps that model and replaces the hosted parts: a store in place of a provider, a dev route in place of a toolbar, and build flags in place of precompute.
-
 ## Philosophy
 
-- **Flags as code:** Each flag is a typed declaration with one default. Find All References locates every use.
+- **Flags are environment variables:** Each flag is one line in `flags.env`, with one default and a generated type. Find All References locates every read.
 - **Server-first:** The server resolves flags. A browser receives values, never rules.
 - **Private by default:** A private value never leaves the server. Visibility, not a variable prefix, controls what reaches a browser.
-- **Incremental:** Environment variables, a dev route, and an admin API use the same definitions and the same reads.
+- **Incremental:** Environment variables, a dev route, and an admin API use the same `flags.env` and the same reads.
 - **Portable:** The core, server, and browser entries have no dependencies. They run in Node, Bun, Deno, edge runtimes, and browsers.
 - **Tested:** Every test runs against a real server, browser, or build, with no mocks.
 
 ## Features
 
-- **Declarations:** `f.boolean`, `f.select`, and `f.json`, with types inferred from the definitions.
-- **Environment Variables:** `FEATURE_NEW_CHECKOUT=true` sets a flag with no server.
+- **Declarations:** One `FEATURE_*` line for each flag in a committed `flags.env`, with JSDoc-style tags for options, visibility, and build flags.
+- **Typed Values:** Generated types for every flag, such as `'a' | 'b' | 'c'` for a select flag.
+- **Zero Config:** With no `flags.env`, `FEATURE_NEW_CHECKOUT=true` alone declares a flag.
 - **Build Flags:** Compile to literals, so dead branches drop from the bundle and the value never reaches an API.
 - **Runtime Flags:** Resolve on the server for each request, from an override, a store value, `decide`, or the default.
 - **Dev Route:** A page at `/.flags` toggles flags for one browser, or for every request with admin access.
@@ -73,59 +76,55 @@ The [Vercel Flags SDK](https://flags-sdk.dev) established flags as code. Flargs 
 - **Overrides:** Search parameters such as `?flag.newCheckout=true` override public flags. Signed links override private flags.
 - **Stores:** Memory, environment variables, Cloudflare KV, a remote Flargs API, or a table in the database of the application.
 - **Integrations:** A fetch handler for Next.js, Cloudflare Workers, and Bun, plus Hono middleware, Node listeners, React, and Vite.
-- **CLI and MCP:** Lists, sets, and links flags, and generates types for a client in another repository.
-- **Rust:** `#[derive(Flags)]` with the same manifest, overrides, and signatures as TypeScript.
+- **CLI and MCP:** Lists, sets, and links flags, checks the environment in CI, and generates types.
+- **Rust:** `flargs::flags!("flags.env")` generates a typed struct at compile time from the same file.
 
 ## Usage
 
 ### Definitions
 
-```ts
-import { f, Flags } from 'flargs'
-
-export const definitions = Flags.define({
-  // Resolves when the bundle builds. The value is a literal in the bundle.
-  maintenanceBanner: f.boolean({ default: false, resolve: 'build', visibility: 'public' }),
-
-  // Resolves on the server for each request.
-  newCheckout: f.boolean({ default: false, visibility: 'public' }),
-
-  // Private: the value never leaves the server.
-  pricing: f.select({
-    decide: (context) => (context.user?.plan === 'enterprise' ? 'c' : undefined),
-    default: 'a',
-    options: ['a', 'b', 'c'],
-  }),
-})
-
-// Registers the definitions once, so every read is typed.
-declare module 'flargs' {
-  interface Register {
-    definitions: typeof definitions
-  }
-}
-```
-
-| Option       | Purpose                                                                  | Default                                          |
-| ------------ | ------------------------------------------------------------------------ | ------------------------------------------------ |
-| `decide`     | returns a value from the request context, or `undefined` to fall through | none                                             |
-| `default`    | the value when no other source has one                                   | required                                         |
-| `env`        | the environment variable name                                            | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
-| `resolve`    | `'build'` or `'runtime'`                                                 | `'runtime'`                                      |
-| `visibility` | `'private'` or `'public'`                                                | `'private'`                                      |
-
-### Environment Variables
-
-A flag reads `FEATURE_` followed by its key in `SCREAMING_SNAKE_CASE`. Flargs reads only the variables of declared flags.
+`flags.env` declares every flag in dotenv syntax. The value of each variable is its default, and comment lines above it hold the description and tags.
 
 ```bash
-# Boolean, select, and JSON values.
-FEATURE_NEW_CHECKOUT=true
-FEATURE_PRICING=b
+# flags.env
+
+# Show the maintenance banner. Resolves when the bundle builds.
+# @build @public
+FEATURE_MAINTENANCE_BANNER=false
+
+# Use the new checkout flow. May reach the browser.
+# @public
+FEATURE_NEW_CHECKOUT=false
+
+# Pricing page variant. Private: the value never leaves the server.
+# @options a b c
+FEATURE_PRICING=a
+
+# A JSON value. The type comes from the default.
 FEATURE_LIMITS={"requests":100}
 ```
 
-Outside a request, `flags` resolves each flag from its variable, then its default. Flargs configuration uses a separate prefix: `FLARGS_SECRET`, `FLARGS_TOKEN`, and `FLARGS_URL`.
+| Declaration            | Meaning                                                                                |
+| ---------------------- | -------------------------------------------------------------------------------------- |
+| `FEATURE_NEW_CHECKOUT` | the key `newCheckout`                                                                  |
+| `=false`               | the default. Booleans, numbers, and JSON keep their type, and other values are strings |
+| comment lines          | the description, shown in the dev route                                                |
+| `@options a b c`       | a select flag, typed `'a' \| 'b' \| 'c'`                                               |
+| `@public`              | the value may reach the browser. Flags are private otherwise                           |
+| `@build`               | a build flag, written into the bundle at build time                                    |
+
+A `.env` file, `.env.local`, or the deploy environment sets values that differ from the defaults. A `FEATURE_*` variable that `flags.env` does not declare throws at startup, so a typo does not fail silently.
+
+### Types
+
+`flargs/vite` and `flargs generate` read `flags.env` and write `flargs.gen.ts`, which holds the parsed definitions and their types.
+
+```bash
+# Writes flargs.gen.ts. flargs/vite runs the same step on each change of flags.env.
+flargs generate
+```
+
+With no `flags.env`, Flargs reads every `FEATURE_*` variable as a private, untyped flag. Flargs configuration uses a separate prefix: `FLARGS_SECRET`, `FLARGS_TOKEN`, and `FLARGS_URL`.
 
 ### Runtime
 
@@ -133,9 +132,14 @@ Outside a request, `flags` resolves each flag from its variable, then its defaul
 
 ```ts
 import { Runtime, Store } from 'flargs/server'
+import { definitions } from './flargs.gen.js'
 
 export const runtime = Runtime.create({
   authorize: (request) => Admin.access(request),
+  decide: {
+    // Returns undefined to fall through to the store value or the default.
+    pricing: (user) => (user?.plan === 'enterprise' ? 'c' : undefined),
+  },
   definitions,
   dev: process.env.NODE_ENV === 'development',
   identify: (request) => Session.user(request),
@@ -196,11 +200,10 @@ const newCheckout = useFlag('newCheckout')
 ```ts
 import { defineConfig } from 'vite'
 import flargs from 'flargs/vite'
-import { definitions } from './src/flags.js'
 
 export default defineConfig({
-  // Resolves build flags from FEATURE_* variables, then the store, then defaults.
-  plugins: [flargs({ definitions })],
+  // Reads flags.env, writes flargs.gen.ts, and resolves build flags from the environment.
+  plugins: [flargs()],
 })
 ```
 
@@ -259,45 +262,32 @@ flargs set newCheckout true
 # Returns a signed link that overrides a private flag for one week.
 flargs link https://app.example.com/checkout pricing=c --expires 7d
 
+# Fails when the environment sets an undeclared or invalid FEATURE_* variable.
+flargs check
+
 # Writes types for a client in another repository.
-flargs types --url https://api.example.com/.flags --out src/flargs.d.ts
+flargs generate --url https://api.example.com/.flags --out src/flargs.gen.ts
 ```
 
-| Command                            | Purpose                                               |
-| ---------------------------------- | ----------------------------------------------------- |
-| `flargs list`                      | lists every flag with its value and source            |
-| `flargs get <key>`                 | returns one flag                                      |
-| `flargs set <key> <value>`         | sets the store value                                  |
-| `flargs unset <key>`               | deletes the store value                               |
-| `flargs link <url> <key=value...>` | returns a signed share link                           |
-| `flargs manifest <file>`           | writes the manifest of a definitions module           |
-| `flargs types`                     | writes a `.d.ts` file with the `Register` declaration |
-| `flargs dev`                       | serves the dev route for a manifest                   |
+| Command                            | Purpose                                                  |
+| ---------------------------------- | -------------------------------------------------------- |
+| `flargs list`                      | lists every flag with its value and source               |
+| `flargs get <key>`                 | returns one flag                                         |
+| `flargs set <key> <value>`         | sets the store value                                     |
+| `flargs unset <key>`               | deletes the store value                                  |
+| `flargs link <url> <key=value...>` | returns a signed share link                              |
+| `flargs check`                     | validates the environment against `flags.env`            |
+| `flargs generate`                  | writes `flargs.gen.ts` from `flags.env`, or from `--url` |
+| `flargs dev`                       | serves the dev route for `flags.env`                     |
 
 ## Rust
 
 ```rust
-use flargs::{Flags, Options};
+// Reads flags.env at compile time. A bad declaration fails the build at its line.
+flargs::flags!("flags.env");
 
-/// Flags of the checkout service.
-#[derive(Flags)]
-#[flags(context = User)]
-pub struct AppFlags {
-    /// Use the new checkout flow. Reads FEATURE_NEW_CHECKOUT.
-    #[flag(default = false, public)]
-    pub new_checkout: bool,
-
-    /// Pricing page variant.
-    #[flag(decide = decide_pricing, default = Pricing::A)]
-    pub pricing: Pricing,
-}
-
-#[derive(Clone, Copy, Options)]
-pub enum Pricing {
-    A,
-    B,
-    C,
-}
+// Typed keys and enums come from the same file as in TypeScript.
+let pricing: Pricing = runtime.get(&parts, Flags::PRICING).await?;
 ```
 
 ```rust
@@ -308,7 +298,7 @@ let app = Router::new()
     .layer(runtime.layer());
 ```
 
-The crate reads the same manifest, overrides, and signatures as TypeScript. `#[flags(manifest = "../web/flags.json")]` fails to compile when the struct differs from the TypeScript definitions.
+The crate reads the same `flags.env`, overrides, and signatures as TypeScript, so one file serves a TypeScript web app and a Rust API.
 
 ## License
 
