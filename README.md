@@ -318,7 +318,7 @@ flargs dev
 
 ## Documentation
 
-The documentation site is in progress. Until it is published, the usage examples above and the TSDoc of each export describe the API.
+The documentation site lives in [`docs/`](docs). `pnpm docs:dev` serves it, and `pnpm docs:build` builds it.
 
 ## License
 
