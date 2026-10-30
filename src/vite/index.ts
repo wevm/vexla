@@ -19,7 +19,7 @@ export default function flargs(options: flargs.Options = {}): Plugin {
   let values: Record<string, Definitions.Json> = {}
 
   const load = async () => {
-    definitions = Files.read({ envPrefix: options.envPrefix, path: options.path, root })
+    definitions = Files.read({ path: options.path, root })
     Files.write(definitions, { out: options.out, root })
     const keys = Object.entries(definitions)
       .filter((entry) => entry[1].build)
@@ -94,8 +94,6 @@ export default function flargs(options: flargs.Options = {}): Plugin {
 
 export declare namespace flargs {
   type Options = {
-    /** The prefix of flag environment variables. @default 'FEATURE_' */
-    envPrefix?: string | undefined
     /** The path of the generated module, relative to the Vite root. @default 'flargs.gen.ts' */
     out?: string | undefined
     /** The path of the flags file, relative to the Vite root. @default '.env.flags' */

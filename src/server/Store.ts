@@ -76,22 +76,18 @@ export declare namespace memory {
 }
 
 /**
- * Returns a store over `FEATURE_*` variables, read only. It holds no definitions. A write throws
+ * Returns a store over environment variables, read only. A flag reads the variable of the same name. It holds no definitions. A write throws
  * `ReadOnlyError`.
  */
-export function env(
-  variables: Readonly<Record<string, string | undefined>>,
-  options: env.Options = {},
-): Store {
+export function env(variables: Readonly<Record<string, string | undefined>>): Store {
   return {
     async delete(key) {
       throw new ReadOnlyError({ key })
     },
     async get(keys) {
-      const prefix = options.envPrefix ?? Definitions.envPrefix
       return Object.fromEntries(
         keys.flatMap((key) => {
-          const raw = variables[Definitions.envOf(key, prefix)]
+          const raw = variables[key]
           return raw === undefined ? [] : [[key, raw]]
         }),
       )
@@ -99,13 +95,6 @@ export function env(
     async set(key) {
       throw new ReadOnlyError({ key })
     },
-  }
-}
-
-export declare namespace env {
-  type Options = {
-    /** The prefix of flag environment variables. @default 'FEATURE_' */
-    envPrefix?: string | undefined
   }
 }
 

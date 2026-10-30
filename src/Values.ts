@@ -142,8 +142,9 @@ function embedded(): Snapshot {
 function environment(): Snapshot {
   const env =
     (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {}
-  const definitions = Definitions.fromEnv(env)
   return Object.fromEntries(
-    Object.entries(definitions).map((entry) => [entry[0], entry[1].default]),
+    Object.entries(env).flatMap((entry) =>
+      entry[1] === undefined ? [] : [[entry[0], Definitions.infer(entry[1])]],
+    ),
   )
 }

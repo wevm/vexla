@@ -18,7 +18,7 @@ export type Source = 'decide' | 'default' | 'env' | 'override' | 'store'
 
 /** The runtime instance. */
 export type Flargs<definitions = Registered> = {
-  /** Returns the definitions: `definitions`, or the store definitions, or zero config from `env`. */
+  /** Returns the definitions: `definitions`, or the store definitions, or none. */
   definitions: () => Promise<Definitions.Definitions>
   /** Returns every value for `request`. `visibility: 'public'` returns public flags only. */
   evaluate: (
@@ -47,7 +47,6 @@ export function create<
   const path = (options.path ?? '/.flags').replace(/\/$/, '')
   const dev = options.dev ?? false
   const env = options.env ?? globalThis.process?.env ?? {}
-  const envPrefix = options.envPrefix ?? Definitions.envPrefix
   const onError = options.onError ?? (() => {})
 
   if (!dev && !options.secret)
@@ -60,11 +59,11 @@ export function create<
 
   const definitions = (): Promise<Definitions.Definitions> => {
     if (options.definitions) return Promise.resolve(options.definitions)
-    if (!options.store?.definitions) return Promise.resolve(Definitions.fromEnv(env, { envPrefix }))
+    if (!options.store?.definitions) return Promise.resolve({})
 
     cached ??= (async () => {
       try {
-        return Definitions.parse(await options.store!.definitions!.list(), { envPrefix })
+        return Definitions.parse(await options.store!.definitions!.list())
       } catch (cause) {
         cached = undefined
         throw new DefinitionsUnavailableError({ cause })
@@ -152,7 +151,7 @@ export function create<
       if (key in current.overrides) return { source: 'override', value: current.overrides[key]! }
 
       const fallback = (() => {
-        const raw = env[definition.env]
+        const raw = env[key]
         if (raw === undefined) return { source: 'default' as const, value: definition.default }
         try {
           return { source: 'env' as const, value: Definitions.decode(definition, raw, key) }
@@ -166,9 +165,7 @@ export function create<
       if (stored !== undefined) {
         const value = coerce(definition, stored, key)
         if (value !== undefined) return { source: 'store', value }
-        onError(
-          new Definitions.InvalidValueError({ env: definition.env, key, type: definition.type }),
-        )
+        onError(new Definitions.InvalidValueError({ key, type: definition.type }))
       }
 
       if (definition.build) return fallback
@@ -179,13 +176,7 @@ export function create<
           const value = await (decide as (context: unknown) => unknown)(current.context)
           if (value !== undefined) {
             if (Definitions.validate(definition, value)) return { source: 'decide', value }
-            onError(
-              new Definitions.InvalidValueError({
-                env: definition.env,
-                key,
-                type: definition.type,
-              }),
-            )
+            onError(new Definitions.InvalidValueError({ key, type: definition.type }))
           }
         } catch (error) {
           onError(error)
@@ -377,7 +368,7 @@ export function create<
       const body = await readJson(request)
       const parsed = (() => {
         try {
-          return Definitions.parse({ [key]: body }, { envPrefix })[key]
+          return Definitions.parse({ [key]: body })[key]
         } catch (error) {
           return error as Definitions.InvalidDeclarationError
         }
@@ -480,14 +471,12 @@ export declare namespace create {
             | Promise<Definitions.Value<definitions[key]> | undefined>
         }
       | undefined
-    /** The definitions, from `flargs.gen.ts` or `Definitions.parse`. Without them, the store holds the definitions. */
+    /** The definitions, from `flargs.gen.ts` or `Definitions.parseFile`. Without them, the store holds the definitions. */
     definitions?: definitions | undefined
     /** Dev mode: every flag accepts an unsigned override, and the dev route is open. @default false */
     dev?: boolean | undefined
-    /** The environment, for `FEATURE_*` values. @default process.env */
+    /** The environment, whose variable of the same name as a flag sets its value. @default process.env */
     env?: Readonly<Record<string, string | undefined>> | undefined
-    /** The prefix of flag environment variables. @default 'FEATURE_' */
-    envPrefix?: string | undefined
     /** Returns the context that `decide` receives, such as the user of the request. */
     identify?: ((request: Request) => unknown) | undefined
     /** The current time, in milliseconds since the epoch. @default Date.now */

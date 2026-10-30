@@ -25,10 +25,8 @@ export type Definition = {
   readonly build: boolean
   /** The value when no other source has one. */
   readonly default: Json
-  /** The description, for the dev route, the admin API, and `.env.example`. */
+  /** The description, for the dev route and the admin API. */
   readonly description?: string | undefined
-  /** The environment variable that sets the value. */
-  readonly env: string
   /** The date (`YYYY-MM-DD`) after which the flag is due for retirement. */
   readonly expires?: string | undefined
   /** The values of a select flag. */
@@ -77,60 +75,38 @@ export type Manifest = {
   readonly version: 1
 }
 
-/** The default prefix of flag environment variables. */
-export const envPrefix = 'FEATURE_'
-
-const fields = ['build', 'default', 'description', 'env', 'expires', 'options', 'public', 'type']
+const fields = ['build', 'default', 'description', 'expires', 'options', 'public', 'type']
 const types: readonly Type[] = ['boolean', 'json', 'number', 'select', 'string']
 
 /**
  * Returns the definitions in a definition object, the format of the store and of the admin API.
- * Keys in `snake_case` map to `camelCase`. Every flag must declare `type` and `default`.
+ * Each key is the name of the environment variable of its flag, such as `NEW_CHECKOUT`. Every
+ * flag must declare `type` and `default`.
  *
  * @throws {InvalidDeclarationError} When a declaration does not follow the schema.
  */
-export function parse(input: unknown, options: parse.Options = {}): Definitions {
-  const prefix = options.envPrefix ?? envPrefix
-
+export function parse(input: unknown): Definitions {
   if (!isObject(input))
-    throw new InvalidDeclarationError({ key: '(root)', reason: 'The flags file is not an object.' })
+    throw new InvalidDeclarationError({
+      key: '(root)',
+      reason: 'The definitions are not an object.',
+    })
 
   const definitions: Record<string, Definition> = {}
-  const envs = new Map<string, string>()
-
-  for (const [name, declaration] of Object.entries(input)) {
-    if (name === '$schema') continue
-
-    const key = camelCase(name)
-    const definition = declare(key, declaration, prefix)
-
-    if (definitions[key])
-      throw new InvalidDeclarationError({ key, reason: `The key ${key} is declared twice.` })
-
-    const other = envs.get(definition.env)
-    if (other)
+  for (const [key, declaration] of Object.entries(input)) {
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key))
       throw new InvalidDeclarationError({
         key,
-        reason: `The flags ${other} and ${key} read the same variable ${definition.env}.`,
+        reason: `The key ${key} is not an environment variable name, such as NEW_CHECKOUT.`,
       })
-
-    envs.set(definition.env, key)
-    definitions[key] = definition
+    definitions[key] = declare(key, declaration)
   }
-
   return definitions
 }
 
-export declare namespace parse {
-  type Options = {
-    /** The prefix of flag environment variables. @default 'FEATURE_' */
-    envPrefix?: string | undefined
-  }
-}
-
 /**
- * Returns the definitions in the text of `.env.flags`. Each `FEATURE_*` variable declares a flag,
- * and its value is the default. Comment lines directly above it hold the description and tags:
+ * Returns the definitions in the text of `.env.flags`. Each variable declares a flag, its name is
+ * the key of the flag, and its value is the default. Comment lines directly above it hold the description and tags:
  *
  * - `@type {boolean}`, `{number}`, `{string}`, `{json}`, or a union of string literals such as
  *   `{'a' | 'b'}` for a select flag. Required.
@@ -142,8 +118,7 @@ export declare namespace parse {
  *
  * @throws {InvalidDeclarationError} When a line or a declaration is invalid.
  */
-export function parseFile(text: string, options: parseFile.Options = {}): Definitions {
-  const prefix = options.envPrefix ?? envPrefix
+export function parseFile(text: string): Definitions {
   const scanned = EnvFile.scan(text)
 
   const invalid = scanned.invalid[0]
@@ -162,12 +137,10 @@ export function parseFile(text: string, options: parseFile.Options = {}): Defini
         reason: `${reason.replace(/\.$/, '')} (line ${entry.line}).`,
       })
 
-    if (!entry.name.startsWith(prefix) || entry.name.length === prefix.length)
-      throw fail(entry.name, `The variable ${entry.name} does not start with ${prefix}.`)
-    const key = keyOf(entry.name, prefix)
+    const key = entry.name
 
     const description: string[] = []
-    const declaration: Record<string, unknown> = { env: entry.name }
+    const declaration: Record<string, unknown> = {}
 
     for (const comment of entry.comments) {
       const found = EnvFile.tags(comment)
@@ -222,10 +195,10 @@ export function parseFile(text: string, options: parseFile.Options = {}): Defini
   }
 
   try {
-    return parse(input, { envPrefix: prefix })
+    return parse(input)
   } catch (error) {
     if (error instanceof InvalidDeclarationError) {
-      const entry = scanned.entries.find((entry) => keyOf(entry.name, prefix) === error.key)
+      const entry = scanned.entries.find((entry) => entry.name === error.key)
       if (entry)
         throw new InvalidDeclarationError({
           key: error.key,
@@ -236,22 +209,12 @@ export function parseFile(text: string, options: parseFile.Options = {}): Defini
   }
 }
 
-export declare namespace parseFile {
-  type Options = {
-    /** The prefix of flag environment variables. @default 'FEATURE_' */
-    envPrefix?: string | undefined
-  }
-}
-
 /**
  * Returns `text` without the declaration of `key`: its comment lines, its variable, and one blank
  * line after it. Returns `text` unchanged when no variable declares `key`.
  */
-export function removeFromFile(text: string, key: string, options: parseFile.Options = {}): string {
-  const prefix = options.envPrefix ?? envPrefix
-  const entry = EnvFile.scan(text).entries.find(
-    (entry) => entry.name.startsWith(prefix) && keyOf(entry.name, prefix) === key,
-  )
+export function removeFromFile(text: string, key: string): string {
+  const entry = EnvFile.scan(text).entries.find((entry) => entry.name === key)
   if (!entry) return text
 
   const lines = text.split('\n')
@@ -261,49 +224,18 @@ export function removeFromFile(text: string, key: string, options: parseFile.Opt
 }
 
 /**
- * Returns definitions for each `FEATURE_*` variable in `env`, for a project with no flags file.
- * Each flag is private. `true` and `false` make a boolean, a number makes a number, a JSON object
- * or array makes a JSON flag, and other values make a string. The value is also the default.
+ * Returns the value that zero config infers from the text of a variable: `true` and `false` are a
+ * boolean, a number is a number, a JSON object or array is JSON, and other text is a string.
  */
-export function fromEnv(
-  env: Readonly<Record<string, string | undefined>>,
-  options: fromEnv.Options = {},
-): Definitions {
-  const prefix = options.envPrefix ?? envPrefix
-  const definitions: Record<string, Definition> = {}
-
-  for (const [name, raw] of Object.entries(env)) {
-    if (!name.startsWith(prefix) || name.length === prefix.length || raw === undefined) continue
-
-    const key = keyOf(name, prefix)
-    const value = infer(raw)
-    definitions[key] = {
-      build: false,
-      default: value.value,
-      env: name,
-      public: false,
-      type: value.type,
-    }
+export function infer(raw: string): Json {
+  if (raw === 'true' || raw === 'false') return raw === 'true'
+  if (/^-?\d+(\.\d+)?$/.test(raw)) return Number(raw)
+  if (raw.startsWith('{') || raw.startsWith('[')) {
+    try {
+      return JSON.parse(raw) as Json
+    } catch {}
   }
-
-  return definitions
-}
-
-export declare namespace fromEnv {
-  type Options = {
-    /** The prefix of flag environment variables. @default 'FEATURE_' */
-    envPrefix?: string | undefined
-  }
-}
-
-/** Returns the environment variable of a key: `newCheckout` reads `FEATURE_NEW_CHECKOUT`. */
-export function envOf(key: string, prefix: string = envPrefix): string {
-  return prefix + key.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toUpperCase()
-}
-
-/** Returns the key of an environment variable: `FEATURE_NEW_CHECKOUT` is `newCheckout`. */
-export function keyOf(name: string, prefix: string = envPrefix): string {
-  return camelCase(name.slice(prefix.length).toLowerCase())
+  return raw
 }
 
 /**
@@ -331,7 +263,7 @@ export function decode(definition: Definition, raw: string, key: string): Json {
   })()
 
   if (value === undefined || !validate(definition, value))
-    throw new InvalidValueError({ env: definition.env, key, type: definition.type })
+    throw new InvalidValueError({ key, type: definition.type })
   return value
 }
 
@@ -358,55 +290,52 @@ export function isStale(definition: Definition, now: number = Date.now()): boole
 
 /** A problem that {@link check} found in an environment. */
 export type Issue = {
-  /** The environment variable. */
-  readonly env: string
-  /** The key of the flag, when a flag declares the variable. */
-  readonly key?: string | undefined
+  /** The environment variable, which is also the key of a declared flag. */
+  readonly key: string
   /** `invalid`: the value is not a value of the flag. `stale`: the flag is past `expires`. `unknown`: no flag declares the variable. */
   readonly reason: 'invalid' | 'stale' | 'unknown'
 }
 
 /**
- * Returns the problems of `env` against `definitions`: `FEATURE_*` variables that no flag declares,
- * values that are not values of their flag, and flags past their `expires` date.
+ * Returns the problems of `env` against `definitions`: values that are not values of their flag,
+ * flags past their `expires` date, and, with `prefix`, variables with that prefix that no flag
+ * declares.
  */
 export function check(
   definitions: Definitions,
   env: Readonly<Record<string, string | undefined>>,
   options: check.Options = {},
 ): readonly Issue[] {
-  const prefix = options.envPrefix ?? envPrefix
-  const declared = new Map(Object.entries(definitions).map((entry) => [entry[1].env, entry[0]]))
   const issues: Issue[] = []
 
-  for (const [name, raw] of Object.entries(env).sort((a, b) => a[0].localeCompare(b[0]))) {
+  for (const [key, raw] of Object.entries(env).sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     if (raw === undefined) continue
 
-    const key = declared.get(name)
-    if (!key) {
-      if (name.startsWith(prefix)) issues.push({ env: name, reason: 'unknown' })
+    const definition = definitions[key]
+    if (!definition) {
+      if (options.prefix && key.startsWith(options.prefix)) issues.push({ key, reason: 'unknown' })
       continue
     }
 
     try {
-      decode(definitions[key]!, raw, key)
+      decode(definition, raw, key)
     } catch {
-      issues.push({ env: name, key, reason: 'invalid' })
+      issues.push({ key, reason: 'invalid' })
     }
   }
 
   for (const [key, definition] of Object.entries(definitions))
-    if (isStale(definition, options.now)) issues.push({ env: definition.env, key, reason: 'stale' })
+    if (isStale(definition, options.now)) issues.push({ key, reason: 'stale' })
 
   return issues
 }
 
 export declare namespace check {
   type Options = {
-    /** The prefix of flag environment variables. @default 'FEATURE_' */
-    envPrefix?: string | undefined
     /** The current time, in milliseconds since the epoch. @default Date.now() */
     now?: number | undefined
+    /** Report variables with this prefix that no flag declares, such as `FEATURE_`. */
+    prefix?: string | undefined
   }
 }
 
@@ -423,7 +352,7 @@ export function values(
   const result: Record<string, Json> = {}
 
   for (const [key, definition] of Object.entries(definitions)) {
-    const raw = env[definition.env]
+    const raw = env[key]
     if (raw !== undefined) result[key] = decode(definition, raw, key)
   }
 
@@ -457,7 +386,7 @@ export function defines(
     const value = (() => {
       const value = options.values?.[key]
       if (value !== undefined) return value
-      const raw = options.env?.[definition.env]
+      const raw = options.env?.[key]
       if (raw !== undefined) return decode(definition, raw, key)
       return definition.default
     })()
@@ -532,34 +461,27 @@ export declare namespace InvalidDeclarationError {
 export class InvalidValueError extends Errors.BaseError {
   override name = 'Definitions.InvalidValueError'
 
-  /** The environment variable. */
-  readonly env: string
-  /** The key of the flag. */
+  /** The key of the flag, which is also its environment variable. */
   readonly key: string
 
   constructor(options: InvalidValueError.Options) {
-    super(
-      `The value for ${options.key} (${options.env}) is not a ${options.type} value of the flag.`,
-      {
-        steps: [
-          `Set ${options.env} to a value of the flag, as its declaration in the flags file describes.`,
-        ],
-      },
-    )
-    this.env = options.env
+    super(`The value of ${options.key} is not a ${options.type} value of the flag.`, {
+      steps: [
+        `Set ${options.key} to a value of the flag, as its declaration in \`.env.flags\` describes.`,
+      ],
+    })
     this.key = options.key
   }
 }
 
 export declare namespace InvalidValueError {
   type Options = {
-    env: string
     key: string
     type: Type
   }
 }
 
-function declare(key: string, declaration: unknown, prefix: string): Definition {
+function declare(key: string, declaration: unknown): Definition {
   const fail = (reason: string) => new InvalidDeclarationError({ key, reason })
 
   if (!isObject(declaration)) throw fail(`The declaration of ${key} is not an object.`)
@@ -601,10 +523,6 @@ function declare(key: string, declaration: unknown, prefix: string): Definition 
   if (description !== undefined && typeof description !== 'string')
     throw fail(`\`description\` of ${key} is not a string.`)
 
-  const env = declaration['env'] ?? envOf(key, prefix)
-  if (typeof env !== 'string' || !/^[A-Z_][A-Z0-9_]*$/.test(env))
-    throw fail(`\`env\` of ${key} is not a variable name in SCREAMING_SNAKE_CASE.`)
-
   const expires = declaration['expires']
   if (
     expires !== undefined &&
@@ -618,7 +536,6 @@ function declare(key: string, declaration: unknown, prefix: string): Definition 
     build: boolean('build'),
     default: declaration['default'] as Json,
     ...(description !== undefined ? { description } : {}),
-    env,
     ...(expires !== undefined ? { expires } : {}),
     ...(options ? { options } : {}),
     public: boolean('public'),
@@ -647,21 +564,6 @@ function typeOf(text: string, fail: () => Error): { options?: string[]; type: Ty
     return match[2]!
   })
   return { options, type: 'select' }
-}
-
-function infer(raw: string): { type: Type; value: Json } {
-  if (raw === 'true' || raw === 'false') return { type: 'boolean', value: raw === 'true' }
-  if (/^-?\d+(\.\d+)?$/.test(raw)) return { type: 'number', value: Number(raw) }
-  if (raw.startsWith('{') || raw.startsWith('[')) {
-    try {
-      return { type: 'json', value: JSON.parse(raw) as Json }
-    } catch {}
-  }
-  return { type: 'string', value: raw }
-}
-
-function camelCase(value: string): string {
-  return value.replace(/_([a-z0-9])/g, (_, char: string) => char.toUpperCase())
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

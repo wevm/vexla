@@ -13,12 +13,11 @@ export const defaultOut = 'flargs.gen.ts'
 export function read(options: read.Options): Definitions.Definitions {
   const file = Path.resolve(options.root, options.path ?? defaultPath)
   const text = Fs.readFileSync(file, 'utf8')
-  return Definitions.parseFile(text, { envPrefix: options.envPrefix })
+  return Definitions.parseFile(text)
 }
 
 export declare namespace read {
   type Options = {
-    envPrefix?: string | undefined
     path?: string | undefined
     root: string
   }
@@ -58,7 +57,7 @@ export function buildValues(
       result[key] = stored
       continue
     }
-    const raw = options.env[definition.env]
+    const raw = options.env[key]
     result[key] = raw === undefined ? definition.default : Definitions.decode(definition, raw, key)
   }
   return result

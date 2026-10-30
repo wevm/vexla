@@ -4,11 +4,11 @@ import { Flargs, Store } from 'flargs/server'
 import * as Http from '../../test/Http.js'
 
 const definitions = Definitions.parse({
-  banner: { build: true, default: false, public: true, type: 'boolean' },
-  limits: { default: { requests: 100 }, type: 'json' },
-  newCheckout: { default: false, public: true, type: 'boolean' },
-  pricing: { default: 'a', options: ['a', 'b', 'c'], type: 'select' },
-  title: { default: 'Hello', public: true, type: 'string' },
+  BANNER: { build: true, default: false, public: true, type: 'boolean' },
+  LIMITS: { default: { requests: 100 }, type: 'json' },
+  NEW_CHECKOUT: { default: false, public: true, type: 'boolean' },
+  PRICING: { default: 'a', options: ['a', 'b', 'c'], type: 'select' },
+  TITLE: { default: 'Hello', public: true, type: 'string' },
 })
 
 const secret = 'test-secret'
@@ -30,64 +30,64 @@ describe('evaluate', () => {
     const values = await (await fetch(`${server.url}/app`)).json()
     expect(values).toMatchInlineSnapshot(`
       {
-        "banner": false,
-        "limits": {
+        "BANNER": false,
+        "LIMITS": {
           "requests": 100,
         },
-        "newCheckout": false,
-        "pricing": "a",
-        "title": "Hello",
+        "NEW_CHECKOUT": false,
+        "PRICING": "a",
+        "TITLE": "Hello",
       }
     `)
     await server.close()
   })
 
   test('resolution order: override, store, decide, env, then default', async () => {
-    const store = Store.memory({ values: { title: 'Stored' } })
+    const store = Store.memory({ values: { TITLE: 'Stored' } })
     const server = await serve({
       decide: {
-        pricing: (user: { plan: string } | undefined) =>
+        PRICING: (user: { plan: string } | undefined) =>
           user?.plan === 'enterprise' ? 'c' : undefined,
       },
-      env: { FEATURE_LIMITS: '{"requests":5}', FEATURE_TITLE: 'From env' },
+      env: { LIMITS: '{"requests":5}', TITLE: 'From env' },
       identify: (request) => ({ plan: request.headers.get('x-plan') ?? 'free' }),
       store,
     })
 
     const values = await (
-      await fetch(`${server.url}/app?flag.newCheckout=true`, {
+      await fetch(`${server.url}/app?flag.NEW_CHECKOUT=true`, {
         headers: { 'x-plan': 'enterprise' },
       })
     ).json()
-    expect(values.newCheckout).toMatchInlineSnapshot(`true`)
-    expect(values.title).toMatchInlineSnapshot(`"Stored"`)
-    expect(values.pricing).toMatchInlineSnapshot(`"c"`)
-    expect(values.limits).toMatchInlineSnapshot(`
+    expect(values.NEW_CHECKOUT).toMatchInlineSnapshot(`true`)
+    expect(values.TITLE).toMatchInlineSnapshot(`"Stored"`)
+    expect(values.PRICING).toMatchInlineSnapshot(`"c"`)
+    expect(values.LIMITS).toMatchInlineSnapshot(`
       {
         "requests": 5,
       }
     `)
 
     const free = await (await fetch(`${server.url}/app`)).json()
-    expect(free.pricing).toMatchInlineSnapshot(`"a"`)
+    expect(free.PRICING).toMatchInlineSnapshot(`"a"`)
     await server.close()
   })
 
   test('an invalid store value or decide result falls through and reaches onError', async () => {
     const errors: string[] = []
     const server = await serve({
-      decide: { pricing: () => 'z' as never },
+      decide: { PRICING: () => 'z' as never },
       onError: (error) => errors.push((error as Error).name),
       store: Store.from({
         delete: async () => {},
-        get: async () => ({ title: 42 }),
+        get: async () => ({ TITLE: 42 }),
         set: async () => {},
       }),
     })
 
     const values = await (await fetch(`${server.url}/app`)).json()
-    expect(values.title).toMatchInlineSnapshot(`"Hello"`)
-    expect(values.pricing).toMatchInlineSnapshot(`"a"`)
+    expect(values.TITLE).toMatchInlineSnapshot(`"Hello"`)
+    expect(values.PRICING).toMatchInlineSnapshot(`"a"`)
     expect(errors).toMatchInlineSnapshot(`
       [
         "Definitions.InvalidValueError",
@@ -101,18 +101,18 @@ describe('evaluate', () => {
     const calls: string[] = []
     const flargs = Flargs.create({
       decide: {
-        pricing: () => (calls.push('pricing'), 'b'),
-        title: () => (calls.push('title'), undefined),
+        PRICING: () => (calls.push('PRICING'), 'b'),
+        TITLE: () => (calls.push('TITLE'), undefined),
       },
       definitions,
       secret,
     })
     const request = new Request('https://app.example.com/')
-    expect(await flargs.get(request, 'pricing')).toMatchInlineSnapshot(`"b"`)
-    expect(await flargs.get(request, 'pricing')).toMatchInlineSnapshot(`"b"`)
+    expect(await flargs.get(request, 'PRICING')).toMatchInlineSnapshot(`"b"`)
+    expect(await flargs.get(request, 'PRICING')).toMatchInlineSnapshot(`"b"`)
     expect(calls).toMatchInlineSnapshot(`
       [
-        "pricing",
+        "PRICING",
       ]
     `)
   })
@@ -123,9 +123,9 @@ describe('overrides', () => {
     const server = await serve({})
 
     const unsigned = await (
-      await fetch(`${server.url}/app?flag.newCheckout=true&flag.pricing=c&flag.banner=true`)
+      await fetch(`${server.url}/app?flag.NEW_CHECKOUT=true&flag.PRICING=c&flag.BANNER=true`)
     ).json()
-    expect([unsigned.newCheckout, unsigned.pricing, unsigned.banner]).toMatchInlineSnapshot(`
+    expect([unsigned.NEW_CHECKOUT, unsigned.PRICING, unsigned.BANNER]).toMatchInlineSnapshot(`
       [
         true,
         "a",
@@ -134,23 +134,23 @@ describe('overrides', () => {
     `)
 
     const params = await Override.serialize(
-      { pricing: 'c' },
+      { PRICING: 'c' },
       { expiresAt: Date.now() + 60_000, secret },
     )
     const signed = await (await fetch(`${server.url}/app?${params}`)).json()
-    expect(signed.pricing).toMatchInlineSnapshot(`"c"`)
+    expect(signed.PRICING).toMatchInlineSnapshot(`"c"`)
 
     const forged = await (
-      await fetch(`${server.url}/app?${params.toString().replace('pricing=c', 'pricing=b')}`)
+      await fetch(`${server.url}/app?${params.toString().replace('PRICING=c', 'PRICING=b')}`)
     ).json()
-    expect(forged.pricing).toMatchInlineSnapshot(`"a"`)
+    expect(forged.PRICING).toMatchInlineSnapshot(`"a"`)
     await server.close()
   })
 
   test('dev mode: every flag', async () => {
     const server = await serve({ dev: true })
-    const values = await (await fetch(`${server.url}/app?flag.pricing=c&flag.banner=true`)).json()
-    expect([values.pricing, values.banner]).toMatchInlineSnapshot(`
+    const values = await (await fetch(`${server.url}/app?flag.PRICING=c&flag.BANNER=true`)).json()
+    expect([values.PRICING, values.BANNER]).toMatchInlineSnapshot(`
       [
         "c",
         true,
@@ -162,14 +162,14 @@ describe('overrides', () => {
   test('setCookie stores search parameter overrides, and the cookie applies on the next request', async () => {
     const flargs = Flargs.create({ definitions, secret })
     const cookie = await flargs.setCookie(
-      new Request('https://app.example.com/?flag.newCheckout=true'),
+      new Request('https://app.example.com/?flag.NEW_CHECKOUT=true'),
     )
     expect(cookie).toMatch(/^flargs=.+; Path=\/; Max-Age=2592000; HttpOnly; SameSite=Lax; Secure$/)
 
     const next = new Request('https://app.example.com/', {
       headers: { cookie: cookie!.split(';')[0]! },
     })
-    expect(await flargs.get(next, 'newCheckout')).toMatchInlineSnapshot(`true`)
+    expect(await flargs.get(next, 'NEW_CHECKOUT')).toMatchInlineSnapshot(`true`)
     expect(await flargs.setCookie(new Request('https://app.example.com/'))).toMatchInlineSnapshot(
       `undefined`,
     )
@@ -179,10 +179,10 @@ describe('overrides', () => {
     const flargs = Flargs.create({ definitions, secret })
     const request = new Request('https://app.example.com/', {
       headers: {
-        cookie: `flargs=${encodeURIComponent('flag.pricing=c&flag.exp=9999999999&flag.sig=forged')}`,
+        cookie: `flargs=${encodeURIComponent('flag.PRICING=c&flag.exp=9999999999&flag.sig=forged')}`,
       },
     })
-    expect(await flargs.get(request, 'pricing')).toMatchInlineSnapshot(`"a"`)
+    expect(await flargs.get(request, 'PRICING')).toMatchInlineSnapshot(`"a"`)
   })
 })
 
@@ -212,13 +212,13 @@ describe('fetch', () => {
     const put = { body: JSON.stringify({ value: true }), method: 'PUT' }
     expect(await status('/manifest', undefined)).toMatchInlineSnapshot(`401`)
     expect(await status('/manifest', 'viewer')).toMatchInlineSnapshot(`200`)
-    expect(await status('/values/newCheckout', 'viewer', put)).toMatchInlineSnapshot(`403`)
-    expect(await status('/values/newCheckout', 'admin', put)).toMatchInlineSnapshot(`200`)
+    expect(await status('/values/NEW_CHECKOUT', 'viewer', put)).toMatchInlineSnapshot(`403`)
+    expect(await status('/values/NEW_CHECKOUT', 'admin', put)).toMatchInlineSnapshot(`200`)
     expect(await status('/manifest', 'challenge')).toMatchInlineSnapshot(`401`)
     expect(await status('/values', undefined)).toMatchInlineSnapshot(`200`)
 
     const values = await (await fetch(`${server.url}/app`)).json()
-    expect(values.newCheckout).toMatchInlineSnapshot(`true`)
+    expect(values.NEW_CHECKOUT).toMatchInlineSnapshot(`true`)
     await server.close()
   })
 
@@ -239,20 +239,20 @@ describe('fetch', () => {
     const flargs = Flargs.create({
       definitions,
       secret,
-      store: Store.memory({ values: { pricing: 'c' } }),
+      store: Store.memory({ values: { PRICING: 'c' } }),
     })
     const request = new Request('https://app.example.com/.flags/values')
 
     const values = await (await flargs.fetch(request)).json()
     expect(Object.keys(values)).toMatchInlineSnapshot(`
       [
-        "banner",
-        "newCheckout",
-        "title",
+        "BANNER",
+        "NEW_CHECKOUT",
+        "TITLE",
       ]
     `)
     expect(await flargs.script(new Request('https://app.example.com/'))).toMatchInlineSnapshot(
-      `"<script type="application/json" id="__flargs">{"banner":false,"newCheckout":false,"title":"Hello"}</script>"`,
+      `"<script type="application/json" id="__flargs">{"BANNER":false,"NEW_CHECKOUT":false,"TITLE":"Hello"}</script>"`,
     )
   })
 
@@ -260,7 +260,7 @@ describe('fetch', () => {
     const flargs = Flargs.create({
       definitions,
       secret,
-      store: Store.memory({ values: { title: '</script><script>alert(1)' } }),
+      store: Store.memory({ values: { TITLE: '</script><script>alert(1)' } }),
     })
     expect(await flargs.script(new Request('https://app.example.com/'))).not.toContain(
       '</script><script>',
@@ -276,46 +276,45 @@ describe('fetch', () => {
         method: 'PUT',
       })
 
-    expect((await put('pricing', 'z')).status).toMatchInlineSnapshot(`400`)
+    expect((await put('PRICING', 'z')).status).toMatchInlineSnapshot(`400`)
     expect((await put('nope', true)).status).toMatchInlineSnapshot(`404`)
-    expect((await put('pricing', 'b')).status).toMatchInlineSnapshot(`200`)
-    expect((await (await fetch(`${server.url}/app`)).json()).pricing).toMatchInlineSnapshot(`"b"`)
+    expect((await put('PRICING', 'b')).status).toMatchInlineSnapshot(`200`)
+    expect((await (await fetch(`${server.url}/app`)).json()).PRICING).toMatchInlineSnapshot(`"b"`)
 
-    await fetch(`${server.url}/.flags/values/pricing`, { method: 'DELETE' })
-    expect((await (await fetch(`${server.url}/app`)).json()).pricing).toMatchInlineSnapshot(`"a"`)
+    await fetch(`${server.url}/.flags/values/PRICING`, { method: 'DELETE' })
+    expect((await (await fetch(`${server.url}/app`)).json()).PRICING).toMatchInlineSnapshot(`"a"`)
     await server.close()
   })
 
   test('orphan values are listed and may be deleted', async () => {
-    const store = Store.memory({ values: { oldFlag: true, title: 'Stored' } })
+    const store = Store.memory({ values: { OLD_FLAG: true, TITLE: 'Stored' } })
     const flargs = Flargs.create({ definitions, dev: true, store })
     const manifest = await (
       await flargs.fetch(new Request('https://app.example.com/.flags/manifest'))
     ).json()
     expect(manifest.orphans).toMatchInlineSnapshot(`
       [
-        "oldFlag",
+        "OLD_FLAG",
       ]
     `)
     const deleted = await flargs.fetch(
-      new Request('https://app.example.com/.flags/values/oldFlag', { method: 'DELETE' }),
+      new Request('https://app.example.com/.flags/values/OLD_FLAG', { method: 'DELETE' }),
     )
     expect(deleted.status).toMatchInlineSnapshot(`200`)
     expect(await store.keys!()).toMatchInlineSnapshot(`
       [
-        "title",
+        "TITLE",
       ]
     `)
   })
 
   test('manifest', async () => {
-    const server = await serve({ dev: true, store: Store.memory({ values: { title: 'Stored' } }) })
-    const manifest = await (await fetch(`${server.url}/.flags/manifest?flag.pricing=b`)).json()
-    expect(manifest.flags.title).toMatchInlineSnapshot(`
+    const server = await serve({ dev: true, store: Store.memory({ values: { TITLE: 'Stored' } }) })
+    const manifest = await (await fetch(`${server.url}/.flags/manifest?flag.PRICING=b`)).json()
+    expect(manifest.flags.TITLE).toMatchInlineSnapshot(`
       {
         "build": false,
         "default": "Hello",
-        "env": "FEATURE_TITLE",
         "override": null,
         "public": true,
         "source": "store",
@@ -325,7 +324,7 @@ describe('fetch', () => {
         "value": "Stored",
       }
     `)
-    expect([manifest.flags.pricing.source, manifest.flags.pricing.value]).toMatchInlineSnapshot(`
+    expect([manifest.flags.PRICING.source, manifest.flags.PRICING.value]).toMatchInlineSnapshot(`
       [
         "override",
         "b",
@@ -337,13 +336,13 @@ describe('fetch', () => {
   test('personal overrides set a cookie', async () => {
     const server = await serve({ dev: true })
     const response = await fetch(`${server.url}/.flags/overrides`, {
-      body: JSON.stringify({ values: { pricing: 'c' } }),
+      body: JSON.stringify({ values: { PRICING: 'c' } }),
       headers: { 'content-type': 'application/json' },
       method: 'PUT',
     })
     const cookie = response.headers.get('set-cookie')!.split(';')[0]!
     const values = await (await fetch(`${server.url}/app`, { headers: { cookie } })).json()
-    expect(values.pricing).toMatchInlineSnapshot(`"c"`)
+    expect(values.PRICING).toMatchInlineSnapshot(`"c"`)
     await server.close()
   })
 
@@ -354,14 +353,14 @@ describe('fetch', () => {
         body: JSON.stringify({
           expiresAt: Date.now() + 60_000,
           url: '/app',
-          values: { pricing: 'c' },
+          values: { PRICING: 'c' },
         }),
         headers: { 'content-type': 'application/json' },
         method: 'POST',
       })
     ).json()
-    expect(url).toMatch(/\/app\?flag\.pricing=c&flag\.exp=\d+&flag\.sig=[\w-]+$/)
-    expect((await (await fetch(url)).json()).pricing).toMatchInlineSnapshot(`"c"`)
+    expect(url).toMatch(/\/app\?flag\.PRICING=c&flag\.exp=\d+&flag\.sig=[\w-]+$/)
+    expect((await (await fetch(url)).json()).PRICING).toMatchInlineSnapshot(`"c"`)
     await server.close()
   })
 
@@ -374,25 +373,25 @@ describe('fetch', () => {
     )
     // A runtime with no authorize has no access outside dev mode.
     expect(
-      (await fetch(`${server.url}/.flags/definitions/beta`, { body: '{}', method: 'PUT' })).status,
+      (await fetch(`${server.url}/.flags/definitions/BETA`, { body: '{}', method: 'PUT' })).status,
     ).toMatchInlineSnapshot(`401`)
     await server.close()
 
     const store = Store.memory()
     const open = Flargs.create({ dev: true, store })
     const created = await open.fetch(
-      new Request('https://app.example.com/.flags/definitions/beta', {
+      new Request('https://app.example.com/.flags/definitions/BETA', {
         body: JSON.stringify({ default: false, public: true, type: 'boolean' }),
         method: 'PUT',
       }),
     )
     expect(created.status).toMatchInlineSnapshot(`200`)
     expect(
-      await open.get(new Request('https://app.example.com/?flag.beta=true'), 'beta' as never),
+      await open.get(new Request('https://app.example.com/?flag.BETA=true'), 'BETA' as never),
     ).toMatchInlineSnapshot(`true`)
 
     const invalid = await open.fetch(
-      new Request('https://app.example.com/.flags/definitions/gamma', {
+      new Request('https://app.example.com/.flags/definitions/GAMMA', {
         body: JSON.stringify({ default: 1, type: 'boolean' }),
         method: 'PUT',
       }),
@@ -401,7 +400,7 @@ describe('fetch', () => {
 
     const withFile = Flargs.create({ definitions, dev: true, store })
     const conflict = await withFile.fetch(
-      new Request('https://app.example.com/.flags/definitions/beta', { body: '{}', method: 'PUT' }),
+      new Request('https://app.example.com/.flags/definitions/BETA', { body: '{}', method: 'PUT' }),
     )
     expect(conflict.status).toMatchInlineSnapshot(`409`)
   })
@@ -421,7 +420,7 @@ describe('fetch', () => {
       },
     })
     await expect(
-      flargs.get(new Request('https://app.example.com/'), 'beta' as never),
+      flargs.get(new Request('https://app.example.com/'), 'BETA' as never),
     ).rejects.toThrow(Flargs.DefinitionsUnavailableError)
     expect(
       (await flargs.fetch(new Request('https://app.example.com/.flags/manifest'))).status,

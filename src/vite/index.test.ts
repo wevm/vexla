@@ -13,16 +13,16 @@ function fixture(main: string) {
     Path.join(root, '.env.flags'),
     [
       '# @type {boolean} @build @public',
-      'FEATURE_MAINTENANCE_BANNER=false',
+      'MAINTENANCE_BANNER=false',
       '',
       '# @type {boolean} @public',
-      'FEATURE_NEW_CHECKOUT=false',
+      'NEW_CHECKOUT=false',
       '',
       "# @type {'a' | 'b'}",
-      'FEATURE_PRICING=a',
+      'PRICING=a',
       '',
       '# @type {boolean} @build',
-      'FEATURE_SECRET_BUILD=false',
+      'SECRET_BUILD=false',
       '',
     ].join('\n'),
   )
@@ -51,10 +51,10 @@ async function bundle(root: string, options: { ssr?: boolean } = {}) {
 
 const main = `import { flags } from 'flargs'
 
-if (flags.maintenanceBanner) console.log('BANNER_ON')
+if (flags.MAINTENANCE_BANNER) console.log('BANNER_ON')
 else console.log('BANNER_OFF')
 
-console.log(flags.newCheckout ? 'NEW' : 'OLD')
+console.log(flags.NEW_CHECKOUT ? 'NEW' : 'OLD')
 `
 
 describe('flargs', () => {
@@ -63,38 +63,38 @@ describe('flargs', () => {
     const code = await bundle(root)
     expect(code).not.toContain('BANNER_ON')
     expect(code).toContain('BANNER_OFF')
-    expect(code).toContain('newCheckout')
+    expect(code).toContain('NEW_CHECKOUT')
     expect(Fs.existsSync(Path.join(root, 'flargs.gen.ts'))).toMatchInlineSnapshot(`true`)
   })
 
   test('the environment of the build sets a build flag', async () => {
     const root = fixture(main)
-    process.env['FEATURE_MAINTENANCE_BANNER'] = 'true'
-    const code = await bundle(root).finally(() => delete process.env['FEATURE_MAINTENANCE_BANNER'])
+    process.env['MAINTENANCE_BANNER'] = 'true'
+    const code = await bundle(root).finally(() => delete process.env['MAINTENANCE_BANNER'])
     expect(code).toContain('BANNER_ON')
     expect(code).not.toContain('BANNER_OFF')
   })
 
   test('a private flag read in browser code fails the build', async () => {
-    const root = fixture(`import { flags } from 'flargs'\nconsole.log(flags.pricing)\n`)
+    const root = fixture(`import { flags } from 'flargs'\nconsole.log(flags.PRICING)\n`)
     await expect(bundle(root)).rejects.toThrow(
-      'Browser code reads the private flag pricing in main.ts:2.',
+      'Browser code reads the private flag PRICING in main.ts:2.',
     )
   })
 
   test('a private build flag read in browser code fails the build', async () => {
     const root = fixture(
-      `import { flags } from 'flargs'\nif (flags.secretBuild) console.log('SECRET')\n`,
+      `import { flags } from 'flargs'\nif (flags.SECRET_BUILD) console.log('SECRET')\n`,
     )
     await expect(bundle(root)).rejects.toThrow(
-      'Browser code reads the private flag secretBuild in main.ts:2.',
+      'Browser code reads the private flag SECRET_BUILD in main.ts:2.',
     )
   })
 
   test('server builds may read private flags', async () => {
     const root = fixture(
-      `import { flags } from 'flargs'\nexport const pricing = () => flags.pricing\n`,
+      `import { flags } from 'flargs'\nexport const pricing = () => flags.PRICING\n`,
     )
-    expect(await bundle(root, { ssr: true })).toContain('pricing')
+    expect(await bundle(root, { ssr: true })).toContain('PRICING')
   })
 })

@@ -5,14 +5,14 @@ import { Flargs } from 'flargs/server'
 import * as Http from '../../test/Http.js'
 
 const definitions = Definitions.parse({
-  newCheckout: { default: false, public: true, type: 'boolean' },
+  NEW_CHECKOUT: { default: false, public: true, type: 'boolean' },
 })
 
 describe('toNodeListener', () => {
   test('serves the flargs path, scopes flags, and stores overrides in a cookie', async () => {
     const flargs = Flargs.create({ definitions, secret: 'test-secret' })
     const server = await Http.listen(
-      Request.toNodeListener(() => Response.json({ newCheckout: flags['newCheckout'] }), {
+      Request.toNodeListener(() => Response.json({ NEW_CHECKOUT: flags['NEW_CHECKOUT'] }), {
         flargs,
       }),
     )
@@ -20,14 +20,14 @@ describe('toNodeListener', () => {
     const values = await fetch(`${server.url}/.flags/values`)
     expect(await values.json()).toMatchInlineSnapshot(`
       {
-        "newCheckout": false,
+        "NEW_CHECKOUT": false,
       }
     `)
 
-    const response = await fetch(`${server.url}/?flag.newCheckout=true`)
+    const response = await fetch(`${server.url}/?flag.NEW_CHECKOUT=true`)
     expect(await response.json()).toMatchInlineSnapshot(`
       {
-        "newCheckout": true,
+        "NEW_CHECKOUT": true,
       }
     `)
 
@@ -35,7 +35,7 @@ describe('toNodeListener', () => {
     const next = await fetch(`${server.url}/`, { headers: { cookie } })
     expect(await next.json()).toMatchInlineSnapshot(`
       {
-        "newCheckout": true,
+        "NEW_CHECKOUT": true,
       }
     `)
     await server.close()

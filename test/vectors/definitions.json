@@ -1,206 +1,210 @@
 {
-  "envOf": [
-    ["newCheckout", "FEATURE_NEW_CHECKOUT"],
-    ["pricing", "FEATURE_PRICING"],
-    ["v2Encoder", "FEATURE_V2_ENCODER"],
-    ["maxRetries3", "FEATURE_MAX_RETRIES3"]
-  ],
-  "keyOf": [
-    ["FEATURE_NEW_CHECKOUT", "newCheckout"],
-    ["FEATURE_PRICING", "pricing"],
-    ["FEATURE_V2_ENCODER", "v2Encoder"]
-  ],
   "parse": [
     {
       "name": "every type with defaults",
       "input": {
-        "$schema": "./node_modules/flargs/schema.json",
-        "limits": { "default": { "requests": 100 }, "type": "json" },
-        "maintenanceBanner": { "build": true, "default": false, "public": true, "type": "boolean" },
-        "newCheckout": {
+        "LIMITS": {
+          "default": {
+            "requests": 100
+          },
+          "type": "json"
+        },
+        "MAINTENANCE_BANNER": {
+          "build": true,
+          "default": false,
+          "public": true,
+          "type": "boolean"
+        },
+        "NEW_CHECKOUT": {
           "default": false,
           "description": "Use the new checkout flow.",
           "public": true,
           "type": "boolean"
         },
-        "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" },
-        "retries": { "default": 3, "type": "number" },
-        "title": {
+        "PRICING": {
+          "default": "a",
+          "options": ["a", "b", "c"],
+          "type": "select"
+        },
+        "RETRIES": {
+          "default": 3,
+          "type": "number"
+        },
+        "TITLE": {
           "default": "Hello",
-          "env": "APP_TITLE",
           "expires": "2027-01-31",
           "type": "string"
         }
       },
       "output": {
-        "limits": {
+        "LIMITS": {
           "build": false,
-          "default": { "requests": 100 },
-          "env": "FEATURE_LIMITS",
+          "default": {
+            "requests": 100
+          },
           "public": false,
           "type": "json"
         },
-        "maintenanceBanner": {
+        "MAINTENANCE_BANNER": {
           "build": true,
           "default": false,
-          "env": "FEATURE_MAINTENANCE_BANNER",
           "public": true,
           "type": "boolean"
         },
-        "newCheckout": {
+        "NEW_CHECKOUT": {
           "build": false,
           "default": false,
           "description": "Use the new checkout flow.",
-          "env": "FEATURE_NEW_CHECKOUT",
           "public": true,
           "type": "boolean"
         },
-        "pricing": {
+        "PRICING": {
           "build": false,
           "default": "a",
-          "env": "FEATURE_PRICING",
           "options": ["a", "b", "c"],
           "public": false,
           "type": "select"
         },
-        "retries": {
+        "RETRIES": {
           "build": false,
           "default": 3,
-          "env": "FEATURE_RETRIES",
           "public": false,
           "type": "number"
         },
-        "title": {
+        "TITLE": {
           "build": false,
           "default": "Hello",
-          "env": "APP_TITLE",
           "expires": "2027-01-31",
           "public": false,
           "type": "string"
-        }
-      }
-    },
-    {
-      "name": "snake_case keys from TOML",
-      "input": { "new_checkout": { "default": false, "type": "boolean" } },
-      "output": {
-        "newCheckout": {
-          "build": false,
-          "default": false,
-          "env": "FEATURE_NEW_CHECKOUT",
-          "public": false,
-          "type": "boolean"
         }
       }
     },
     {
       "name": "missing type",
-      "input": { "newCheckout": { "default": false } },
-      "error": "newCheckout"
+      "input": {
+        "NEW_CHECKOUT": {
+          "default": false
+        }
+      },
+      "error": "NEW_CHECKOUT"
     },
     {
       "name": "missing default",
-      "input": { "newCheckout": { "type": "boolean" } },
-      "error": "newCheckout"
+      "input": {
+        "NEW_CHECKOUT": {
+          "type": "boolean"
+        }
+      },
+      "error": "NEW_CHECKOUT"
     },
-    { "name": "short form", "input": { "newCheckout": false }, "error": "newCheckout" },
+    {
+      "name": "short form",
+      "input": {
+        "NEW_CHECKOUT": false
+      },
+      "error": "NEW_CHECKOUT"
+    },
     {
       "name": "default of the wrong type",
-      "input": { "retries": { "default": "3", "type": "number" } },
-      "error": "retries"
+      "input": {
+        "RETRIES": {
+          "default": "3",
+          "type": "number"
+        }
+      },
+      "error": "RETRIES"
     },
     {
       "name": "default outside options",
-      "input": { "pricing": { "default": "d", "options": ["a", "b"], "type": "select" } },
-      "error": "pricing"
+      "input": {
+        "PRICING": {
+          "default": "d",
+          "options": ["a", "b"],
+          "type": "select"
+        }
+      },
+      "error": "PRICING"
     },
     {
       "name": "select without options",
-      "input": { "pricing": { "default": "a", "type": "select" } },
-      "error": "pricing"
+      "input": {
+        "PRICING": {
+          "default": "a",
+          "type": "select"
+        }
+      },
+      "error": "PRICING"
     },
     {
       "name": "options on a boolean",
-      "input": { "beta": { "default": false, "options": ["a"], "type": "boolean" } },
-      "error": "beta"
+      "input": {
+        "BETA": {
+          "default": false,
+          "options": ["a"],
+          "type": "boolean"
+        }
+      },
+      "error": "BETA"
     },
     {
       "name": "duplicate options",
-      "input": { "pricing": { "default": "a", "options": ["a", "a"], "type": "select" } },
-      "error": "pricing"
+      "input": {
+        "PRICING": {
+          "default": "a",
+          "options": ["a", "a"],
+          "type": "select"
+        }
+      },
+      "error": "PRICING"
     },
     {
       "name": "unknown field",
-      "input": { "beta": { "default": false, "owner": "jake", "type": "boolean" } },
-      "error": "beta"
+      "input": {
+        "BETA": {
+          "default": false,
+          "owner": "jake",
+          "type": "boolean"
+        }
+      },
+      "error": "BETA"
     },
     {
-      "name": "invalid env name",
-      "input": { "beta": { "default": false, "env": "feature-beta", "type": "boolean" } },
-      "error": "beta"
+      "name": "key that is not a variable name",
+      "input": {
+        "new-checkout": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "error": "new-checkout"
     },
     {
       "name": "invalid expiry",
-      "input": { "beta": { "default": false, "expires": "next week", "type": "boolean" } },
-      "error": "beta"
-    },
-    {
-      "name": "two flags read one variable",
       "input": {
-        "beta": { "default": false, "env": "FEATURE_X", "type": "boolean" },
-        "gamma": { "default": false, "env": "FEATURE_X", "type": "boolean" }
-      },
-      "error": "gamma"
-    }
-  ],
-  "fromEnv": [
-    {
-      "name": "infers each type",
-      "env": {
-        "FEATURE_LIMITS": "{\"requests\":5}",
-        "FEATURE_NEW_CHECKOUT": "true",
-        "FEATURE_PRICING": "b",
-        "FEATURE_RETRIES": "3",
-        "HOME": "/home/user"
-      },
-      "output": {
-        "limits": {
-          "build": false,
-          "default": { "requests": 5 },
-          "env": "FEATURE_LIMITS",
-          "public": false,
-          "type": "json"
-        },
-        "newCheckout": {
-          "build": false,
-          "default": true,
-          "env": "FEATURE_NEW_CHECKOUT",
-          "public": false,
+        "BETA": {
+          "default": false,
+          "expires": "next week",
           "type": "boolean"
-        },
-        "pricing": {
-          "build": false,
-          "default": "b",
-          "env": "FEATURE_PRICING",
-          "public": false,
-          "type": "string"
-        },
-        "retries": {
-          "build": false,
-          "default": 3,
-          "env": "FEATURE_RETRIES",
-          "public": false,
-          "type": "number"
         }
-      }
+      },
+      "error": "BETA"
     }
   ],
   "check": [
     {
-      "name": "unknown, invalid, and stale",
+      "name": "invalid and stale, and unknown with a prefix",
       "definitions": {
-        "newCheckout": { "default": false, "expires": "2026-01-31", "type": "boolean" },
-        "pricing": { "default": "a", "options": ["a", "b"], "type": "select" }
+        "FEATURE_NEW_CHECKOUT": {
+          "default": false,
+          "expires": "2026-01-31",
+          "type": "boolean"
+        },
+        "FEATURE_PRICING": {
+          "default": "a",
+          "options": ["a", "b"],
+          "type": "select"
+        }
       },
       "env": {
         "FEATURE_NEW_CHECKOUT": "true",
@@ -209,24 +213,134 @@
         "PATH": "/usr/bin"
       },
       "now": 1793318400000,
+      "prefix": "FEATURE_",
       "issues": [
-        { "env": "FEATURE_NEW_CHEKOUT", "reason": "unknown" },
-        { "env": "FEATURE_PRICING", "key": "pricing", "reason": "invalid" },
-        { "env": "FEATURE_NEW_CHECKOUT", "key": "newCheckout", "reason": "stale" }
+        {
+          "key": "FEATURE_NEW_CHEKOUT",
+          "reason": "unknown"
+        },
+        {
+          "key": "FEATURE_PRICING",
+          "reason": "invalid"
+        },
+        {
+          "key": "FEATURE_NEW_CHECKOUT",
+          "reason": "stale"
+        }
       ]
+    },
+    {
+      "name": "no prefix reports no unknown variables",
+      "definitions": {
+        "PRICING": {
+          "default": "a",
+          "options": ["a", "b"],
+          "type": "select"
+        }
+      },
+      "env": {
+        "NEW_CHEKOUT": "true",
+        "PRICING": "b"
+      },
+      "now": 1793318400000,
+      "issues": []
     }
   ],
   "decode": [
-    { "type": "boolean", "raw": "true", "value": true },
-    { "type": "boolean", "raw": "false", "value": false },
-    { "type": "boolean", "raw": "1", "error": true },
-    { "type": "number", "raw": "2.5", "value": 2.5 },
-    { "type": "number", "raw": "", "error": true },
-    { "type": "number", "raw": "two", "error": true },
-    { "type": "string", "raw": "anything", "value": "anything" },
-    { "type": "select", "options": ["a", "b"], "raw": "b", "value": "b" },
-    { "type": "select", "options": ["a", "b"], "raw": "c", "error": true },
-    { "type": "json", "raw": "{\"requests\":5}", "value": { "requests": 5 } },
-    { "type": "json", "raw": "{requests", "error": true }
+    {
+      "type": "boolean",
+      "raw": "true",
+      "value": true
+    },
+    {
+      "type": "boolean",
+      "raw": "false",
+      "value": false
+    },
+    {
+      "type": "boolean",
+      "raw": "1",
+      "error": true
+    },
+    {
+      "type": "number",
+      "raw": "2.5",
+      "value": 2.5
+    },
+    {
+      "type": "number",
+      "raw": "",
+      "error": true
+    },
+    {
+      "type": "number",
+      "raw": "two",
+      "error": true
+    },
+    {
+      "type": "string",
+      "raw": "anything",
+      "value": "anything"
+    },
+    {
+      "type": "select",
+      "options": ["a", "b"],
+      "raw": "b",
+      "value": "b"
+    },
+    {
+      "type": "select",
+      "options": ["a", "b"],
+      "raw": "c",
+      "error": true
+    },
+    {
+      "type": "json",
+      "raw": "{\"requests\":5}",
+      "value": {
+        "requests": 5
+      }
+    },
+    {
+      "type": "json",
+      "raw": "{requests",
+      "error": true
+    }
+  ],
+  "infer": [
+    {
+      "raw": "true",
+      "value": true
+    },
+    {
+      "raw": "false",
+      "value": false
+    },
+    {
+      "raw": "3",
+      "value": 3
+    },
+    {
+      "raw": "-2.5",
+      "value": -2.5
+    },
+    {
+      "raw": "{\"a\":1}",
+      "value": {
+        "a": 1
+      }
+    },
+    {
+      "raw": "[1]",
+      "value": [1]
+    },
+    {
+      "raw": "{oops",
+      "value": "{oops"
+    },
+    {
+      "raw": "hello",
+      "value": "hello"
+    }
   ]
 }

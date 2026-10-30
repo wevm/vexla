@@ -49,12 +49,16 @@ export const generate = Cli.command({
 /** `flargs check`: validates the environment against the flags file. */
 export const check = Cli.command({
   description:
-    'Fails when the environment sets an undeclared or invalid FEATURE_* variable. Reports stale flags.',
+    'Fails when the environment sets an invalid flag value, or an undeclared variable with --prefix. Reports stale flags.',
   options: Context.file.extend({
     envFile: z
       .array(z.string())
       .optional()
       .describe('Dotenv files to check with the environment, such as .env'),
+    prefix: z
+      .string()
+      .optional()
+      .describe('Report undeclared variables with this prefix, such as FEATURE_'),
     strict: z.boolean().optional().describe('Fail on stale flags too'),
   }),
   run(c) {
@@ -67,12 +71,12 @@ export const check = Cli.command({
           dotenv(Fs.readFileSync(Path.resolve(Context.root(c.options), file), 'utf8')),
         )
 
-      const issues = Definitions.check(definitions, env)
+      const issues = Definitions.check(definitions, env, { prefix: c.options.prefix })
       const failing = issues.filter((issue) => issue.reason !== 'stale' || c.options.strict)
       if (failing.length > 0)
         return c.error({
           code: 'CHECK',
-          message: failing.map((issue) => `${issue.env}: ${issue.reason}`).join(', '),
+          message: failing.map((issue) => `${issue.key}: ${issue.reason}`).join(', '),
         })
       return { issues }
     } catch (error) {
@@ -101,7 +105,7 @@ export const stale = Cli.command({
 
 // The manifest adds runtime fields to each definition. The flags file format keeps only declared fields.
 function fileOf(flags: Record<string, Record<string, unknown>>): Record<string, unknown> {
-  const fields = ['build', 'default', 'description', 'env', 'expires', 'options', 'public', 'type']
+  const fields = ['build', 'default', 'description', 'expires', 'options', 'public', 'type']
   return Object.fromEntries(
     Object.entries(flags).map((entry) => [
       entry[0],

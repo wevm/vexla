@@ -113,7 +113,7 @@ form { margin-top: 32px; display: grid; gap: 8px; max-width: 480px; }
     for (const [key, flag] of Object.entries(manifest.flags)) {
       const name = element('td', {}, [
         element('div', { className: 'key', textContent: key }),
-        element('div', { className: 'meta', textContent: flag.env + (flag.public ? ' · public' : ' · private') + (flag.build ? ' · build' : '') }),
+        element('div', { className: 'meta', textContent: (flag.public ? 'public' : 'private') + (flag.build ? ' · build' : '') }),
         ...(flag.description ? [element('div', { className: 'description', textContent: flag.description })] : []),
         ...(flag.stale ? [element('div', { className: 'stale', textContent: 'expired ' + flag.expires })] : []),
       ])

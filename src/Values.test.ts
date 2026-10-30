@@ -3,7 +3,7 @@ import { Definitions, flags, Values } from 'flargs'
 import { Flargs } from 'flargs/server'
 
 const definitions = Definitions.parse({
-  pricing: { default: 'a', options: ['a', 'b', 'c'], type: 'select' },
+  PRICING: { default: 'a', options: ['a', 'b', 'c'], type: 'select' },
 })
 
 describe('run', () => {
@@ -12,10 +12,10 @@ describe('run', () => {
     const read = (value: string) =>
       Values.run(
         flargs,
-        new Request(`https://app.example.com/?flag.pricing=${value}`),
+        new Request(`https://app.example.com/?flag.PRICING=${value}`),
         async () => {
           await new Promise((resolve) => setTimeout(resolve, 10))
-          return flags['pricing']
+          return flags['PRICING']
         },
       )
 
@@ -30,9 +30,9 @@ describe('run', () => {
 
 describe('flags', () => {
   test('outside a request, FEATURE_* variables apply, as in zero config', () => {
-    process.env['FEATURE_ZERO_CONFIG_TEST'] = 'true'
-    expect(flags['zeroConfigTest']).toMatchInlineSnapshot(`true`)
-    delete process.env['FEATURE_ZERO_CONFIG_TEST']
-    expect(flags['zeroConfigTest']).toMatchInlineSnapshot(`undefined`)
+    process.env['ZERO_CONFIG_TEST'] = 'true'
+    expect(flags['ZERO_CONFIG_TEST']).toMatchInlineSnapshot(`true`)
+    delete process.env['ZERO_CONFIG_TEST']
+    expect(flags['ZERO_CONFIG_TEST']).toMatchInlineSnapshot(`undefined`)
   })
 })

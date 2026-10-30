@@ -29,12 +29,15 @@ describe('parse', () => {
     })
 
   test('accepts a URL', async () => {
-    const result = await Override.parse(new URL('https://app.example.com/?flag.newCheckout=true'), {
-      definitions,
-    })
+    const result = await Override.parse(
+      new URL('https://app.example.com/?flag.NEW_CHECKOUT=true'),
+      {
+        definitions,
+      },
+    )
     expect(result.values).toMatchInlineSnapshot(`
       {
-        "newCheckout": true,
+        "NEW_CHECKOUT": true,
       }
     `)
   })
@@ -52,7 +55,7 @@ describe('serialize', () => {
 
   test('round trip', async () => {
     const params = await Override.serialize(
-      { limits: { requests: 7 }, pricing: 'b' },
+      { LIMITS: { requests: 7 }, PRICING: 'b' },
       { expiresAt: vectors.now + 60_000, secret: vectors.secret },
     )
     const result = await Override.parse(params, {
@@ -62,17 +65,17 @@ describe('serialize', () => {
     })
     expect(result.values).toMatchInlineSnapshot(`
       {
-        "limits": {
+        "LIMITS": {
           "requests": 7,
         },
-        "pricing": "b",
+        "PRICING": "b",
       }
     `)
   })
 
   test('secret without expiresAt', async () => {
     await expect(
-      Override.serialize({ pricing: 'b' }, { secret: vectors.secret }),
+      Override.serialize({ PRICING: 'b' }, { secret: vectors.secret }),
     ).rejects.toThrowErrorMatchingInlineSnapshot(
       `[TypeError: \`serialize\` needs \`expiresAt\` with \`secret\`. Set \`expiresAt\` in milliseconds since the epoch.]`,
     )

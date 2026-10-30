@@ -11,14 +11,14 @@ import * as Http from '../../test/Http.js'
 
 const file = [
   '# @type {boolean} @build @public',
-  'FEATURE_MAINTENANCE_BANNER=false',
+  'MAINTENANCE_BANNER=false',
   '',
   '# Use the new checkout flow.',
   '# @type {boolean} @public @expires 2026-01-31',
-  'FEATURE_NEW_CHECKOUT=false',
+  'NEW_CHECKOUT=false',
   '',
   "# @type {'a' | 'b' | 'c'}",
-  'FEATURE_PRICING=a',
+  'PRICING=a',
   '',
 ].join('\n')
 
@@ -84,7 +84,7 @@ describe('flargs', () => {
       Usage: flargs <command>
 
       Commands:
-        check     Fails when the environment sets an undeclared or invalid FEATURE_* variable. Reports stale flags.
+        check     Fails when the environment sets an invalid flag value, or an undeclared variable with --prefix. Reports stale flags.
         define    Creates or replaces a flag in the store, for a project with no flags file.
         dev       Serves the dev route for .env.flags, for an application with no TypeScript server.
         generate  Writes flargs.gen.ts from .env.flags, or from the manifest of a running server.
@@ -127,7 +127,7 @@ describe('generate', () => {
     const result = await run(['generate'], { cwd: root })
     expect(result.status).toMatchInlineSnapshot(`0`)
     const generated = Fs.readFileSync(Path.join(root, 'flargs.gen.ts'), 'utf8')
-    expect(generated).toContain('"FEATURE_NEW_CHECKOUT"')
+    expect(generated).toContain('"NEW_CHECKOUT"')
     expect(generated).toContain("declare module 'flargs'")
   })
 })
@@ -137,19 +137,19 @@ describe('check', () => {
     const root = project()
     expect((await run(['check'], { cwd: root })).status).toMatchInlineSnapshot(`0`)
 
-    const typo = await run(['check'], {
+    const typo = await run(['check', '--prefix', 'NEW_'], {
       cwd: root,
-      env: { FEATURE_NEW_CHEKOUT: 'true', FEATURE_PRICING: 'z' },
+      env: { NEW_CHEKOUT: 'true', PRICING: 'z' },
     })
     expect(typo.status).not.toBe(0)
-    expect(typo.output).toContain('FEATURE_NEW_CHEKOUT: unknown')
-    expect(typo.output).toContain('FEATURE_PRICING: invalid')
+    expect(typo.output).toContain('NEW_CHEKOUT: unknown')
+    expect(typo.output).toContain('PRICING: invalid')
 
     expect((await run(['check', '--strict'], { cwd: root })).status).not.toBe(0)
   })
 
   test('reads dotenv files', async () => {
-    const root = project({ '.env': 'FEATURE_PRICING="z"\n' })
+    const root = project({ '.env': 'PRICING="z"\n' })
     expect((await run(['check', '--env-file', '.env'], { cwd: root })).status).not.toBe(0)
   })
 })
@@ -162,7 +162,7 @@ describe('stale', () => {
         "stale": [
           {
             "expires": "2026-01-31",
-            "key": "newCheckout",
+            "key": "NEW_CHECKOUT",
           },
         ],
       }
@@ -172,7 +172,7 @@ describe('stale', () => {
 
 describe('admin API', () => {
   test('list, set, get, link, and prune, with the token from FLARGS_TOKEN', async () => {
-    const store = Store.memory({ values: { oldFlag: true } })
+    const store = Store.memory({ values: { OLD_FLAG: true } })
     const flargs = Flargs.create({
       authorize: (request) =>
         request.headers.get('authorization') === 'Bearer secret-token' ? 'write' : undefined,
@@ -187,15 +187,15 @@ describe('admin API', () => {
       (await run(['list'], { env: { FLARGS_URL: env.FLARGS_URL } })).status,
     ).toMatchInlineSnapshot(`3`)
 
-    const set = await run(['set', 'pricing', 'b'], { env })
+    const set = await run(['set', 'PRICING', 'b'], { env })
     expect(set.status).toMatchInlineSnapshot(`0`)
     expect(set.output).not.toContain('secret-token')
 
     const list = JSON.parse((await run(['list'], { env })).output)
-    expect(list.flags.find((flag: { key: string }) => flag.key === 'pricing'))
+    expect(list.flags.find((flag: { key: string }) => flag.key === 'PRICING'))
       .toMatchInlineSnapshot(`
       {
-        "key": "pricing",
+        "key": "PRICING",
         "source": "store",
         "type": "select",
         "value": "b",
@@ -204,27 +204,27 @@ describe('admin API', () => {
 
     const link = JSON.parse(
       (
-        await run(['link', 'https://app.example.com/checkout', 'pricing=c', '--expires', '1h'], {
+        await run(['link', 'https://app.example.com/checkout', 'PRICING=c', '--expires', '1h'], {
           env,
         })
       ).output,
     )
     expect(link.url).toMatch(
-      /^https:\/\/app\.example\.com\/checkout\?flag\.pricing=c&flag\.exp=\d+&flag\.sig=[\w-]+$/,
+      /^https:\/\/app\.example\.com\/checkout\?flag\.PRICING=c&flag\.exp=\d+&flag\.sig=[\w-]+$/,
     )
 
     expect(JSON.parse((await run(['prune'], { env })).output)).toMatchInlineSnapshot(`
       {
         "deleted": false,
         "orphans": [
-          "oldFlag",
+          "OLD_FLAG",
         ],
       }
     `)
     await run(['prune', '--yes'], { env })
     expect(await store.keys!()).toMatchInlineSnapshot(`
       [
-        "pricing",
+        "PRICING",
       ]
     `)
     await server.close()
@@ -236,11 +236,11 @@ describe('admin API', () => {
     const env = { FLARGS_URL: `${server.url}/.flags` }
 
     const define = await run(
-      ['define', 'beta', '--type', 'boolean', '--default', 'false', '--public'],
+      ['define', 'BETA', '--type', 'boolean', '--default', 'false', '--public'],
       { env },
     )
     expect(define.status).toMatchInlineSnapshot(`0`)
-    expect(JSON.parse((await run(['get', 'beta'], { env })).output).value).toMatchInlineSnapshot(
+    expect(JSON.parse((await run(['get', 'BETA'], { env })).output).value).toMatchInlineSnapshot(
       `false`,
     )
     await server.close()
@@ -253,25 +253,25 @@ describe('retire', () => {
       'src/checkout.ts': `import { flags } from 'flargs'
 
 export function checkout(): string {
-  if (flags.newCheckout) {
+  if (flags.NEW_CHECKOUT) {
     return 'new'
   } else {
     return 'old'
   }
 }
 
-export const label = flags.newCheckout ? 'New checkout' : 'Checkout'
-export const disabled = !flags.newCheckout
+export const label = flags.NEW_CHECKOUT ? 'New checkout' : 'Checkout'
+export const disabled = !flags.NEW_CHECKOUT
 `,
       'src/view.tsx': `import { useFlag } from 'flargs/react'
 
 export function useLabel(): string {
-  return useFlag('newCheckout') ? 'new' : 'old'
+  return useFlag('NEW_CHECKOUT') ? 'new' : 'old'
 }
 `,
     })
 
-    const result = await run(['retire', 'newCheckout', '--value', 'true'], { cwd: root })
+    const result = await run(['retire', 'NEW_CHECKOUT', '--value', 'true'], { cwd: root })
     expect(result.status).toMatchInlineSnapshot(`0`)
 
     expect(Fs.readFileSync(Path.join(root, 'src/checkout.ts'), 'utf8')).toMatchInlineSnapshot(`
@@ -291,10 +291,10 @@ export function useLabel(): string {
     `)
     expect(Fs.readFileSync(Path.join(root, '.env.flags'), 'utf8')).toMatchInlineSnapshot(`
       "# @type {boolean} @build @public
-      FEATURE_MAINTENANCE_BANNER=false
+      MAINTENANCE_BANNER=false
 
       # @type {'a' | 'b' | 'c'}
-      FEATURE_PRICING=a
+      PRICING=a
       "
     `)
 
@@ -308,10 +308,10 @@ export function useLabel(): string {
   })
 
   test('--dry-run writes nothing', async () => {
-    const code = `import { flags } from 'flargs'\nexport const a = flags.newCheckout\n`
+    const code = `import { flags } from 'flargs'\nexport const a = flags.NEW_CHECKOUT\n`
     const root = project({ 'src/a.ts': code })
     const result = JSON.parse(
-      (await run(['retire', 'newCheckout', '--dry-run'], { cwd: root })).output,
+      (await run(['retire', 'NEW_CHECKOUT', '--dry-run'], { cwd: root })).output,
     )
     expect(result.changed).toMatchInlineSnapshot(`
       [

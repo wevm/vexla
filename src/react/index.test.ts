@@ -6,11 +6,11 @@ import { useFlag } from 'flargs/react'
 import { Flargs } from 'flargs/server'
 
 const definitions = Definitions.parse({
-  newCheckout: { default: false, public: true, type: 'boolean' },
+  NEW_CHECKOUT: { default: false, public: true, type: 'boolean' },
 })
 
 function Checkout() {
-  return createElement('p', null, useFlag('newCheckout' as never) ? 'new' : 'old')
+  return createElement('p', null, useFlag('NEW_CHECKOUT' as never) ? 'new' : 'old')
 }
 
 describe('useFlag', () => {
@@ -19,7 +19,7 @@ describe('useFlag', () => {
     const render = (url: string) =>
       Values.run(flargs, new Request(url), () => renderToString(createElement(Checkout)))
 
-    expect(await render('https://app.example.com/?flag.newCheckout=true')).toMatchInlineSnapshot(
+    expect(await render('https://app.example.com/?flag.NEW_CHECKOUT=true')).toMatchInlineSnapshot(
       `"<p>new</p>"`,
     )
     expect(await render('https://app.example.com/')).toMatchInlineSnapshot(`"<p>old</p>"`)

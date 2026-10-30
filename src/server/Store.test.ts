@@ -4,7 +4,7 @@ import { Flargs, Store } from 'flargs/server'
 import * as Http from '../../test/Http.js'
 
 const definitions = Definitions.parse({
-  newCheckout: { default: false, public: true, type: 'boolean' },
+  NEW_CHECKOUT: { default: false, public: true, type: 'boolean' },
 })
 
 describe('http', () => {
@@ -20,16 +20,16 @@ describe('http', () => {
 
     const store = Store.http({ token: 'admin', ttl: 0, url: `${server.url}/.flags` })
     const local = Flargs.create({ definitions, secret: 'local-secret', store })
-    const read = () => local.get(new Request('https://app.example.com/'), 'newCheckout')
+    const read = () => local.get(new Request('https://app.example.com/'), 'NEW_CHECKOUT')
 
     expect(await read()).toMatchInlineSnapshot(`false`)
-    await store.set('newCheckout', true)
+    await store.set('NEW_CHECKOUT', true)
     expect(await read()).toMatchInlineSnapshot(`true`)
 
     const response = await fetch(`${server.url}/.flags/manifest`, {
       headers: { authorization: 'Bearer admin' },
     })
-    expect((await response.json()).flags.newCheckout.store).toMatchInlineSnapshot(`true`)
+    expect((await response.json()).flags.NEW_CHECKOUT.store).toMatchInlineSnapshot(`true`)
     await server.close()
   })
 
@@ -43,12 +43,12 @@ describe('http', () => {
 
     const store = Store.http({ ttl: 0, url: `${server.url}/.flags` })
     await store.definitions!.set(
-      'beta',
-      Definitions.parse({ beta: { default: true, type: 'boolean' } })['beta']!,
+      'BETA',
+      Definitions.parse({ BETA: { default: true, type: 'boolean' } })['BETA']!,
     )
     const local = Flargs.create({ secret: 'local-secret', store })
     expect(
-      await local.get(new Request('https://app.example.com/'), 'beta' as never),
+      await local.get(new Request('https://app.example.com/'), 'BETA' as never),
     ).toMatchInlineSnapshot(`true`)
     await server.close()
   })
@@ -57,7 +57,7 @@ describe('http', () => {
     const remote = Flargs.create({ definitions, secret: 'remote-secret', store: Store.memory() })
     const server = await Http.serve(remote.fetch)
     const store = Store.http({ token: 'wrong-token', url: `${server.url}/.flags` })
-    const error = await store.get(['newCheckout']).catch((error: unknown) => error)
+    const error = await store.get(['NEW_CHECKOUT']).catch((error: unknown) => error)
     expect(error).toBeInstanceOf(Store.HttpError)
     expect(String(error)).not.toContain('wrong-token')
     await server.close()
