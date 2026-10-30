@@ -82,9 +82,11 @@ fn expand(input: &Input) -> syn::Result<Tokens> {
     let definitions = parsed.map_err(|error| fail(format!("{file}: {error}")))?;
 
     let mut constants = Vec::new();
+    let mut declarations = Vec::new();
     let mut defaults = Vec::new();
     let mut enums = Vec::new();
     let mut fields = Vec::new();
+    let mut reads = Vec::new();
 
     for (key, definition) in &definitions {
         let name = definitions::env_of(key, "");
@@ -103,6 +105,8 @@ fn expand(input: &Input) -> syn::Result<Tokens> {
             }
             _ => None,
         };
+
+        declarations.push(declaration(key, definition));
 
         if definition.build {
             let value = match std::env::var(&definition.env) {
@@ -138,6 +142,12 @@ fn expand(input: &Input) -> syn::Result<Tokens> {
             pub const #constant: ::flargs::Key<#ty> = ::flargs::Key::new(#key, #env);
         });
         defaults.push(quote! { #field: #default });
+        reads.push(quote! {
+            #field: values
+                .get(#key)
+                .and_then(<#ty as ::flargs::FlagValue>::from_json)
+                .unwrap_or(defaults.#field)
+        });
         fields.push(quote! {
             #[doc = #docs]
             pub #field: #ty
@@ -168,8 +178,75 @@ fn expand(input: &Input) -> syn::Result<Tokens> {
             }
         }
 
+        impl ::flargs::FlagSet for Flags {
+            fn definitions() -> ::core::option::Option<::flargs::definitions::Definitions> {
+                ::core::option::Option::Some(::core::iter::Iterator::collect(
+                    ::core::iter::IntoIterator::into_iter([#(#declarations),*]),
+                ))
+            }
+
+            fn from_values(values: &::flargs::Values) -> Self {
+                // A file with no runtime flags reads neither binding.
+                let _ = values;
+                let defaults = <Self as ::core::default::Default>::default();
+                let _ = &defaults;
+                Self {
+                    #(#reads,)*
+                }
+            }
+        }
+
         #(#enums)*
     })
+}
+
+/// Returns the entry of a flag in `FlagSet::definitions`: the key and the `Definition` literal.
+fn declaration(key: &str, definition: &Definition) -> Tokens {
+    let none = quote!(::core::option::Option::None);
+    let text = |value: Option<&String>| {
+        value.map_or_else(
+            || none.clone(),
+            |value| quote!(::core::option::Option::Some(::std::string::String::from(#value))),
+        )
+    };
+
+    let build = definition.build;
+    let default = json(&definition.default);
+    let description = text(definition.description.as_ref());
+    let env = &definition.env;
+    let expires = text(definition.expires.as_ref());
+    let options = definition.options.as_ref().map_or_else(
+        || none.clone(),
+        |options| {
+            quote! {
+                ::core::option::Option::Some(::std::vec![#(::std::string::String::from(#options)),*])
+            }
+        },
+    );
+    let public = definition.public;
+    let variant = match definition.r#type {
+        Type::Boolean => quote!(Boolean),
+        Type::Json => quote!(Json),
+        Type::Number => quote!(Number),
+        Type::Select => quote!(Select),
+        Type::String => quote!(String),
+    };
+
+    quote! {
+        (
+            ::std::string::String::from(#key),
+            ::flargs::definitions::Definition {
+                build: #build,
+                default: #default,
+                description: #description,
+                env: ::std::string::String::from(#env),
+                expires: #expires,
+                options: #options,
+                public: #public,
+                r#type: ::flargs::definitions::Type::#variant,
+            },
+        )
+    }
 }
 
 /// Returns the type and the value of a build flag constant.
@@ -245,6 +322,19 @@ fn enumerate(
                 match self {
                     #(Self::#variants => #options,)*
                 }
+            }
+        }
+
+        impl ::flargs::FlagValue for #name {
+            fn from_json(json: &::flargs::Json) -> ::core::option::Option<Self> {
+                match json.as_str()? {
+                    #(#options => ::core::option::Option::Some(Self::#variants),)*
+                    _ => ::core::option::Option::None,
+                }
+            }
+
+            fn to_json(&self) -> ::flargs::Json {
+                ::flargs::Json::String(::std::string::String::from(self.as_str()))
             }
         }
     };

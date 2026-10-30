@@ -1,0 +1,4 @@
+[banner]
+build = true
+default = false
+type = "boolean"

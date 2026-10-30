@@ -67,3 +67,25 @@ fn json_and_toml() {
     assert_eq!(from_json::Flags::BUILD_LIMITS, Flags::BUILD_LIMITS);
     assert_eq!(from_json::Flags::THEME.as_str(), Flags::THEME.as_str());
 }
+
+#[test]
+fn flag_set() {
+    use flargs::FlagSet as _;
+
+    let parsed = flargs::definitions::parse_toml(
+        include_str!("fixtures/flags.toml"),
+        flargs::definitions::ENV_PREFIX,
+    )
+    .expect("valid definitions");
+    assert_eq!(Flags::definitions(), Some(parsed));
+
+    let values = flargs::Values::from_iter([
+        ("newCheckout".to_owned(), serde_json::json!(true)),
+        ("pricing".to_owned(), serde_json::json!("c")),
+        ("title".to_owned(), serde_json::json!(42)),
+    ]);
+    let flags = Flags::from_values(&values);
+    assert!(flags.new_checkout);
+    assert_eq!(flags.pricing, Pricing::C);
+    assert_eq!(flags.title, "Hello");
+}

@@ -318,19 +318,19 @@ fn canonical(raw: &[(String, String)], exp: &str) -> String {
 }
 
 /// Decodes `application/x-www-form-urlencoded` text, as `URLSearchParams` does.
-fn form_decode(query: &str) -> Vec<(String, String)> {
+pub(crate) fn form_decode(query: &str) -> Vec<(String, String)> {
     query
         .split('&')
         .filter(|pair| !pair.is_empty())
         .map(|pair| {
             let (name, value) = pair.split_once('=').unwrap_or((pair, ""));
-            (percent_decode(name), percent_decode(value))
+            (percent_decode(name, true), percent_decode(value, true))
         })
         .collect()
 }
 
 /// Encodes text as `URLSearchParams` does: alphanumerics and `*-._` stay, a space is `+`.
-fn form_encode(text: &str) -> String {
+pub(crate) fn form_encode(text: &str) -> String {
     let mut encoded = String::with_capacity(text.len());
 
     for byte in text.bytes() {
@@ -368,7 +368,9 @@ fn mac(secret: &str) -> Hmac<Sha256> {
     Hmac::new(&block.into())
 }
 
-fn percent_decode(text: &str) -> String {
+/// Decodes `%XX` escapes, as `decodeURIComponent` does when `plus` is `false`. With `plus`, a `+`
+/// is a space, as in form encoding.
+pub(crate) fn percent_decode(text: &str, plus: bool) -> String {
     let hex = |byte: Option<&u8>| byte.and_then(|byte| char::from(*byte).to_digit(16));
     let bytes = text.as_bytes();
     let mut decoded = Vec::with_capacity(bytes.len());
@@ -377,7 +379,7 @@ fn percent_decode(text: &str) -> String {
     while let Some(&byte) = bytes.get(index) {
         index += 1;
 
-        if byte == b'+' {
+        if plus && byte == b'+' {
             decoded.push(b' ');
             continue;
         }
