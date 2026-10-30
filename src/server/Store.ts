@@ -109,6 +109,189 @@ export declare namespace env {
   }
 }
 
+/**
+ * Returns a store over the admin API of another Flargs runtime, such as a central admin service.
+ * Reads cache the manifest for `ttl` milliseconds. Writes go through at once and clear the cache.
+ */
+export function http(options: http.Options): Store {
+  const base = options.url.replace(/\/$/, '')
+  const fetch = options.fetch ?? globalThis.fetch
+  const ttl = options.ttl ?? 5_000
+  let cache: { expiresAt: number; manifest: Promise<Manifest> } | undefined
+
+  const request = async (method: string, path: string, body?: unknown) => {
+    const response = await fetch(`${base}${path}`, {
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      headers: {
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
+      },
+      method,
+    })
+    if (!response.ok) throw new HttpError({ method, path, status: response.status })
+    return (await response.json()) as unknown
+  }
+
+  const manifest = () => {
+    const now = Date.now()
+    if (!cache || cache.expiresAt <= now) {
+      const promise = request('GET', '/manifest') as Promise<Manifest>
+      cache = { expiresAt: now + ttl, manifest: promise }
+      promise.catch(() => (cache = undefined))
+    }
+    return cache.manifest
+  }
+
+  const write = async (method: string, path: string, body?: unknown) => {
+    cache = undefined
+    await request(method, path, body)
+  }
+
+  return {
+    delete: (key) => write('DELETE', `/values/${encodeURIComponent(key)}`),
+    definitions: {
+      delete: (key) => write('DELETE', `/definitions/${encodeURIComponent(key)}`),
+      async list() {
+        const fields = [
+          'build',
+          'default',
+          'description',
+          'env',
+          'expires',
+          'options',
+          'public',
+          'type',
+        ]
+        return Object.fromEntries(
+          Object.entries((await manifest()).flags).map((entry) => [
+            entry[0],
+            Object.fromEntries(
+              Object.entries(entry[1]).filter((field) => fields.includes(field[0])),
+            ),
+          ]),
+        )
+      },
+      set: (key, definition) => write('PUT', `/definitions/${encodeURIComponent(key)}`, definition),
+    },
+    async get(keys) {
+      const flags = (await manifest()).flags
+      return Object.fromEntries(
+        keys.flatMap((key) => {
+          const stored = flags[key]?.['store']
+          return stored === null || stored === undefined ? [] : [[key, stored]]
+        }),
+      )
+    },
+    async keys() {
+      const current = await manifest()
+      return [
+        ...Object.entries(current.flags)
+          .filter((entry) => entry[1]['store'] !== null && entry[1]['store'] !== undefined)
+          .map((entry) => entry[0]),
+        ...(current.orphans ?? []),
+      ]
+    },
+    set: (key, value) => write('PUT', `/values/${encodeURIComponent(key)}`, { value }),
+  }
+}
+
+export declare namespace http {
+  type Options = {
+    /** The fetch function. @default globalThis.fetch */
+    fetch?: typeof globalThis.fetch | undefined
+    /** A bearer token that the remote `authorize` accepts. */
+    token?: string | undefined
+    /** The lifetime of a cached manifest, in milliseconds. @default 5000 */
+    ttl?: number | undefined
+    /** The URL of the remote admin API, such as `https://api.example.com/.flags`. */
+    url: string
+  }
+}
+
+/** The part of a Cloudflare KV namespace that `kv` uses. */
+export type KvNamespace = {
+  delete: (key: string) => Promise<void>
+  get: (key: string, type: 'json') => Promise<unknown>
+  list: (options: { cursor?: string | undefined; prefix: string }) => Promise<{
+    cursor?: string | undefined
+    keys: readonly { name: string }[]
+    list_complete: boolean
+  }>
+  put: (key: string, value: string) => Promise<void>
+}
+
+/**
+ * Returns a store on a Cloudflare KV namespace. Values live under `value:<key>`, and definitions
+ * under `definition:<key>`. KV is eventually consistent, so a write can take up to a minute to
+ * reach every location.
+ */
+export function kv(namespace: KvNamespace): Store {
+  const list = async (prefix: string) => {
+    const names: string[] = []
+    let cursor: string | undefined
+    do {
+      const page = await namespace.list({ cursor, prefix })
+      names.push(...page.keys.map((key) => key.name.slice(prefix.length)))
+      cursor = page.list_complete ? undefined : page.cursor
+    } while (cursor)
+    return names
+  }
+
+  return {
+    delete: (key) => namespace.delete(`value:${key}`),
+    definitions: {
+      async delete(key) {
+        await namespace.delete(`definition:${key}`)
+        await namespace.delete(`value:${key}`)
+      },
+      async list() {
+        const keys = await list('definition:')
+        return Object.fromEntries(
+          await Promise.all(
+            keys.map(async (key) => [key, await namespace.get(`definition:${key}`, 'json')]),
+          ),
+        )
+      },
+      set: (key, definition) => namespace.put(`definition:${key}`, JSON.stringify(definition)),
+    },
+    async get(keys) {
+      const entries = await Promise.all(
+        keys.map(async (key) => [key, await namespace.get(`value:${key}`, 'json')] as const),
+      )
+      return Object.fromEntries(entries.filter((entry) => entry[1] !== null))
+    },
+    keys: () => list('value:'),
+    set: (key, value) => namespace.put(`value:${key}`, JSON.stringify(value)),
+  }
+}
+
+/** Thrown when the remote admin API of `Store.http` returns an error status. */
+export class HttpError extends Errors.BaseError {
+  override name = 'Store.HttpError'
+
+  /** The status of the response. */
+  readonly status: number
+
+  constructor(options: { method: string; path: string; status: number }) {
+    super(
+      `The remote admin API returned ${options.status} for ${options.method} ${options.path}.`,
+      {
+        steps: [
+          options.status === 401 || options.status === 403
+            ? 'Set `token` to a token that the remote `authorize` accepts with the access the store needs.'
+            : 'Check `url`, and that the remote runtime declares the flag.',
+        ],
+      },
+    )
+    this.status = options.status
+  }
+}
+
+type Manifest = {
+  flags: Record<string, Record<string, unknown>>
+  orphans?: readonly string[] | null | undefined
+}
+
 /** Returns `store` unchanged, typed as a `Store`. A host store implements the contract directly. */
 export function from(store: Store): Store {
   return store
