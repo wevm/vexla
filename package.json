@@ -40,7 +40,6 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./schema.json": "./schema.json",
     "./server": {
       "src": "./src/server/index.ts",
       "types": "./dist/server/index.d.ts",
