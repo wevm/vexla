@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="#overview">Overview</a> · <a href="#motivation">Motivation</a> · <a href="#agent-prompt">Agent Prompt</a> · <a href="#philosophy">Philosophy</a> · <a href="#features">Features</a> · <a href="#documentation">Documentation</a>
+  <a href="#overview">Overview</a> · <a href="#motivation">Motivation</a> · <a href="#agent-prompt">Agent Prompt</a> · <a href="#philosophy">Philosophy</a> · <a href="#features">Features</a> · <a href="#usage">Usage</a> · <a href="#cli">CLI</a> · <a href="#documentation">Documentation</a>
 </p>
 
 > [!NOTE]
@@ -69,6 +69,216 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 - **Integrations:** a fetch handler for Next.js, Cloudflare Workers, and Bun, plus Hono, Node, React, and Vite.
 - **CLI and MCP:** the `flargs` command lists, sets, and links flags, checks the environment, and generates types.
 - **Rust:** `flargs::flags!` reads `flags.toml` at compile time and generates typed flags.
+
+## Usage
+
+### Flags File
+
+`flags.json` declares every flag with its type and default. The JSON Schema validates the file and completes keys in editors.
+
+```json
+{
+  "$schema": "./node_modules/flargs/schema.json",
+  "limits": { "default": { "requests": 100 }, "type": "json" },
+  "maintenanceBanner": { "build": true, "default": false, "public": true, "type": "boolean" },
+  "newCheckout": {
+    "default": false,
+    "description": "Use the new checkout flow.",
+    "public": true,
+    "type": "boolean"
+  },
+  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
+}
+```
+
+A flag is private unless `public` is `true`, and a private value never reaches a browser. A `build` flag resolves when the bundle builds.
+
+### Environment Variables
+
+Each flag links to an environment variable: `newCheckout` reads `FEATURE_NEW_CHECKOUT`, and `env` sets another name. A `.env` file or the deploy environment sets values that differ from the defaults.
+
+```bash
+# .env (gitignored): values for this environment.
+FEATURE_NEW_CHECKOUT=true
+FEATURE_PRICING=b
+```
+
+A `FEATURE_*` variable that `flags.json` does not declare throws at startup, so a typo does not fail silently.
+
+### Types
+
+`flargs generate` reads `flags.json` and writes `flargs.gen.ts`, which holds the definitions and their types. `flargs/vite` runs the same step on each change of `flags.json`.
+
+```ts
+import { flags } from 'flargs/values'
+
+flags.newCheckout // boolean
+flags.pricing // 'a' | 'b' | 'c'
+flags.limits // { requests: number }
+```
+
+### Runtime
+
+`Runtime.create` adds overrides, a store, `decide`, the dev route, and the admin API. `runtime.fetch` is a fetch handler.
+
+```ts
+import { Runtime, Store } from 'flargs/server'
+import { definitions } from './flargs.gen.js'
+
+export const runtime = Runtime.create({
+  authorize: (request) => Admin.access(request),
+  decide: {
+    // Returns undefined to fall through to the store value or the default.
+    pricing: (user) => (user?.plan === 'enterprise' ? 'c' : undefined),
+  },
+  definitions,
+  dev: process.env.NODE_ENV === 'development',
+  identify: (request) => Session.user(request),
+  secret: process.env.FLARGS_SECRET,
+  store: Store.from(database.flags),
+})
+
+// Evaluates one flag for one request.
+const pricing = await runtime.get(request, 'pricing')
+
+// Serves the dev route and the admin API under /.flags.
+const response = await runtime.fetch(request)
+```
+
+```ts
+// Hono: serves /.flags and resolves `flags` for each request.
+import * as Flargs from 'flargs/hono'
+
+app.use(Flargs.middleware(runtime))
+```
+
+```ts
+// Node: converts the fetch handler to a request listener.
+import * as Http from 'node:http'
+import { Request } from 'flargs/node'
+
+Http.createServer(Request.toNodeListener(runtime.fetch, { runtime })).listen(3000)
+```
+
+### Values
+
+`flargs/values` exports `flags`. A read is synchronous and takes no request argument. On the server, `flags` holds the values of the current request. In a browser, it holds the public values that the server embeds in the page.
+
+```tsx
+import { flags } from 'flargs/values'
+import { useFlag } from 'flargs/react'
+
+// A plain read, on the server or in a browser.
+if (flags.newCheckout) renderNewCheckout()
+
+// React: renders again when the values change. No provider is necessary.
+const pricing = useFlag('pricing')
+```
+
+### Build Flags
+
+`flargs/vite` replaces each read of a build flag with a literal, so dead branches drop from the bundle. A read of a private flag in browser code is a build error.
+
+```ts
+import { defineConfig } from 'vite'
+import flargs from 'flargs/vite'
+
+export default defineConfig({
+  // Reads flags.json, writes flargs.gen.ts, and resolves build flags from the environment.
+  plugins: [flargs()],
+})
+```
+
+### Overrides
+
+In dev mode, search parameters override any flag. In production, they override public flags, and a signed link overrides a private flag. The server stores valid overrides in a signed `HttpOnly` cookie.
+
+```txt
+https://app.example.com/checkout?flag.newCheckout=true
+https://app.example.com/checkout?flag.pricing=c&flag.exp=1767225600&flag.sig=3q2-7w
+https://app.example.com/?flag.reset
+```
+
+### Admin API
+
+The admin API lives under `/.flags`. `authorize` returns the access of each request: `'read'`, `'write'`, `undefined`, or a `Response`. Flargs defines no credential format.
+
+```ts
+// The admin UI session writes. CI tokens from Handshakes read.
+authorize: async (request) => {
+  if (await Admin.verify(request)) return 'write'
+
+  const result = await resource.verify(request)
+  if (result.status !== 'valid') return resource.challenge(result)
+
+  return result.principal.scopes.includes('flags:write') ? 'write' : 'read'
+},
+```
+
+```http
+GET /.flags/manifest
+PUT /.flags/values/newCheckout
+
+{ "value": true }
+```
+
+### Rust
+
+`flags.toml` follows the same schema as `flags.json`. `flargs::flags!` reads it at compile time, so a bad declaration fails the build.
+
+```toml
+#:schema https://unpkg.com/flargs/schema.json
+[new_checkout]
+default = false
+public = true
+type = "boolean"
+
+[pricing]
+default = "a"
+options = ["a", "b", "c"]
+type = "select"
+```
+
+```rust
+// Generates `Flags`, typed keys, and the `Pricing` enum from flags.toml.
+flargs::flags!("flags.toml");
+
+let pricing: Pricing = runtime.get(&parts, Flags::PRICING).await?;
+
+// axum: serves /.flags, and evaluates flags for each request.
+let app = Router::new()
+    .nest_service("/.flags", runtime.service())
+    .route("/checkout", get(checkout))
+    .layer(runtime.layer());
+```
+
+## CLI
+
+The CLI uses [incur](https://github.com/wevm/incur), so every command supports `--llms`, `--mcp`, and `--format`. `FLARGS_URL` and `FLARGS_TOKEN` select the server and its token.
+
+```bash
+# Writes flargs.gen.ts from flags.json.
+flargs generate
+
+# Writes .env.example: every variable, its default, and its description.
+flargs env
+
+# Fails when the environment sets an undeclared or invalid FEATURE_* variable.
+flargs check
+
+# Lists every flag of a running server, with its value and source.
+flargs list --url https://api.example.com/.flags
+
+# Sets and deletes a store value for every request.
+flargs set newCheckout true
+flargs unset newCheckout
+
+# Returns a signed link that overrides a private flag for one week.
+flargs link https://app.example.com/checkout pricing=c --expires 7d
+
+# Serves the dev route for a flags file, for an application with no TypeScript server.
+flargs dev
+```
 
 ## Documentation
 
