@@ -51,7 +51,9 @@ flowchart LR
 
 ## Motivation
 
-Trunk-based development pushes small changes to `main` continuously, with no long-lived branches. A branch diverges from `main` while it lives, and a late merge turns a routine operation into a risk. A system that integrates in small, continuous steps is safer than one that integrates in large, rare ones.
+Long-lived feature branches are a problem. A branch diverges from `main` for each day that it lives. The merge at the end turns into a large, risky event, and the work stays out of production until then. Integration happens in large, rare steps, which is the opposite of continuous integration.
+
+The fix is to push to `main`. Trunk-based development merges small changes to `main` continuously, with no long-lived branches. A system that integrates in small, continuous steps is safer than one that integrates in large, rare ones.
 
 Almost every change that seems to need a branch can merge in small steps instead:
 
