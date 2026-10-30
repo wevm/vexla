@@ -786,14 +786,15 @@ async fn checkout(flags: flargs::axum::Flags<Flags>) -> Result<Response, flargs:
 - **Access:** `authorize` returns `Access`, with the variants `None`, `Read`, `Response(http::Response<Body>)`, and `Write`, as in [Authorization](#authorization).
 - **Store:** `Store` is a trait with `delete`, `get`, and `set`.
 
-| Crate or feature   | Contents                                                                               |
-| ------------------ | -------------------------------------------------------------------------------------- |
-| `flargs` (default) | `Key`, `Override::parse`, `Override::serialize`, `Runtime`, `Store`, and `MemoryStore` |
-| `flargs-macros`    | `flargs::flags!`, re-exported by the `macros` feature (on by default)                  |
-| `axum` feature     | the `flargs::axum::Flags` extractor                                                    |
-| `build` feature    | `flargs::build::pull`                                                                  |
-| `client` feature   | `HttpStore` and `Client`, for the admin API and the values endpoint                    |
-| `server` feature   | `Runtime::service` and `Runtime::layer`, a `tower::Service` and a `tower::Layer`       |
+| Crate or feature     | Contents                                                                                 |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| `flargs` (default)   | `Key`, `overrides::parse`, `overrides::serialize`, `Runtime`, `Store`, and `MemoryStore` |
+| `flargs-definitions` | the flags file parser, shared by `flargs` (as `flargs::definitions`) and `flargs-macros` |
+| `flargs-macros`      | `flargs::flags!`, re-exported by the `macros` feature (on by default)                    |
+| `axum` feature       | the `flargs::axum::Flags` extractor                                                      |
+| `build` feature      | `flargs::build::pull`                                                                    |
+| `client` feature     | `HttpStore` and `Client`, for the admin API and the values endpoint                      |
+| `server` feature     | `Runtime::service` and `Runtime::layer`, a `tower::Service` and a `tower::Layer`         |
 
 ## Phases
 
