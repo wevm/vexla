@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 
 use flargs::Json;
-use flargs::definitions::{self, Definition, ENV_PREFIX, Type};
+use flargs::definitions::{self, Definition, Type};
 
 fn vectors() -> Json {
     let text = include_str!("../../../test/vectors/definitions.json");
@@ -19,28 +19,6 @@ fn str(value: &Json) -> &str {
     value.as_str().expect("a string")
 }
 
-#[test]
-fn env_of() {
-    for case in vectors()["envOf"].as_array().expect("envOf") {
-        assert_eq!(
-            definitions::env_of(str(&case[0]), ENV_PREFIX),
-            str(&case[1]),
-            "{case}"
-        );
-    }
-}
-
-#[test]
-fn key_of() {
-    for case in vectors()["keyOf"].as_array().expect("keyOf") {
-        assert_eq!(
-            definitions::key_of(str(&case[0]), ENV_PREFIX),
-            str(&case[1]),
-            "{case}"
-        );
-    }
-}
-
 mod parse {
     use super::*;
 
@@ -48,7 +26,7 @@ mod parse {
     fn vectors() {
         for case in super::vectors()["parse"].as_array().expect("parse") {
             let name = str(&case["name"]);
-            let result = definitions::parse(&case["input"], ENV_PREFIX);
+            let result = definitions::parse(&case["input"]);
 
             if let Some(key) = case.get("error") {
                 assert_eq!(result.expect_err(name).key, str(key), "{name}");
@@ -60,12 +38,21 @@ mod parse {
     }
 
     #[test]
-    fn env_prefix() {
-        let input = serde_json::json!({ "newCheckout": { "default": false, "type": "boolean" } });
+    fn errors() {
+        let error = definitions::parse(&serde_json::json!({ "new-checkout": {} }))
+            .expect_err("not a variable name");
+        insta::assert_snapshot!(error, @r"
+        The key new-checkout is not an environment variable name, such as NEW_CHECKOUT.
 
-        let output = definitions::parse(&input, "APP_").expect("valid");
+        To resolve: Fix the declaration of new-checkout in `.env.flags`, or in the store definition.
+        ");
 
-        assert_eq!(output["newCheckout"].env, "APP_NEW_CHECKOUT");
+        let error = definitions::parse(&serde_json::json!([])).expect_err("not an object");
+        insta::assert_snapshot!(error, @r"
+        The definitions are not an object.
+
+        To resolve: Fix the declaration of (root) in `.env.flags`, or in the store definition.
+        ");
     }
 }
 
@@ -79,7 +66,7 @@ mod parse_file {
 
         for case in vectors["parseFile"].as_array().expect("parseFile") {
             let name = str(&case["name"]);
-            let result = definitions::parse_file(str(&case["text"]), ENV_PREFIX);
+            let result = definitions::parse_file(str(&case["text"]));
 
             if let Some(key) = case.get("error") {
                 assert_eq!(result.expect_err(name).key, str(key), "{name}");
@@ -93,15 +80,14 @@ mod parse_file {
     #[test]
     fn errors() {
         let error =
-            definitions::parse_file("# @type {number}\nFEATURE_RETRIES=three\n", ENV_PREFIX)
-                .expect_err("not a number");
+            definitions::parse_file("# @type {number}\nRETRIES=three\n").expect_err("not a number");
         insta::assert_snapshot!(error, @r"
-        The default of retries is not a number value (line 2).
+        The default of RETRIES is not a number value (line 2).
 
-        To resolve: Fix the declaration of retries in `.env.flags`, or in the store definition.
+        To resolve: Fix the declaration of RETRIES in `.env.flags`, or in the store definition.
         ");
 
-        let error = definitions::parse_file("# @type {boolean}\nFEATURE_BETA false\n", ENV_PREFIX)
+        let error = definitions::parse_file("# @type {boolean}\nBETA false\n")
             .expect_err("not a NAME=value line");
         insta::assert_snapshot!(error, @r"
         Line 2 is not a comment or a NAME=value line.
@@ -112,34 +98,22 @@ mod parse_file {
 
     #[test]
     fn lines() {
-        let text = "\u{feff}# Beta.\r\n# @type {string}\r\nexport FEATURE_BETA = \"a\\nb\"\r\n";
+        let text = "\u{feff}# Beta.\r\n# @type {string}\r\nexport BETA = \"a\\nb\"\r\n";
 
-        let output = definitions::parse_file(text, ENV_PREFIX).expect("valid");
+        let output = definitions::parse_file(text).expect("valid");
 
-        assert_eq!(output["beta"].description.as_deref(), Some("Beta."));
-        assert_eq!(output["beta"].default, serde_json::json!("a\nb"));
-    }
-
-    #[test]
-    fn env_prefix() {
-        let output = definitions::parse_file("# @type {boolean}\nAPP_NEW_CHECKOUT=true\n", "APP_")
-            .expect("valid");
-
-        assert_eq!(output["newCheckout"].env, "APP_NEW_CHECKOUT");
-        assert_eq!(output["newCheckout"].default, serde_json::json!(true));
+        assert_eq!(output["BETA"].description.as_deref(), Some("Beta."));
+        assert_eq!(output["BETA"].default, serde_json::json!("a\nb"));
     }
 }
 
 #[test]
-fn from_env() {
-    for case in vectors()["fromEnv"].as_array().expect("fromEnv") {
-        let output = definitions::from_env(&env(&case["env"]), ENV_PREFIX);
-
+fn infer() {
+    for case in vectors()["infer"].as_array().expect("infer") {
         assert_eq!(
-            serde_json::to_value(output).expect("serializes"),
-            case["output"],
-            "{}",
-            str(&case["name"])
+            definitions::infer(str(&case["raw"])),
+            case["value"],
+            "{case}"
         );
     }
 }
@@ -147,11 +121,11 @@ fn from_env() {
 #[test]
 fn check() {
     for case in vectors()["check"].as_array().expect("check") {
-        let definitions =
-            definitions::parse(&case["definitions"], ENV_PREFIX).expect("valid definitions");
+        let definitions = definitions::parse(&case["definitions"]).expect("valid definitions");
         let now = case["now"].as_i64().expect("now");
+        let prefix = case.get("prefix").map(str);
 
-        let issues = definitions::check(&definitions, &env(&case["env"]), ENV_PREFIX, now);
+        let issues = definitions::check(&definitions, &env(&case["env"]), prefix, now);
 
         assert_eq!(
             serde_json::to_value(issues).expect("serializes"),
@@ -181,7 +155,6 @@ mod decode {
             build: false,
             default: Json::Null,
             description: None,
-            env: "FEATURE_FLAG".to_owned(),
             expires: None,
             options,
             public: false,
@@ -205,12 +178,12 @@ mod decode {
     fn error() {
         let definition = definition(&serde_json::json!({ "type": "number" }));
 
-        let error = definitions::decode(&definition, "two", "retries").expect_err("not a number");
+        let error = definitions::decode(&definition, "two", "RETRIES").expect_err("not a number");
 
         insta::assert_snapshot!(error, @r"
-        The value for retries (FEATURE_FLAG) is not a number value of the flag.
+        The value of RETRIES is not a number value of the flag.
 
-        To resolve: Set FEATURE_FLAG to a value of the flag, as its declaration in the flags file describes.
+        To resolve: Set RETRIES to a value of the flag, as its declaration in `.env.flags` describes.
         ");
     }
 
@@ -232,29 +205,23 @@ mod decode {
 
 #[test]
 fn values() {
-    let definitions = definitions::parse(
-        &serde_json::json!({
-            "newCheckout": { "default": false, "type": "boolean" },
-            "pricing": { "default": "a", "options": ["a", "b"], "type": "select" },
-        }),
-        ENV_PREFIX,
-    )
+    let definitions = definitions::parse(&serde_json::json!({
+        "NEW_CHECKOUT": { "default": false, "type": "boolean" },
+        "PRICING": { "default": "a", "options": ["a", "b"], "type": "select" },
+    }))
     .expect("valid");
 
     let values = definitions::values(
         &definitions,
-        &env(&serde_json::json!({ "FEATURE_PRICING": "b", "FEATURE_UNKNOWN": "x" })),
+        &env(&serde_json::json!({ "PRICING": "b", "UNKNOWN": "x" })),
     )
     .expect("valid values");
     assert_eq!(
         serde_json::to_value(values).expect("serializes"),
-        serde_json::json!({ "pricing": "b" })
+        serde_json::json!({ "PRICING": "b" })
     );
 
-    let error = definitions::values(
-        &definitions,
-        &env(&serde_json::json!({ "FEATURE_PRICING": "z" })),
-    )
-    .expect_err("not an option");
-    assert_eq!(error.key, "pricing");
+    let error = definitions::values(&definitions, &env(&serde_json::json!({ "PRICING": "z" })))
+        .expect_err("not an option");
+    assert_eq!(error.key, "PRICING");
 }

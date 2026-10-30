@@ -78,7 +78,7 @@ mod http_store {
             )
             .build()
             .expect("a runtime");
-        let new_checkout = Key::<bool>::new("newCheckout", "FEATURE_NEW_CHECKOUT");
+        let new_checkout = Key::<bool>::new("NEW_CHECKOUT");
         let read = || async {
             local
                 .get(&parts("https://app.example.com/"), new_checkout)
@@ -89,25 +89,25 @@ mod http_store {
         // The local runtime has no flags file, so it reads the definitions of the remote runtime.
         insta::assert_snapshot!(read().await, @"false");
         store
-            .set("newCheckout", &json!(true))
+            .set("NEW_CHECKOUT", &json!(true))
             .await
             .expect("a write");
         insta::assert_snapshot!(read().await, @"true");
 
         let stored = store
-            .get(&["newCheckout".to_owned(), "pricing".to_owned()])
+            .get(&["NEW_CHECKOUT".to_owned(), "PRICING".to_owned()])
             .await
             .expect("values");
-        insta::assert_snapshot!(Json::Object(stored), @r#"{"newCheckout":true}"#);
+        insta::assert_snapshot!(Json::Object(stored), @r#"{"NEW_CHECKOUT":true}"#);
         insta::assert_debug_snapshot!(store.keys().await.expect("keys"), @r#"
         Some(
             [
-                "newCheckout",
+                "NEW_CHECKOUT",
             ],
         )
         "#);
 
-        store.delete("newCheckout").await.expect("a delete");
+        store.delete("NEW_CHECKOUT").await.expect("a delete");
         insta::assert_snapshot!(read().await, @"false");
     }
 
@@ -118,15 +118,13 @@ mod http_store {
         let store = HttpStore::new(&remote.store)
             .token("admin")
             .ttl(Duration::ZERO);
-        let definition = flargs::definitions::parse(
-            &json!({ "beta": { "default": true, "type": "boolean" } }),
-            flargs::definitions::ENV_PREFIX,
-        )
-        .expect("a definition")
-        .remove("beta")
-        .expect("beta");
+        let definition =
+            flargs::definitions::parse(&json!({ "BETA": { "default": true, "type": "boolean" } }))
+                .expect("a definition")
+                .remove("BETA")
+                .expect("BETA");
         store
-            .set_definition("beta", &definition)
+            .set_definition("BETA", &definition)
             .await
             .expect("a definition write");
 
@@ -136,7 +134,7 @@ mod http_store {
             .store(store)
             .build()
             .expect("a runtime");
-        let beta = Key::<bool>::new("beta", "FEATURE_BETA");
+        let beta = Key::<bool>::new("BETA");
         insta::assert_snapshot!(local.get(&parts("https://app.example.com/"), beta).await.expect("a value"), @"true");
     }
 
@@ -147,7 +145,7 @@ mod http_store {
         let store = HttpStore::new(&remote.file).token("wrong-token");
 
         let error = store
-            .get(&["newCheckout".to_owned()])
+            .get(&["NEW_CHECKOUT".to_owned()])
             .await
             .expect_err("no access");
         let message = error.to_string();
@@ -169,8 +167,8 @@ mod client {
         let remote = remote().await;
         let client = Client::new(&remote.file);
 
-        insta::assert_snapshot!(json!(client.values("").await.expect("values")), @r#"{"banner":false,"newCheckout":false}"#);
-        insta::assert_snapshot!(json!(client.values("flag.newCheckout=true").await.expect("values")), @r#"{"banner":false,"newCheckout":true}"#);
+        insta::assert_snapshot!(json!(client.values("").await.expect("values")), @r#"{"BANNER":false,"NEW_CHECKOUT":false}"#);
+        insta::assert_snapshot!(json!(client.values("flag.NEW_CHECKOUT=true").await.expect("values")), @r#"{"BANNER":false,"NEW_CHECKOUT":true}"#);
 
         // The signature of the Rust crate verifies in the TypeScript runtime.
         let expires_at = std::time::SystemTime::now()
@@ -178,17 +176,17 @@ mod client {
             .expect("a time after the epoch")
             .as_millis();
         let params = overrides::serialize(
-            &Values::from_iter([("newCheckout".to_owned(), json!(true))]),
+            &Values::from_iter([("NEW_CHECKOUT".to_owned(), json!(true))]),
             Some(&Signature {
                 expires_at: i64::try_from(expires_at).expect("fits in i64") + 60_000,
                 secret: "remote-secret",
             }),
         );
-        insta::assert_snapshot!(json!(client.values(&params).await.expect("values")), @r#"{"banner":false,"newCheckout":true}"#);
+        insta::assert_snapshot!(json!(client.values(&params).await.expect("values")), @r#"{"BANNER":false,"NEW_CHECKOUT":true}"#);
 
         // A signature that does not match drops every override, even of a public flag.
         let forged = params.replace("flag.sig=", "flag.sig=forged");
-        insta::assert_snapshot!(json!(client.values(&forged).await.expect("values")), @r#"{"banner":false,"newCheckout":false}"#);
+        insta::assert_snapshot!(json!(client.values(&forged).await.expect("values")), @r#"{"BANNER":false,"NEW_CHECKOUT":false}"#);
     }
 
     #[tokio::test]
@@ -197,7 +195,7 @@ mod client {
         let remote = remote().await;
         HttpStore::new(&remote.file)
             .token("admin")
-            .set("banner", &json!(true))
+            .set("BANNER", &json!(true))
             .await
             .expect("a write");
 
@@ -217,9 +215,9 @@ mod client {
         .expect("a blocking task");
         insta::assert_debug_snapshot!(lines, @r#"
         [
-            "cargo:rustc-env=FEATURE_BANNER=true",
+            "cargo:rustc-env=BANNER=true",
             "cargo:rerun-if-env-changed=FLARGS_TOKEN",
-            "cargo:rerun-if-env-changed=FEATURE_BANNER",
+            "cargo:rerun-if-env-changed=BANNER",
         ]
         "#);
     }

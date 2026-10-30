@@ -8,9 +8,9 @@ import { Request } from 'flargs/node'
 import { Flargs, Store } from 'flargs/server'
 
 const definitions = Definitions.parse({
-  banner: { build: true, default: false, public: true, type: 'boolean' },
-  newCheckout: { default: false, public: true, type: 'boolean' },
-  pricing: { default: 'a', options: ['a', 'b', 'c'], type: 'select' },
+  BANNER: { build: true, default: false, public: true, type: 'boolean' },
+  NEW_CHECKOUT: { default: false, public: true, type: 'boolean' },
+  PRICING: { default: 'a', options: ['a', 'b', 'c'], type: 'select' },
 })
 
 const authorize = (request: globalThis.Request) =>
@@ -25,10 +25,10 @@ async function listen(flargs: { fetch: Flargs.Flargs['fetch'] }): Promise<string
 }
 
 const file = await listen(
-  Flargs.create({ authorize, definitions, secret: 'remote-secret', store: Store.memory() }),
+  Flargs.create({ authorize, definitions, env: {}, secret: 'remote-secret', store: Store.memory() }),
 )
 const store = await listen(
-  Flargs.create({ authorize, secret: 'remote-secret', store: Store.memory() }),
+  Flargs.create({ authorize, env: {}, secret: 'remote-secret', store: Store.memory() }),
 )
 
 console.log(JSON.stringify({ file, store }))

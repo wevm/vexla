@@ -1,6 +1,6 @@
 //! Flag definitions: the `.env.flags` file, validation of definition objects (the store and the
-//! admin API), inference from `FEATURE_*` variables, the mapping between keys and environment
-//! variables, and the decoding of variable values.
+//! admin API), zero-config inference of a variable value, and the decoding of variable values.
+//! The key of a flag is the name of its environment variable, such as `NEW_CHECKOUT`.
 //!
 //! The `flargs` crate re-exports this crate as `flargs::definitions`. The `flargs::flags!` macro
 //! parses `.env.flags` with the same functions at compile time, so the shared vectors cover both.
@@ -14,17 +14,13 @@ use serde_json::{Map, Value};
 /// A JSON value.
 pub type Json = Value;
 
-/// Every flag of a project, keyed by flag key.
+/// Every flag of a project, keyed by flag key, which is also its environment variable.
 pub type Definitions = BTreeMap<String, Definition>;
 
-/// The default prefix of flag environment variables.
-pub const ENV_PREFIX: &str = "FEATURE_";
-
-const FIELDS: [&str; 8] = [
+const FIELDS: [&str; 7] = [
     "build",
     "default",
     "description",
-    "env",
     "expires",
     "options",
     "public",
@@ -40,11 +36,9 @@ pub struct Definition {
     pub build: bool,
     /// The value when no other source has one.
     pub default: Json,
-    /// The description, for the dev route, the admin API, and `.env.example`.
+    /// The description, for the dev route and the admin API.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    /// The environment variable that sets the value.
-    pub env: String,
     /// The date (`YYYY-MM-DD`) after which the flag is due for retirement.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expires: Option<String>,
@@ -60,11 +54,8 @@ pub struct Definition {
 /// A problem that [`check`] found in an environment.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Issue {
-    /// The environment variable.
-    pub env: String,
-    /// The key of the flag, when a flag declares the variable.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub key: Option<String>,
+    /// The environment variable, which is also the key of a declared flag.
+    pub key: String,
     /// Why the variable is a problem.
     pub reason: Reason,
 }
@@ -130,8 +121,8 @@ impl fmt::Display for Type {
 /// Returned when a declaration in a flags file does not follow the schema.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InvalidDeclarationError {
-    /// The key of the flag, the variable name when it lacks the prefix, `line N` for a line that is
-    /// not a comment or a `NAME=value` line, or `(root)` when the input is not an object.
+    /// The key of the flag, `line N` for a line that is not a comment or a `NAME=value` line, or
+    /// `(root)` when the input is not an object.
     pub key: String,
     /// What failed.
     pub reason: String,
@@ -153,9 +144,7 @@ impl std::error::Error for InvalidDeclarationError {}
 /// flag. The error never holds the value.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InvalidValueError {
-    /// The environment variable.
-    pub env: String,
-    /// The key of the flag.
+    /// The key of the flag, which is also its environment variable.
     pub key: String,
     /// The type of the flag.
     pub r#type: Type,
@@ -165,35 +154,31 @@ impl fmt::Display for InvalidValueError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "The value for {} ({}) is not a {} value of the flag.\n\nTo resolve: Set {} to a value of the flag, as its declaration in the flags file describes.",
-            self.key, self.env, self.r#type, self.env
+            "The value of {} is not a {} value of the flag.\n\nTo resolve: Set {} to a value of the flag, as its declaration in `.env.flags` describes.",
+            self.key, self.r#type, self.key
         )
     }
 }
 
 impl std::error::Error for InvalidValueError {}
 
-/// Returns the problems of `env` against `definitions`: variables with `prefix` that no flag
-/// declares, values that are not values of their flag, and flags past their `expires` date at
-/// `now` (milliseconds since the epoch).
+/// Returns the problems of `env` against `definitions`: values that are not values of their flag,
+/// flags past their `expires` date at `now` (milliseconds since the epoch), and, with `prefix`,
+/// variables with that prefix that no flag declares.
 pub fn check(
     definitions: &Definitions,
     env: &BTreeMap<String, String>,
-    prefix: &str,
+    prefix: Option<&str>,
     now: i64,
 ) -> Vec<Issue> {
-    let declared: BTreeMap<&str, (&String, &Definition)> = definitions
-        .iter()
-        .map(|entry| (entry.1.env.as_str(), entry))
-        .collect();
     let mut issues = Vec::new();
 
-    for (name, raw) in env {
-        let Some((key, definition)) = declared.get(name.as_str()) else {
-            if name.starts_with(prefix) {
+    for (key, raw) in env {
+        let Some(definition) = definitions.get(key) else {
+            // As in TypeScript, an empty prefix reports nothing.
+            if prefix.is_some_and(|prefix| !prefix.is_empty() && key.starts_with(prefix)) {
                 issues.push(Issue {
-                    env: name.clone(),
-                    key: None,
+                    key: key.clone(),
                     reason: Reason::Unknown,
                 });
             }
@@ -202,8 +187,7 @@ pub fn check(
 
         if decode(definition, raw, key).is_err() {
             issues.push(Issue {
-                env: name.clone(),
-                key: Some((*key).clone()),
+                key: key.clone(),
                 reason: Reason::Invalid,
             });
         }
@@ -212,8 +196,7 @@ pub fn check(
     for (key, definition) in definitions {
         if is_stale(definition, now) {
             issues.push(Issue {
-                env: definition.env.clone(),
-                key: Some(key.clone()),
+                key: key.clone(),
                 reason: Reason::Stale,
             });
         }
@@ -243,7 +226,6 @@ pub fn decode(definition: &Definition, raw: &str, key: &str) -> Result<Json, Inv
     match value {
         Some(value) if validate(definition, &value) => Ok(value),
         _ => Err(InvalidValueError {
-            env: definition.env.clone(),
             key: key.to_owned(),
             r#type: definition.r#type,
         }),
@@ -258,46 +240,26 @@ pub fn encode(value: &Json) -> String {
     }
 }
 
-/// Returns the environment variable of a key: `newCheckout` reads `FEATURE_NEW_CHECKOUT`.
-pub fn env_of(key: &str, prefix: &str) -> String {
-    let mut env = String::from(prefix);
-    let mut previous: Option<char> = None;
-
-    for char in key.chars() {
-        if char.is_ascii_uppercase()
-            && previous
-                .is_some_and(|previous| previous.is_ascii_lowercase() || previous.is_ascii_digit())
-        {
-            env.push('_');
-        }
-        env.extend(char.to_uppercase());
-        previous = Some(char);
+/// Returns the value that zero config infers from the text of a variable: `true` and `false` are a
+/// boolean, a decimal is a number, a JSON object or array is JSON, and other text is a string.
+pub fn infer(raw: &str) -> Json {
+    if raw == "true" || raw == "false" {
+        return Value::Bool(raw == "true");
     }
 
-    env
-}
+    if is_decimal(raw)
+        && let Some(value) = raw.parse().ok().and_then(number)
+    {
+        return value;
+    }
 
-/// Returns definitions for each variable with `prefix` in `env`, for a project with no flags file.
-/// Each flag is private. `true` and `false` make a boolean, a decimal makes a number, a JSON object
-/// or array makes a JSON flag, and other values make a string. The value is also the default.
-pub fn from_env(env: &BTreeMap<String, String>, prefix: &str) -> Definitions {
-    env.iter()
-        .filter(|entry| entry.0.len() > prefix.len() && entry.0.starts_with(prefix))
-        .map(|(name, raw)| {
-            let (r#type, default) = infer(raw);
-            let definition = Definition {
-                build: false,
-                default,
-                description: None,
-                env: name.clone(),
-                expires: None,
-                options: None,
-                public: false,
-                r#type,
-            };
-            (key_of(name, prefix), definition)
-        })
-        .collect()
+    if (raw.starts_with('{') || raw.starts_with('['))
+        && let Ok(value) = serde_json::from_str(raw)
+    {
+        return normalize(value);
+    }
+
+    Value::String(raw.to_owned())
 }
 
 /// Returns `true` when the `expires` date of the flag is before `now` (milliseconds since the
@@ -310,62 +272,40 @@ pub fn is_stale(definition: &Definition, now: i64) -> bool {
         .is_some_and(|day| day * MS_PER_DAY + MS_PER_DAY <= now)
 }
 
-/// Returns the key of an environment variable: `FEATURE_NEW_CHECKOUT` is `newCheckout`.
-pub fn key_of(name: &str, prefix: &str) -> String {
-    camel_case(&name.get(prefix.len()..).unwrap_or_default().to_lowercase())
-}
-
 /// Returns the definitions in a definition object, the format of the store and of the admin API.
-/// Keys in `snake_case` map to `camelCase`. Every flag must declare `type` and `default`.
+/// Each key is the name of the environment variable of its flag, such as `NEW_CHECKOUT`. Every
+/// flag must declare `type` and `default`.
 ///
 /// # Errors
 ///
-/// Returns [`InvalidDeclarationError`] when a declaration does not follow the schema.
-pub fn parse(input: &Json, prefix: &str) -> Result<Definitions, InvalidDeclarationError> {
+/// Returns [`InvalidDeclarationError`] when a key is not a variable name, or a declaration does not
+/// follow the schema.
+pub fn parse(input: &Json) -> Result<Definitions, InvalidDeclarationError> {
     let Value::Object(input) = input else {
         return Err(InvalidDeclarationError {
             key: "(root)".to_owned(),
-            reason: "The flags file is not an object.".to_owned(),
+            reason: "The definitions are not an object.".to_owned(),
         });
     };
 
-    let mut definitions = Definitions::new();
-    let mut envs: BTreeMap<String, String> = BTreeMap::new();
-
-    for (name, declaration) in input {
-        if name == "$schema" {
-            continue;
-        }
-
-        let key = camel_case(name);
-        let definition = declare(&key, declaration, prefix)?;
-
-        if definitions.contains_key(&key) {
-            return Err(InvalidDeclarationError {
-                reason: format!("The key {key} is declared twice."),
-                key,
-            });
-        }
-
-        if let Some(other) = envs.get(&definition.env) {
-            return Err(InvalidDeclarationError {
-                reason: format!(
-                    "The flags {other} and {key} read the same variable {}.",
-                    definition.env
-                ),
-                key,
-            });
-        }
-
-        envs.insert(definition.env.clone(), key.clone());
-        definitions.insert(key, definition);
-    }
-
-    Ok(definitions)
+    input
+        .iter()
+        .map(|(key, declaration)| {
+            if !is_variable(key) {
+                return Err(InvalidDeclarationError {
+                    key: key.clone(),
+                    reason: format!(
+                        "The key {key} is not an environment variable name, such as NEW_CHECKOUT."
+                    ),
+                });
+            }
+            Ok((key.clone(), declare(key, declaration)?))
+        })
+        .collect()
 }
 
-/// Returns the definitions in the text of `.env.flags`. Each variable with `prefix` declares a
-/// flag, and its value is the default. Comment lines directly above it hold the description and
+/// Returns the definitions in the text of `.env.flags`. Each variable declares a flag, its name is
+/// the key of the flag, and its value is the default. Comment lines directly above it hold the description and
 /// tags:
 ///
 /// - `@type {boolean}`, `{number}`, `{string}`, `{json}`, or a union of string literals such as
@@ -380,25 +320,18 @@ pub fn parse(input: &Json, prefix: &str) -> Result<Definitions, InvalidDeclarati
 ///
 /// Returns [`InvalidDeclarationError`] when a line or a declaration is invalid. The reason names
 /// the line.
-pub fn parse_file(text: &str, prefix: &str) -> Result<Definitions, InvalidDeclarationError> {
+pub fn parse_file(text: &str) -> Result<Definitions, InvalidDeclarationError> {
     let entries = scan(text)?;
     let mut declarations: Vec<(String, usize, Map<String, Value>, bool)> = Vec::new();
 
     for entry in &entries {
         let fail = |key: &str, reason: String| at(key.to_owned(), &reason, entry.line);
 
-        if entry.name.len() == prefix.len() || !entry.name.starts_with(prefix) {
-            return Err(fail(
-                &entry.name,
-                format!("The variable {} does not start with {prefix}.", entry.name),
-            ));
-        }
-        let key = key_of(&entry.name, prefix);
+        let key = entry.name.clone();
 
         let mut description = Vec::new();
         let mut declaration = Map::new();
         let mut r#type = None;
-        declaration.insert("env".to_owned(), Value::String(entry.name.clone()));
 
         for comment in &entry.comments {
             let Some(tags) = tags(comment) else {
@@ -501,7 +434,7 @@ pub fn parse_file(text: &str, prefix: &str) -> Result<Definitions, InvalidDeclar
     // Every line parses before any declaration validates, in file order, as in TypeScript.
     let mut definitions = Definitions::new();
     for (key, line, declaration, parsed) in declarations {
-        let definition = declare(&key, &Value::Object(declaration), prefix)
+        let definition = declare(&key, &Value::Object(declaration))
             .and_then(|definition| {
                 if parsed {
                     return Ok(definition);
@@ -549,7 +482,7 @@ pub fn values(
     definitions
         .iter()
         .filter_map(|(key, definition)| {
-            env.get(&definition.env)
+            env.get(key)
                 .map(|raw| decode(definition, raw, key).map(|value| (key.clone(), value)))
         })
         .collect()
@@ -564,24 +497,6 @@ fn at(key: String, reason: &str, line: usize) -> InvalidDeclarationError {
             reason.strip_suffix('.').unwrap_or(reason)
         ),
     }
-}
-
-fn camel_case(value: &str) -> String {
-    let mut result = String::with_capacity(value.len());
-    let mut chars = value.chars().peekable();
-
-    while let Some(char) = chars.next() {
-        if char == '_'
-            && let Some(next) =
-                chars.next_if(|next| next.is_ascii_lowercase() || next.is_ascii_digit())
-        {
-            result.push(next.to_ascii_uppercase());
-        } else {
-            result.push(char);
-        }
-    }
-
-    result
 }
 
 /// Returns the days since the epoch of a `YYYY-MM-DD` date. As `Date.parse` in JavaScript, it
@@ -611,11 +526,7 @@ fn day_of(date: &str) -> Option<i64> {
     Some(era * 146_097 + day_of_era - 719_468)
 }
 
-fn declare(
-    key: &str,
-    declaration: &Json,
-    prefix: &str,
-) -> Result<Definition, InvalidDeclarationError> {
+fn declare(key: &str, declaration: &Json) -> Result<Definition, InvalidDeclarationError> {
     let fail = |reason: String| InvalidDeclarationError {
         key: key.to_owned(),
         reason,
@@ -686,18 +597,6 @@ fn declare(
         Some(_) => return Err(fail(format!("`description` of {key} is not a string."))),
     };
 
-    // As `??` in TypeScript, an explicit `null` selects the default variable.
-    let env = match declaration.get("env") {
-        None | Some(Value::Null) => Some(env_of(key, prefix)),
-        Some(Value::String(env)) => Some(env.clone()),
-        Some(_) => None,
-    };
-    let Some(env) = env.filter(|env| is_variable(env)) else {
-        return Err(fail(format!(
-            "`env` of {key} is not a variable name in SCREAMING_SNAKE_CASE."
-        )));
-    };
-
     let expires = match declaration.get("expires") {
         None => None,
         Some(Value::String(expires)) if day_of(expires).is_some() => Some(expires.clone()),
@@ -718,7 +617,6 @@ fn declare(
         build: boolean("build")?,
         default: normalize(default.clone()),
         description,
-        env,
         expires,
         options,
         public: boolean("public")?,
@@ -898,26 +796,6 @@ fn unquote(value: &str) -> String {
         .to_owned()
 }
 
-fn infer(raw: &str) -> (Type, Json) {
-    if raw == "true" || raw == "false" {
-        return (Type::Boolean, Value::Bool(raw == "true"));
-    }
-
-    if is_decimal(raw)
-        && let Some(value) = raw.parse().ok().and_then(number)
-    {
-        return (Type::Number, value);
-    }
-
-    if (raw.starts_with('{') || raw.starts_with('['))
-        && let Ok(value) = serde_json::from_str(raw)
-    {
-        return (Type::Json, normalize(value));
-    }
-
-    (Type::String, Value::String(raw.to_owned()))
-}
-
 /// Returns `true` for text that matches `^-?\d+(\.\d+)?$`.
 fn is_decimal(raw: &str) -> bool {
     let digits = |text: &str| !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit());
@@ -929,13 +807,13 @@ fn is_decimal(raw: &str) -> bool {
     }
 }
 
-/// Returns `true` for text that matches `^[A-Z_][A-Z0-9_]*$`.
-fn is_variable(env: &str) -> bool {
-    let mut bytes = env.bytes();
+/// Returns `true` for text that matches `^[A-Za-z_][A-Za-z0-9_]*$`.
+fn is_variable(key: &str) -> bool {
+    let mut bytes = key.bytes();
     bytes
         .next()
-        .is_some_and(|byte| byte.is_ascii_uppercase() || byte == b'_')
-        && bytes.all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_')
+        .is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_')
+        && bytes.all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
 }
 
 /// Returns `text` without the whitespace that `String.prototype.trim` removes in JavaScript, which

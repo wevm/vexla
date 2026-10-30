@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 use crate::Json;
 use crate::client::Error;
-use crate::definitions::{self, ENV_PREFIX};
+use crate::definitions;
 
 /// The options of [`instructions`].
 #[derive(Clone, Copy, Debug)]
@@ -89,7 +89,7 @@ pub fn instructions(url: &str, options: &Options<'_>) -> Result<Vec<String>, Err
         if flag["build"] != Json::Bool(true) {
             continue;
         }
-        // A manifest flag holds its definition, with an explicit `env`.
+        // A manifest flag holds its definition, keyed by its variable.
         let declaration: serde_json::Map<String, Json> = flag
             .as_object()
             .into_iter()
@@ -97,14 +97,14 @@ pub fn instructions(url: &str, options: &Options<'_>) -> Result<Vec<String>, Err
             .filter(|(field, _)| {
                 matches!(
                     field.as_str(),
-                    "build" | "default" | "env" | "options" | "public" | "type"
+                    "build" | "default" | "options" | "public" | "type"
                 )
             })
             .map(|(field, value)| (field.clone(), value.clone()))
             .collect();
         let mut input = serde_json::Map::new();
         input.insert(key.clone(), Json::Object(declaration));
-        let Some(definition) = definitions::parse(&Json::Object(input), ENV_PREFIX)
+        let Some(definition) = definitions::parse(&Json::Object(input))
             .ok()
             .and_then(|mut parsed| parsed.remove(key))
         else {
@@ -114,7 +114,7 @@ pub fn instructions(url: &str, options: &Options<'_>) -> Result<Vec<String>, Err
         let stored = &flag["store"];
         let value = if !stored.is_null() && definitions::validate(&definition, stored) {
             definitions::encode(stored)
-        } else if let Some(raw) = options.env.get(&definition.env) {
+        } else if let Some(raw) = options.env.get(key) {
             raw.clone()
         } else {
             definitions::encode(&definition.default)
@@ -122,9 +122,9 @@ pub fn instructions(url: &str, options: &Options<'_>) -> Result<Vec<String>, Err
 
         // Cargo reads one instruction for each line, so a value cannot hold a line break.
         if !value.contains(['\n', '\r']) {
-            values.push(format!("cargo:rustc-env={}={value}", definition.env));
+            values.push(format!("cargo:rustc-env={key}={value}"));
         }
-        variables.push(definition.env);
+        variables.push(key.clone());
     }
 
     Ok(values

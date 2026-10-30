@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use axum::Router;
 use axum::routing::get;
-use flargs::definitions::{self, Definitions, ENV_PREFIX};
+use flargs::definitions::{self, Definitions};
 use flargs::overrides::{self, Signature};
 use flargs::{Access, BoxError, Json, Key, MemoryStore, Runtime, Store, Values};
 use reqwest::header::{COOKIE, SET_COOKIE};
@@ -21,8 +21,7 @@ use typed::{Flags, Pricing};
 const SECRET: &str = "test-secret";
 
 fn definitions() -> Definitions {
-    definitions::parse_file(include_str!("fixtures/runtime.env.flags"), ENV_PREFIX)
-        .expect("valid definitions")
+    definitions::parse_file(include_str!("fixtures/runtime.env.flags")).expect("valid definitions")
 }
 
 fn builder() -> flargs::Builder<Values> {
@@ -89,19 +88,31 @@ mod evaluate {
     async fn defaults() {
         let url = serve(&builder().build().expect("a runtime")).await;
 
-        insta::assert_snapshot!(values(&format!("{url}/app")).await, @r#"{"banner":false,"limits":{"requests":100},"newCheckout":false,"pricing":"a","title":"Hello"}"#);
+        insta::assert_snapshot!(values(&format!("{url}/app")).await, @r#"{"BANNER":false,"LIMITS":{"requests":100},"NEW_CHECKOUT":false,"PRICING":"a","TITLE":"Hello"}"#);
+    }
+
+    #[tokio::test]
+    async fn no_definitions_no_flags() {
+        let runtime = Runtime::<Values>::builder()
+            .env([("NEW_CHECKOUT".to_owned(), "true".to_owned())])
+            .secret(SECRET)
+            .build()
+            .expect("a runtime");
+        let url = serve(&runtime).await;
+
+        insta::assert_snapshot!(values(&format!("{url}/app?flag.NEW_CHECKOUT=true")).await, @"{}");
     }
 
     #[tokio::test]
     async fn resolution_order() {
-        let store = MemoryStore::with_values([("title".to_owned(), json!("Stored"))]);
+        let store = MemoryStore::with_values([("TITLE".to_owned(), json!("Stored"))]);
         let runtime = builder()
             .decide(Flags::PRICING, |plan: &String| {
                 (plan == "enterprise").then_some(Pricing::C)
             })
             .env([
-                ("FEATURE_LIMITS".to_owned(), r#"{"requests":5}"#.to_owned()),
-                ("FEATURE_TITLE".to_owned(), "From env".to_owned()),
+                ("LIMITS".to_owned(), r#"{"requests":5}"#.to_owned()),
+                ("TITLE".to_owned(), "From env".to_owned()),
             ])
             .identify(|parts| {
                 parts
@@ -117,7 +128,7 @@ mod evaluate {
         let url = serve(&runtime).await;
 
         let enterprise: Json = reqwest::Client::new()
-            .get(format!("{url}/app?flag.newCheckout=true"))
+            .get(format!("{url}/app?flag.NEW_CHECKOUT=true"))
             .header("x-plan", "enterprise")
             .send()
             .await
@@ -125,13 +136,13 @@ mod evaluate {
             .json()
             .await
             .expect("JSON");
-        insta::assert_snapshot!(enterprise["newCheckout"], @"true");
-        insta::assert_snapshot!(enterprise["title"], @r#""Stored""#);
-        insta::assert_snapshot!(enterprise["pricing"], @r#""c""#);
-        insta::assert_snapshot!(enterprise["limits"], @r#"{"requests":5}"#);
+        insta::assert_snapshot!(enterprise["NEW_CHECKOUT"], @"true");
+        insta::assert_snapshot!(enterprise["TITLE"], @r#""Stored""#);
+        insta::assert_snapshot!(enterprise["PRICING"], @r#""c""#);
+        insta::assert_snapshot!(enterprise["LIMITS"], @r#"{"requests":5}"#);
 
         let free = values(&format!("{url}/app")).await;
-        insta::assert_snapshot!(free["pricing"], @r#""a""#);
+        insta::assert_snapshot!(free["PRICING"], @r#""a""#);
     }
 
     struct InvalidStore;
@@ -142,7 +153,7 @@ mod evaluate {
         }
 
         async fn get(&self, _: &[String]) -> Result<Map<String, Json>, BoxError> {
-            Ok(Map::from_iter([("title".to_owned(), json!(42))]))
+            Ok(Map::from_iter([("TITLE".to_owned(), json!(42))]))
         }
 
         async fn set(&self, _: &str, _: &Json) -> Result<(), BoxError> {
@@ -154,7 +165,7 @@ mod evaluate {
     async fn invalid_store_value_and_decide_result_fall_through() {
         let (errors, on_error) = errors();
         // A key of another type than the flag lets `decide` return a value outside `options`.
-        let pricing = Key::<String>::new("pricing", "FEATURE_PRICING");
+        let pricing = Key::<String>::new("PRICING");
         let runtime = builder()
             .decide(pricing, |(): &()| Some("z".to_owned()))
             .on_error(on_error)
@@ -164,8 +175,8 @@ mod evaluate {
         let url = serve(&runtime).await;
 
         let values = values(&format!("{url}/app")).await;
-        insta::assert_snapshot!(values["title"], @r#""Hello""#);
-        insta::assert_snapshot!(values["pricing"], @r#""a""#);
+        insta::assert_snapshot!(values["TITLE"], @r#""Hello""#);
+        insta::assert_snapshot!(values["PRICING"], @r#""a""#);
         insta::assert_debug_snapshot!(errors.lock().expect("a lock"), @r#"
         [
             "Definitions.InvalidValueError",
@@ -217,7 +228,7 @@ mod evaluate {
             .secret(SECRET)
             .build()
             .expect("a runtime");
-        let parts = http::Request::get("https://app.example.com/?flag.newCheckout=true")
+        let parts = http::Request::get("https://app.example.com/?flag.NEW_CHECKOUT=true")
             .body(())
             .expect("a request")
             .into_parts()
@@ -244,46 +255,46 @@ mod overrides_ {
         let url = serve(&builder().build().expect("a runtime")).await;
 
         let unsigned = values(&format!(
-            "{url}/app?flag.newCheckout=true&flag.pricing=c&flag.banner=true"
+            "{url}/app?flag.NEW_CHECKOUT=true&flag.PRICING=c&flag.BANNER=true"
         ))
         .await;
-        insta::assert_snapshot!(json!([unsigned["newCheckout"], unsigned["pricing"], unsigned["banner"]]), @r#"[true,"a",false]"#);
+        insta::assert_snapshot!(json!([unsigned["NEW_CHECKOUT"], unsigned["PRICING"], unsigned["BANNER"]]), @r#"[true,"a",false]"#);
 
         let params = overrides::serialize(
-            &Values::from_iter([("pricing".to_owned(), json!("c"))]),
+            &Values::from_iter([("PRICING".to_owned(), json!("c"))]),
             Some(&Signature {
                 expires_at: now() + 60_000,
                 secret: SECRET,
             }),
         );
         let signed = values(&format!("{url}/app?{params}")).await;
-        insta::assert_snapshot!(signed["pricing"], @r#""c""#);
+        insta::assert_snapshot!(signed["PRICING"], @r#""c""#);
 
-        let forged = params.replace("pricing=c", "pricing=b");
+        let forged = params.replace("PRICING=c", "PRICING=b");
         let forged = values(&format!("{url}/app?{forged}")).await;
-        insta::assert_snapshot!(forged["pricing"], @r#""a""#);
+        insta::assert_snapshot!(forged["PRICING"], @r#""a""#);
     }
 
     #[tokio::test]
     async fn dev_mode_every_flag() {
         let url = serve(&builder().dev(true).build().expect("a runtime")).await;
 
-        let values = values(&format!("{url}/app?flag.pricing=c&flag.banner=true")).await;
-        insta::assert_snapshot!(json!([values["pricing"], values["banner"]]), @r#"["c",true]"#);
+        let values = values(&format!("{url}/app?flag.PRICING=c&flag.BANNER=true")).await;
+        insta::assert_snapshot!(json!([values["PRICING"], values["BANNER"]]), @r#"["c",true]"#);
     }
 
     #[tokio::test]
     async fn the_layer_stores_search_parameter_overrides_in_the_cookie() {
         let url = serve(&builder().build().expect("a runtime")).await;
 
-        let response = reqwest::get(format!("{url}/app?flag.newCheckout=true"))
+        let response = reqwest::get(format!("{url}/app?flag.NEW_CHECKOUT=true"))
             .await
             .expect("a response");
         let cookie = response.headers()[SET_COOKIE]
             .to_str()
             .expect("text")
             .to_owned();
-        assert!(cookie.starts_with("flargs=flag.newCheckout%3Dtrue%26flag.exp%3D"));
+        assert!(cookie.starts_with("flargs=flag.NEW_CHECKOUT%3Dtrue%26flag.exp%3D"));
         assert!(cookie.ends_with("; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax; Secure"));
 
         let pair = cookie.split(';').next().expect("a pair");
@@ -296,7 +307,7 @@ mod overrides_ {
             .json()
             .await
             .expect("JSON");
-        insta::assert_snapshot!(next["newCheckout"], @"true");
+        insta::assert_snapshot!(next["NEW_CHECKOUT"], @"true");
 
         let plain = reqwest::get(format!("{url}/app"))
             .await
@@ -309,7 +320,7 @@ mod overrides_ {
         let runtime = builder().build().expect("a runtime");
         let cookie = format!(
             "flargs={}",
-            "flag.pricing%3Dc%26flag.exp%3D9999999999%26flag.sig%3Dforged"
+            "flag.PRICING%3Dc%26flag.exp%3D9999999999%26flag.sig%3Dforged"
         );
         let parts = http::Request::get("https://app.example.com/")
             .header(COOKIE, cookie)
@@ -318,7 +329,7 @@ mod overrides_ {
             .into_parts()
             .0;
 
-        let pricing = Key::<String>::new("pricing", "FEATURE_PRICING");
+        let pricing = Key::<String>::new("PRICING");
         insta::assert_snapshot!(runtime.get(&parts, pricing).await.expect("a value"), @"a");
     }
 }
@@ -372,21 +383,21 @@ mod fetch {
 
         insta::assert_snapshot!(status("/manifest", None, false).await.status(), @"401 Unauthorized");
         insta::assert_snapshot!(status("/manifest", Some("viewer"), false).await.status(), @"200 OK");
-        insta::assert_snapshot!(status("/values/newCheckout", Some("viewer"), true).await.status(), @"403 Forbidden");
-        insta::assert_snapshot!(status("/values/newCheckout", Some("admin"), true).await.status(), @"200 OK");
+        insta::assert_snapshot!(status("/values/NEW_CHECKOUT", Some("viewer"), true).await.status(), @"403 Forbidden");
+        insta::assert_snapshot!(status("/values/NEW_CHECKOUT", Some("admin"), true).await.status(), @"200 OK");
         let challenge = status("/manifest", Some("challenge"), false).await;
         insta::assert_snapshot!(challenge.status(), @"401 Unauthorized");
         insta::assert_snapshot!(challenge.headers()["www-authenticate"].to_str().expect("text"), @"Bearer");
         insta::assert_snapshot!(status("/values", None, false).await.status(), @"200 OK");
 
-        insta::assert_snapshot!(values(&format!("{url}/app")).await["newCheckout"], @"true");
+        insta::assert_snapshot!(values(&format!("{url}/app")).await["NEW_CHECKOUT"], @"true");
     }
 
     #[tokio::test]
     async fn public_responses_never_hold_private_values() {
         let runtime = builder()
             .store(MemoryStore::with_values([(
-                "pricing".to_owned(),
+                "PRICING".to_owned(),
                 json!("c"),
             )]))
             .build()
@@ -394,21 +405,21 @@ mod fetch {
         let url = serve(&runtime).await;
 
         let values = values(&format!("{url}/.flags/values")).await;
-        insta::assert_snapshot!(values, @r#"{"banner":false,"newCheckout":false,"title":"Hello"}"#);
+        insta::assert_snapshot!(values, @r#"{"BANNER":false,"NEW_CHECKOUT":false,"TITLE":"Hello"}"#);
 
         let parts = http::Request::get("https://app.example.com/")
             .body(())
             .expect("a request")
             .into_parts()
             .0;
-        insta::assert_snapshot!(runtime.script(&parts).await.expect("a script"), @r#"<script type="application/json" id="__flargs">{"banner":false,"newCheckout":false,"title":"Hello"}</script>"#);
+        insta::assert_snapshot!(runtime.script(&parts).await.expect("a script"), @r#"<script type="application/json" id="__flargs">{"BANNER":false,"NEW_CHECKOUT":false,"TITLE":"Hello"}</script>"#);
     }
 
     #[tokio::test]
     async fn script_escapes_a_value_that_would_close_the_element() {
         let runtime = builder()
             .store(MemoryStore::with_values([(
-                "title".to_owned(),
+                "TITLE".to_owned(),
                 json!("</script><script>alert(1)"),
             )]))
             .build()
@@ -441,17 +452,17 @@ mod fetch {
                 .send()
         };
 
-        insta::assert_snapshot!(put("pricing", json!("z")).await.expect("a response").status(), @"400 Bad Request");
-        insta::assert_snapshot!(put("nope", json!(true)).await.expect("a response").status(), @"404 Not Found");
-        insta::assert_snapshot!(put("pricing", json!("b")).await.expect("a response").status(), @"200 OK");
-        insta::assert_snapshot!(values(&format!("{url}/app")).await["pricing"], @r#""b""#);
+        insta::assert_snapshot!(put("PRICING", json!("z")).await.expect("a response").status(), @"400 Bad Request");
+        insta::assert_snapshot!(put("NOPE", json!(true)).await.expect("a response").status(), @"404 Not Found");
+        insta::assert_snapshot!(put("PRICING", json!("b")).await.expect("a response").status(), @"200 OK");
+        insta::assert_snapshot!(values(&format!("{url}/app")).await["PRICING"], @r#""b""#);
 
         client
-            .delete(format!("{url}/.flags/values/pricing"))
+            .delete(format!("{url}/.flags/values/PRICING"))
             .send()
             .await
             .expect("a response");
-        insta::assert_snapshot!(values(&format!("{url}/app")).await["pricing"], @r#""a""#);
+        insta::assert_snapshot!(values(&format!("{url}/app")).await["PRICING"], @r#""a""#);
     }
 
     #[tokio::test]
@@ -460,7 +471,7 @@ mod fetch {
             .dev(true)
             .store(MemoryStore::with_values([
                 ("oldFlag".to_owned(), json!(true)),
-                ("title".to_owned(), json!("Stored")),
+                ("TITLE".to_owned(), json!("Stored")),
             ]))
             .build()
             .expect("a runtime");
@@ -485,19 +496,18 @@ mod fetch {
         let runtime = builder()
             .dev(true)
             .store(MemoryStore::with_values([(
-                "title".to_owned(),
+                "TITLE".to_owned(),
                 json!("Stored"),
             )]))
             .build()
             .expect("a runtime");
         let url = serve(&runtime).await;
 
-        let manifest = values(&format!("{url}/.flags/manifest?flag.pricing=b")).await;
-        insta::assert_snapshot!(serde_json::to_string_pretty(&manifest["flags"]["title"]).expect("JSON"), @r#"
+        let manifest = values(&format!("{url}/.flags/manifest?flag.PRICING=b")).await;
+        insta::assert_snapshot!(serde_json::to_string_pretty(&manifest["flags"]["TITLE"]).expect("JSON"), @r#"
         {
           "build": false,
           "default": "Hello",
-          "env": "FEATURE_TITLE",
           "override": null,
           "public": true,
           "source": "store",
@@ -507,7 +517,7 @@ mod fetch {
           "value": "Stored"
         }
         "#);
-        insta::assert_snapshot!(json!([manifest["flags"]["pricing"]["source"], manifest["flags"]["pricing"]["value"]]), @r#"["override","b"]"#);
+        insta::assert_snapshot!(json!([manifest["flags"]["PRICING"]["source"], manifest["flags"]["PRICING"]["value"]]), @r#"["override","b"]"#);
         insta::assert_snapshot!(json!([manifest["store"], manifest["storeDefinitions"], manifest["version"]]), @"[true,false,1]");
     }
 
@@ -518,7 +528,7 @@ mod fetch {
 
         let response = client
             .put(format!("{url}/.flags/overrides"))
-            .body(r#"{"values":{"pricing":"c"}}"#)
+            .body(r#"{"values":{"PRICING":"c"}}"#)
             .send()
             .await
             .expect("a response");
@@ -534,7 +544,7 @@ mod fetch {
             .json()
             .await
             .expect("JSON");
-        insta::assert_snapshot!(values["pricing"], @r#""c""#);
+        insta::assert_snapshot!(values["PRICING"], @r#""c""#);
 
         let cleared = client
             .delete(format!("{url}/.flags/overrides"))
@@ -556,7 +566,7 @@ mod fetch {
             client
                 .post(format!("{url}/.flags/links"))
                 .body(
-                    json!({ "expiresAt": expires_at, "url": "/app", "values": { "pricing": "c" } })
+                    json!({ "expiresAt": expires_at, "url": "/app", "values": { "PRICING": "c" } })
                         .to_string(),
                 )
                 .send()
@@ -570,7 +580,7 @@ mod fetch {
             .expect("JSON");
         let link_url = body["url"].as_str().expect("a URL");
         let query = link_url
-            .strip_prefix(&format!("{url}/app?flag.pricing=c&flag.exp="))
+            .strip_prefix(&format!("{url}/app?flag.PRICING=c&flag.exp="))
             .expect("the link of /app");
         let (exp, sig) = query.split_once("&flag.sig=").expect("a signature");
         assert!(exp.chars().all(|char| char.is_ascii_digit()));
@@ -578,7 +588,7 @@ mod fetch {
             sig.chars()
                 .all(|char| char.is_ascii_alphanumeric() || char == '-' || char == '_')
         );
-        insta::assert_snapshot!(values(link_url).await["pricing"], @r#""c""#);
+        insta::assert_snapshot!(values(link_url).await["PRICING"], @r#""c""#);
 
         let expired: Json = link(now() - 1_000)
             .await
@@ -587,16 +597,16 @@ mod fetch {
             .await
             .expect("JSON");
         let expired = expired["url"].as_str().expect("a URL");
-        insta::assert_snapshot!(values(expired).await["pricing"], @r#""a""#);
+        insta::assert_snapshot!(values(expired).await["PRICING"], @r#""a""#);
 
         let build = client
             .post(format!("{url}/.flags/links"))
-            .body(r#"{"expiresAt":0,"url":"/app","values":{"banner":true}}"#)
+            .body(r#"{"expiresAt":0,"url":"/app","values":{"BANNER":true}}"#)
             .send()
             .await
             .expect("a response");
         insta::assert_snapshot!(build.status(), @"400 Bad Request");
-        insta::assert_snapshot!(build.text().await.expect("text"), @r#"{"error":"build_flag","key":"banner"}"#);
+        insta::assert_snapshot!(build.text().await.expect("text"), @r#"{"error":"build_flag","key":"BANNER"}"#);
     }
 
     #[tokio::test]
@@ -611,7 +621,7 @@ mod fetch {
         let url = serve(&closed).await;
         let client = reqwest::Client::new();
         let status = client
-            .put(format!("{url}/.flags/definitions/beta"))
+            .put(format!("{url}/.flags/definitions/BETA"))
             .body("{}")
             .send()
             .await
@@ -627,16 +637,16 @@ mod fetch {
             .expect("a runtime");
         let url = serve(&open).await;
         let created = client
-            .put(format!("{url}/.flags/definitions/beta"))
+            .put(format!("{url}/.flags/definitions/BETA"))
             .body(r#"{"default":false,"public":true,"type":"boolean"}"#)
             .send()
             .await
             .expect("a response");
         insta::assert_snapshot!(created.status(), @"200 OK");
-        insta::assert_snapshot!(values(&format!("{url}/app?flag.beta=true")).await, @r#"{"beta":true}"#);
+        insta::assert_snapshot!(values(&format!("{url}/app?flag.BETA=true")).await, @r#"{"BETA":true}"#);
 
         let invalid = client
-            .put(format!("{url}/.flags/definitions/gamma"))
+            .put(format!("{url}/.flags/definitions/GAMMA"))
             .body(r#"{"default":1,"type":"boolean"}"#)
             .send()
             .await
@@ -644,7 +654,7 @@ mod fetch {
         insta::assert_snapshot!(invalid.status(), @"400 Bad Request");
 
         let deleted = client
-            .delete(format!("{url}/.flags/definitions/beta"))
+            .delete(format!("{url}/.flags/definitions/BETA"))
             .send()
             .await
             .expect("a response");
@@ -660,7 +670,7 @@ mod fetch {
         )
         .await;
         let conflict = client
-            .put(format!("{with_file}/.flags/definitions/beta"))
+            .put(format!("{with_file}/.flags/definitions/BETA"))
             .body("{}")
             .send()
             .await
@@ -705,7 +715,7 @@ mod fetch {
             .0;
 
         let error = runtime
-            .get(&parts, Key::<bool>::new("beta", "FEATURE_BETA"))
+            .get(&parts, Key::<bool>::new("BETA"))
             .await
             .expect_err("no definitions");
         insta::assert_snapshot!(error.name(), @"Runtime.DefinitionsUnavailableError");
@@ -809,7 +819,7 @@ mod build {
 
     #[tokio::test]
     async fn pull_emits_build_flag_variables() {
-        let store = MemoryStore::with_values([("banner".to_owned(), json!(true))]);
+        let store = MemoryStore::with_values([("BANNER".to_owned(), json!(true))]);
         let runtime = builder()
             .authorize(|parts| {
                 if parts
@@ -849,9 +859,9 @@ mod build {
 
         insta::assert_debug_snapshot!(lines.0, @r#"
         [
-            "cargo:rustc-env=FEATURE_BANNER=true",
+            "cargo:rustc-env=BANNER=true",
             "cargo:rerun-if-env-changed=FLARGS_TOKEN",
-            "cargo:rerun-if-env-changed=FEATURE_BANNER",
+            "cargo:rerun-if-env-changed=BANNER",
         ]
         "#);
         insta::assert_snapshot!(lines.1, @r"

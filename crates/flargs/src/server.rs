@@ -316,7 +316,7 @@ impl<F> Runtime<F> {
                 let mut input = Map::new();
                 input.insert(key.to_owned(), body);
                 let parsed: Result<Definition, String> =
-                    match definitions::parse(&Json::Object(input), &self.inner.env_prefix) {
+                    match definitions::parse(&Json::Object(input)) {
                         Ok(mut parsed) => parsed
                             .remove(key)
                             .ok_or_else(|| "Invalid definition.".to_owned()),

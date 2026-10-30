@@ -9,53 +9,21 @@ use flargs_definitions::{self as definitions, Definition, Json, Type};
 use proc_macro::TokenStream;
 use proc_macro2::{Literal, TokenStream as Tokens};
 use quote::quote;
-use syn::parse::{Parse, ParseStream};
-use syn::{Ident, LitStr, Token};
+use syn::{Ident, LitStr};
 
 /// Reads `.env.flags` at compile time and generates `Flags`, one `flargs::Key` for each runtime
 /// flag, one constant for each build flag, and one enum for each select flag. See `flargs::flags!`.
 #[proc_macro]
 pub fn flags(input: TokenStream) -> TokenStream {
-    let input = syn::parse_macro_input!(input as Input);
+    let input = syn::parse_macro_input!(input as LitStr);
     expand(&input)
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
 
-struct Input {
-    path: LitStr,
-    prefix: Option<LitStr>,
-}
-
-impl Parse for Input {
-    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let path = input.parse()?;
-        let mut prefix = None;
-
-        if input.parse::<Option<Token![,]>>()?.is_some() && !input.is_empty() {
-            let name: Ident = input.parse()?;
-            if name != "env_prefix" {
-                return Err(syn::Error::new(
-                    name.span(),
-                    "flargs::flags! accepts only `env_prefix = \"...\"` after the path.",
-                ));
-            }
-            input.parse::<Token![=]>()?;
-            prefix = Some(input.parse()?);
-            input.parse::<Option<Token![,]>>()?;
-        }
-
-        Ok(Self { path, prefix })
-    }
-}
-
-fn expand(input: &Input) -> syn::Result<Tokens> {
-    let file = input.path.value();
-    let fail = |message: String| syn::Error::new(input.path.span(), message);
-    let prefix = input
-        .prefix
-        .as_ref()
-        .map_or_else(|| definitions::ENV_PREFIX.to_owned(), LitStr::value);
+fn expand(input: &LitStr) -> syn::Result<Tokens> {
+    let file = input.value();
+    let fail = |message: String| syn::Error::new(input.span(), message);
 
     let root = std::env::var("CARGO_MANIFEST_DIR").map_err(|_| {
         fail("flargs::flags! needs CARGO_MANIFEST_DIR. Build with Cargo.".to_owned())
@@ -68,20 +36,26 @@ fn expand(input: &Input) -> syn::Result<Tokens> {
         ))
     })?;
 
-    let definitions = definitions::parse_file(&text, &prefix)
-        .map_err(|error| fail(format!("{file}: {error}")))?;
+    let definitions =
+        definitions::parse_file(&text).map_err(|error| fail(format!("{file}: {error}")))?;
 
     let mut constants = Vec::new();
     let mut declarations = Vec::new();
     let mut defaults = Vec::new();
     let mut enums = Vec::new();
     let mut fields = Vec::new();
+    let mut names = BTreeSet::new();
     let mut reads = Vec::new();
 
     for (key, definition) in &definitions {
-        let name = definitions::env_of(key, "");
-        let constant = ident(&name, key, &fail)?;
-        let field = ident(&name.to_lowercase(), key, &fail)?;
+        let name = snake_case(key);
+        if !names.insert(name.clone()) {
+            return Err(fail(format!(
+                "{file}: Two flags make the Rust field {name}. Rename one of them."
+            )));
+        }
+        let constant = ident(key, key, &fail)?;
+        let field = ident(&name, key, &fail)?;
         let docs = definition
             .description
             .clone()
@@ -89,7 +63,7 @@ fn expand(input: &Input) -> syn::Result<Tokens> {
 
         let options = match &definition.options {
             Some(options) if definition.r#type == Type::Select => {
-                let item = enumerate(key, options, &docs, &fail)?;
+                let item = enumerate(key, &name, options, &docs, &fail)?;
                 enums.push(item.tokens);
                 Some(item.name)
             }
@@ -99,37 +73,32 @@ fn expand(input: &Input) -> syn::Result<Tokens> {
         declarations.push(declaration(key, definition));
 
         if definition.build {
-            let value = match std::env::var(&definition.env) {
+            let value = match std::env::var(key) {
                 Ok(raw) => definitions::decode(definition, &raw, key)
                     .map_err(|error| fail(format!("{file}: {error}")))?,
                 Err(std::env::VarError::NotPresent) => definition.default.clone(),
                 Err(std::env::VarError::NotUnicode(_)) => {
-                    return Err(fail(format!(
-                        "{file}: The variable {} of {key} is not Unicode.",
-                        definition.env
-                    )));
+                    return Err(fail(format!("{file}: The variable {key} is not Unicode.")));
                 }
             };
-            let (ty, value) = constant_of(definition, &value, options.as_ref(), &fail)?;
-            let env = &definition.env;
+            let (ty, value) = constant_of(key, definition, &value, options.as_ref(), &fail)?;
 
             // `option_env!` records the variable, so Cargo rebuilds the crate when it changes.
             constants.push(quote! {
                 #[doc = #docs]
                 pub const #constant: #ty = {
-                    let _ = ::core::option_env!(#env);
+                    let _ = ::core::option_env!(#key);
                     #value
                 };
             });
             continue;
         }
 
-        let (ty, default) = field_of(definition, options.as_ref(), &fail)?;
-        let env = &definition.env;
+        let (ty, default) = field_of(key, definition, options.as_ref(), &fail)?;
 
         constants.push(quote! {
             #[doc = #docs]
-            pub const #constant: ::flargs::Key<#ty> = ::flargs::Key::new(#key, #env);
+            pub const #constant: ::flargs::Key<#ty> = ::flargs::Key::new(#key);
         });
         defaults.push(quote! { #field: #default });
         reads.push(quote! {
@@ -203,7 +172,6 @@ fn declaration(key: &str, definition: &Definition) -> Tokens {
     let build = definition.build;
     let default = json(&definition.default);
     let description = text(definition.description.as_ref());
-    let env = &definition.env;
     let expires = text(definition.expires.as_ref());
     let options = definition.options.as_ref().map_or_else(
         || none.clone(),
@@ -229,7 +197,6 @@ fn declaration(key: &str, definition: &Definition) -> Tokens {
                 build: #build,
                 default: #default,
                 description: #description,
-                env: ::std::string::String::from(#env),
                 expires: #expires,
                 options: #options,
                 public: #public,
@@ -241,17 +208,13 @@ fn declaration(key: &str, definition: &Definition) -> Tokens {
 
 /// Returns the type and the value of a build flag constant.
 fn constant_of(
+    key: &str,
     definition: &Definition,
     value: &Json,
     options: Option<&Ident>,
     fail: &dyn Fn(String) -> syn::Error,
 ) -> syn::Result<(Tokens, Tokens)> {
-    let invalid = || {
-        fail(format!(
-            "The default of {} has no Rust form.",
-            definition.env
-        ))
-    };
+    let invalid = || fail(format!("The default of {key} has no Rust form."));
 
     Ok(match (definition.r#type, value) {
         (Type::Boolean, Json::Bool(value)) => (quote!(bool), quote!(#value)),
@@ -278,14 +241,16 @@ struct Enum {
     tokens: Tokens,
 }
 
-/// Returns the enum of a select flag, with one variant in `PascalCase` for each option.
+/// Returns the enum of a select flag, named in `PascalCase` from the `snake_case` name of the key,
+/// with one variant in `PascalCase` for each option.
 fn enumerate(
     key: &str,
+    name: &str,
     options: &[String],
     docs: &str,
     fail: &dyn Fn(String) -> syn::Error,
 ) -> syn::Result<Enum> {
-    let name = ident(&pascal_case(key), key, fail)?;
+    let name = ident(&pascal_case(name), key, fail)?;
     let variants = options
         .iter()
         .map(|option| ident(&pascal_case(option), key, fail))
@@ -334,6 +299,7 @@ fn enumerate(
 
 /// Returns the type and the default of a runtime flag field.
 fn field_of(
+    key: &str,
     definition: &Definition,
     options: Option<&Ident>,
     fail: &dyn Fn(String) -> syn::Error,
@@ -347,7 +313,7 @@ fn field_of(
                 quote!(::std::string::String::from(#value)),
             )
         }
-        _ => constant_of(definition, &definition.default, options, fail)?,
+        _ => constant_of(key, definition, &definition.default, options, fail)?,
     })
 }
 
@@ -406,4 +372,23 @@ fn pascal_case(text: &str) -> String {
                 .chain(chars)
         })
         .collect()
+}
+
+/// Returns lowercase `snake_case` text: `NEW_CHECKOUT` and `newCheckout` are `new_checkout`.
+fn snake_case(text: &str) -> String {
+    let mut result = String::with_capacity(text.len());
+    let mut previous: Option<char> = None;
+
+    for char in text.chars() {
+        if char.is_ascii_uppercase()
+            && previous
+                .is_some_and(|previous| previous.is_ascii_lowercase() || previous.is_ascii_digit())
+        {
+            result.push('_');
+        }
+        result.push(char.to_ascii_lowercase());
+        previous = Some(char);
+    }
+
+    result
 }

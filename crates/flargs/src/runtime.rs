@@ -74,7 +74,6 @@ pub struct Builder<F> {
     definitions: Option<Definitions>,
     dev: bool,
     env: Option<BTreeMap<String, String>>,
-    env_prefix: String,
     flags: PhantomData<fn() -> F>,
     identify: Option<Identify>,
     on_error: Option<OnError>,
@@ -120,7 +119,7 @@ impl<F: FlagSet> Builder<F> {
     }
 
     /// Sets the definitions, such as from [`definitions::parse_file`]. Default: the definitions of
-    /// `F`. Without them, the store holds the definitions, or the environment declares them.
+    /// `F`. Without them, the store holds the definitions, or the runtime has no flags.
     #[must_use]
     pub fn definitions(mut self, definitions: Definitions) -> Self {
         self.definitions = Some(definitions);
@@ -135,18 +134,11 @@ impl<F: FlagSet> Builder<F> {
         self
     }
 
-    /// Sets the environment, for `FEATURE_*` values. Default: the variables of the process when
-    /// [`Builder::build`] runs.
+    /// Sets the environment, whose variable of the same name as a flag sets its value. Default: the
+    /// variables of the process when [`Builder::build`] runs.
     #[must_use]
     pub fn env(mut self, env: impl IntoIterator<Item = (String, String)>) -> Self {
         self.env = Some(env.into_iter().collect());
-        self
-    }
-
-    /// Sets the prefix of flag environment variables. Default: `FEATURE_`.
-    #[must_use]
-    pub fn env_prefix(mut self, prefix: impl Into<String>) -> Self {
-        self.env_prefix = prefix.into();
         self
     }
 
@@ -213,7 +205,7 @@ impl<F: FlagSet> Builder<F> {
         let origin = match (self.definitions.or_else(F::definitions), &self.store) {
             (Some(definitions), _) => Origin::File(Arc::new(definitions)),
             (None, Some(store)) if store.definitions() => Origin::Store(Mutex::default()),
-            (None, _) => Origin::Env(Arc::new(definitions::from_env(&env, &self.env_prefix))),
+            (None, _) => Origin::Empty(Arc::default()),
         };
 
         Ok(Runtime {
@@ -224,7 +216,6 @@ impl<F: FlagSet> Builder<F> {
                 decide: self.decide,
                 dev: self.dev,
                 env,
-                env_prefix: self.env_prefix,
                 identify: self.identify,
                 on_error: self.on_error,
                 origin,
@@ -274,7 +265,6 @@ pub(crate) struct Inner {
     decide: HashMap<String, Decide>,
     pub(crate) dev: bool,
     env: BTreeMap<String, String>,
-    pub(crate) env_prefix: String,
     identify: Option<Identify>,
     on_error: Option<OnError>,
     pub(crate) origin: Origin,
@@ -285,8 +275,8 @@ pub(crate) struct Inner {
 
 /// Where the definitions come from.
 pub(crate) enum Origin {
-    /// No flags file and no store definitions: the variables with the prefix declare the flags.
-    Env(Arc<Definitions>),
+    /// No flags file and no store definitions: the runtime has no flags.
+    Empty(Arc<Definitions>),
     /// A flags file, or definitions from the builder.
     File(Arc<Definitions>),
     /// The store, read once and again after a definition write through this runtime.
@@ -331,7 +321,6 @@ impl<F: FlagSet> Runtime<F> {
             definitions: None,
             dev: false,
             env: None,
-            env_prefix: definitions::ENV_PREFIX.to_owned(),
             flags: PhantomData,
             identify: None,
             on_error: None,
@@ -352,15 +341,14 @@ impl<F: FlagSet> Runtime<F> {
 }
 
 impl<F> Runtime<F> {
-    /// Returns the definitions: the flags file, the store definitions, or the definitions that the
-    /// environment declares.
+    /// Returns the definitions: the flags file, the store definitions, or none.
     ///
     /// # Errors
     ///
     /// Returns [`Error::DefinitionsUnavailable`] when the store cannot return the definitions.
     pub async fn definitions(&self) -> Result<Arc<Definitions>, Error> {
         let cache = match &self.inner.origin {
-            Origin::Env(definitions) | Origin::File(definitions) => {
+            Origin::Empty(definitions) | Origin::File(definitions) => {
                 return Ok(Arc::clone(definitions));
             }
             Origin::Store(cache) => cache,
@@ -377,7 +365,7 @@ impl<F> Runtime<F> {
             .list_definitions()
             .await
             .map_err(Error::DefinitionsUnavailable)?;
-        let definitions = definitions::parse(&Json::Object(list), &self.inner.env_prefix)
+        let definitions = definitions::parse(&Json::Object(list))
             .map_err(|error| Error::DefinitionsUnavailable(error.into()))?;
 
         let definitions = Arc::new(definitions);
@@ -396,7 +384,6 @@ impl<F> Runtime<F> {
         let resolved = self.resolve(parts, key.key()).await?;
         T::from_json(&resolved.value).ok_or_else(|| {
             Error::InvalidValue(InvalidValueError {
-                env: key.env().to_owned(),
                 key: key.key().to_owned(),
                 r#type: self.type_of(key.key()).unwrap_or(definitions::Type::Json),
             })
@@ -578,7 +565,6 @@ impl<F> Runtime<F> {
         };
         let invalid = || {
             Error::InvalidValue(InvalidValueError {
-                env: definition.env.clone(),
                 key: key.to_owned(),
                 r#type: definition.r#type,
             })
@@ -591,7 +577,7 @@ impl<F> Runtime<F> {
             });
         }
 
-        let fallback = match self.inner.env.get(&definition.env) {
+        let fallback = match self.inner.env.get(key) {
             None => Resolved {
                 source: Source::Default,
                 value: definition.default.clone(),
@@ -646,7 +632,7 @@ impl<F> Runtime<F> {
 
     fn type_of(&self, key: &str) -> Option<definitions::Type> {
         match &self.inner.origin {
-            Origin::Env(definitions) | Origin::File(definitions) => {
+            Origin::Empty(definitions) | Origin::File(definitions) => {
                 definitions.get(key).map(|definition| definition.r#type)
             }
             Origin::Store(cache) => lock(cache)

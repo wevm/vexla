@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use flargs::Json;
-use flargs::definitions::{self, Definitions, ENV_PREFIX};
+use flargs::definitions::{self, Definitions};
 use flargs::overrides::{self, ParseOptions, Signature};
 
 fn vectors() -> Json {
@@ -12,7 +12,7 @@ fn vectors() -> Json {
 }
 
 fn definitions(vectors: &Json) -> Definitions {
-    definitions::parse(&vectors["definitions"], ENV_PREFIX).expect("valid definitions")
+    definitions::parse(&vectors["definitions"]).expect("valid definitions")
 }
 
 fn str(value: &Json) -> &str {
@@ -91,30 +91,30 @@ mod parse {
             secret: None,
         };
 
-        let overrides = overrides::parse("?flag.banner=true&flag.pricing=c&flag.nope=1", &options)
+        let overrides = overrides::parse("?flag.BANNER=true&flag.PRICING=c&flag.NOPE=1", &options)
             .expect("unsigned");
 
         let [build, private, unknown] = overrides.errors.as_slice() else {
             panic!("three errors");
         };
         insta::assert_snapshot!(build, @r"
-        The build flag banner accepts no override outside dev mode.
+        The build flag BANNER accepts no override outside dev mode.
 
         To resolve: Set the variable of the flag for the build, or override it in dev mode.
         ");
         insta::assert_snapshot!(private, @r"
-        The private flag pricing accepts only a signed override outside dev mode.
+        The private flag PRICING accepts only a signed override outside dev mode.
 
         To resolve: Request a signed link with `flargs link`, or `POST /.flags/links`.
         ");
         insta::assert_snapshot!(unknown, @r"
-        No flag declares the key nope.
+        No flag declares the key NOPE.
 
         To resolve: Check the key against the flags file.
         ");
 
         let error =
-            overrides::parse("flag.pricing=c&flag.sig=abc", &options).expect_err("no secret");
+            overrides::parse("flag.PRICING=c&flag.sig=abc", &options).expect_err("no secret");
         insta::assert_snapshot!(error, @r"
         The override is signed, but the runtime has no secret to verify it.
 
@@ -147,8 +147,8 @@ fn round_trip() {
     let vectors = vectors();
     let definitions = definitions(&vectors);
     let values: BTreeMap<String, Json> = serde_json::from_value(serde_json::json!({
-        "limits": { "requests": 5 },
-        "pricing": "b",
+        "LIMITS": { "requests": 5 },
+        "PRICING": "b",
     }))
     .expect("values");
     let signature = Signature {

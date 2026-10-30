@@ -5,7 +5,7 @@ mod default {
 }
 
 mod cargo {
-    flargs::flags!("tests/fixtures/cargo.env.flags", env_prefix = "CARGO_PKG_");
+    flargs::flags!("tests/fixtures/cargo.env.flags");
 }
 
 use default::{Flags, Pricing, Theme};
@@ -19,16 +19,17 @@ fn build_constants() {
     assert!(!Flags::MAINTENANCE_BANNER);
     assert_eq!(Flags::BUILD_LIMITS, r#"{"requests":5}"#);
     assert_eq!(Flags::THEME, Theme::Light);
-    assert_eq!(cargo::Flags::NAME, "flargs");
-    assert!(cargo::Flags::VERSION_MAJOR.abs() < f64::EPSILON);
+    assert_eq!(cargo::Flags::CARGO_PKG_NAME, "flargs");
+    assert!(cargo::Flags::CARGO_PKG_VERSION_MAJOR.abs() < f64::EPSILON);
 }
 
 #[test]
 fn keys() {
-    assert_eq!(Flags::NEW_CHECKOUT.key(), "newCheckout");
-    assert_eq!(Flags::NEW_CHECKOUT.env(), "FEATURE_NEW_CHECKOUT");
-    assert_eq!(cargo::Flags::DESCRIPTION.key(), "description");
-    assert_eq!(cargo::Flags::DESCRIPTION.env(), "CARGO_PKG_DESCRIPTION");
+    assert_eq!(Flags::NEW_CHECKOUT.key(), "NEW_CHECKOUT");
+    assert_eq!(
+        cargo::Flags::CARGO_PKG_DESCRIPTION.key(),
+        "CARGO_PKG_DESCRIPTION"
+    );
 }
 
 #[test]
@@ -55,17 +56,14 @@ fn select_enums() {
 fn flag_set() {
     use flargs::FlagSet as _;
 
-    let parsed = flargs::definitions::parse_file(
-        include_str!("fixtures/flags.env.flags"),
-        flargs::definitions::ENV_PREFIX,
-    )
-    .expect("valid definitions");
+    let parsed = flargs::definitions::parse_file(include_str!("fixtures/flags.env.flags"))
+        .expect("valid definitions");
     assert_eq!(Flags::definitions(), Some(parsed));
 
     let values = flargs::Values::from_iter([
-        ("newCheckout".to_owned(), serde_json::json!(true)),
-        ("pricing".to_owned(), serde_json::json!("c")),
-        ("title".to_owned(), serde_json::json!(42)),
+        ("NEW_CHECKOUT".to_owned(), serde_json::json!(true)),
+        ("PRICING".to_owned(), serde_json::json!("c")),
+        ("TITLE".to_owned(), serde_json::json!(42)),
     ]);
     let flags = Flags::from_values(&values);
     assert!(flags.new_checkout);

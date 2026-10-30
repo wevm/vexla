@@ -24,21 +24,21 @@ pub use flargs_definitions::Json;
 /// Reads `.env.flags` at compile time and generates typed flags.
 ///
 /// The path is relative to `CARGO_MANIFEST_DIR`, and the file has the format of `.env.flags`: each
-/// `FEATURE_*` variable declares a flag with its default, and the comment lines above it hold the
-/// description and tags such as `@type {boolean}`. An optional `env_prefix = "..."` replaces
-/// `FEATURE_`. An invalid declaration fails the build with an error that names the key and the
-/// line.
+/// variable declares a flag with its default, its name is the key of the flag, and the comment lines
+/// above it hold the description and tags such as `@type {boolean}`. An invalid declaration fails
+/// the build with an error that names the key and the line.
 ///
 /// The macro generates:
 ///
-/// - `Flags`: a struct with one typed field for each runtime flag, `Default` from the defaults, and
-///   [`FlagSet`], so `Runtime::<Flags>` reads the definitions of the file.
+/// - `Flags`: a struct with one typed field for each runtime flag, named in lowercase `snake_case`
+///   (`NEW_CHECKOUT` is `new_checkout`), `Default` from the defaults, and [`FlagSet`], so
+///   `Runtime::<Flags>` reads the definitions of the file.
 /// - One [`Key`] constant for each runtime flag, such as `Flags::NEW_CHECKOUT`.
 /// - One constant for each build flag, such as `Flags::MAINTENANCE_BANNER`, from its variable at
 ///   compile time, then its default. A change of the variable rebuilds the crate. A JSON build flag
 ///   is a `&str` that holds the JSON text.
-/// - One enum for each select flag, with a variant in `PascalCase` for each option, such as
-///   `Pricing::A`, and [`FlagValue`].
+/// - One enum for each select flag, named in `PascalCase` from the key (`PRICING` is `Pricing`),
+///   with a variant in `PascalCase` for each option, such as `Pricing::A`, and [`FlagValue`].
 ///
 /// ```ignore
 /// flargs::flags!(".env.flags");
@@ -230,27 +230,20 @@ pub type Values = BTreeMap<String, Json>;
 /// The typed key of a runtime flag. `flargs::flags!` declares one for each runtime flag, such as
 /// `Flags::NEW_CHECKOUT`.
 pub struct Key<T> {
-    env: &'static str,
     name: &'static str,
     value: PhantomData<fn() -> T>,
 }
 
 impl<T> Key<T> {
-    /// Returns the key of the flag `key`, which reads the variable `env`.
-    pub const fn new(key: &'static str, env: &'static str) -> Self {
+    /// Returns the key of the flag `key`, which is also its environment variable.
+    pub const fn new(key: &'static str) -> Self {
         Self {
-            env,
             name: key,
             value: PhantomData,
         }
     }
 
-    /// Returns the environment variable of the flag.
-    pub const fn env(&self) -> &'static str {
-        self.env
-    }
-
-    /// Returns the key of the flag, as the manifest and the overrides write it.
+    /// Returns the key of the flag, as the environment, the manifest, and the overrides write it.
     pub const fn key(&self) -> &'static str {
         self.name
     }
