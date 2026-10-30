@@ -17,17 +17,15 @@ Trunk-based development merges small changes to `main` often. Unfinished work sh
 
 The Vercel Flags SDK (`flags` on npm) is the reference design. Sources: https://vercel.com/docs/flags, https://flags-sdk.dev, read 2026-10-30.
 
-| Concept            | Vercel Flags SDK                                                                | Flargs                                                                                              |
-| ------------------ | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Declaration        | `flag({ key, decide, defaultValue, options, identify })`, one callable per flag | one key for each flag in a committed `flags.json` or `flags.toml`, linked to a `FEATURE_*` variable |
-| Evaluation context | `identify({ headers, cookies })`, wrapped in `dedupe`                           | `identify(request)` on `Runtime.create`                                                             |
-| Value source       | `decide` or an adapter (Vercel Flags, Flagsmith, and others)                    | override, store value, `decide`, then `default`                                                     |
-| Overrides          | encrypted `vercel-flag-overrides` cookie, written by the Vercel Toolbar         | signed `flargs` cookie, written by the dev route, search parameters, or a signed link               |
-| Discovery          | `/.well-known/vercel/flags`, guarded by `verifyAccess`                          | the admin API under the dev route path, guarded by `authorize`                                      |
-| Admin UI           | Vercel dashboard and Flags Explorer                                             | the dev route, or a host UI on the admin API (for example, Tempo API Admin)                         |
-| Build-time values  | precompute: flag values encoded in the URL, with `generatePermutations`         | `build` flags compile to literals through `flargs/vite` or `Definitions.defines`                    |
-| Client values      | `FlagValues` script tag, server-first                                           | `runtime.script` and `flags` from `flargs/values`, public flags only                                |
-| Frameworks         | Next.js, SvelteKit                                                              | any fetch runtime (Next.js, Workers, Bun), Hono, Node, Vite, React, Rust                            |
+| Concept   | Vercel Flags SDK                                      | Flargs |
+| --------- | ----------------------------------------------------- | ------ |
+| `type`    | Value type                                            |
+| ---       | ---                                                   |
+| `boolean` | `boolean`                                             |
+| `json`    | the type of `default`, such as `{ requests: number }` |
+| `number`  | `number`                                              |
+| `select`  | the union of `options`, such as `'a' \| 'b' \| 'c'`   |
+| `string`  | `string`                                              |
 
 Flargs keeps these Vercel Flags SDK decisions:
 
@@ -105,30 +103,41 @@ A committed `flags.json` (TypeScript) or `flags.toml` (Rust) declares every flag
 ```json
 {
   "$schema": "./node_modules/flargs/schema.json",
-  "limits": { "default": { "requests": 100 } },
-  "maintenanceBanner": { "build": true, "default": false, "public": true },
-  "newCheckout": { "default": false, "description": "Use the new checkout flow.", "public": true },
-  "pricing": ["a", "b", "c"]
+  "limits": { "default": { "requests": 100 }, "type": "json" },
+  "maintenanceBanner": { "build": true, "default": false, "public": true, "type": "boolean" },
+  "newCheckout": {
+    "default": false,
+    "description": "Use the new checkout flow.",
+    "public": true,
+    "type": "boolean"
+  },
+  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
 }
 ```
 
 ```toml
 #:schema https://unpkg.com/flargs/schema.json
 # flags.toml: the same flags for Rust. Keys are snake_case and map to camelCase.
-pricing = ["a", "b", "c"]
-
 [limits]
 default = { requests = 100 }
+type = "json"
 
 [maintenance_banner]
 build = true
 default = false
 public = true
+type = "boolean"
 
 [new_checkout]
 default = false
 description = "Use the new checkout flow."
 public = true
+type = "boolean"
+
+[pricing]
+default = "a"
+options = ["a", "b", "c"]
+type = "select"
 ```
 
 ```bash
@@ -149,23 +158,17 @@ flags.pricing // 'a' | 'b' | 'c'
 
 Both files follow one JSON Schema, published as `flargs/schema.json` and at a stable URL. The schema validates the files and completes keys in editors (JSON through `$schema`, TOML through Taplo).
 
-| Value of a key      | Flag                                           |
-| ------------------- | ---------------------------------------------- |
-| `true` or `false`   | a boolean flag with that default               |
-| a number            | a number flag with that default                |
-| a string            | a string flag with that default                |
-| an array of strings | a select flag. The first option is the default |
-| an object           | the long form, with the fields below           |
+Every flag is an object with an explicit `type` and `default`. Flargs infers no type and no default from a value.
 
-| Field         | Meaning                                                                                    | Default                                          |
-| ------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| `build`       | `true` makes a build flag, which resolves when the bundle builds                           | `false`                                          |
-| `default`     | the default value. An object or an array makes a JSON flag                                 | required                                         |
-| `description` | the description, for the dev route, the admin API, and `.env.example`                      | none                                             |
-| `env`         | the environment variable name                                                              | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
-| `options`     | the values of a select flag. `default` must be one of them                                 | none                                             |
-| `public`      | `true` lets the value reach the browser                                                    | `false`                                          |
-| `type`        | `'boolean'`, `'json'`, `'number'`, `'select'`, or `'string'`, when inference is not enough | inferred                                         |
+| Field         | Meaning                                                                         | Default                                          |
+| ------------- | ------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `build`       | `true` makes a build flag, which resolves when the bundle builds                | `false`                                          |
+| `default`     | the default value. It must match `type`, and one of `options` for a select flag | required                                         |
+| `description` | the description, for the dev route, the admin API, and `.env.example`           | none                                             |
+| `env`         | the environment variable name                                                   | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
+| `options`     | the values of a select flag                                                     | required for `select`                            |
+| `public`      | `true` lets the value reach the browser                                         | `false`                                          |
+| `type`        | `'boolean'`, `'json'`, `'number'`, `'select'`, or `'string'`                    | required                                         |
 
 - **Environment variables:** `newCheckout` reads `FEATURE_NEW_CHECKOUT`. `env` sets another name. `envPrefix` on `Runtime.create`, `flargs/vite`, and `flargs::flags!` replaces `FEATURE_`.
 - **Environment values:** `true` and `false` for booleans, digits for numbers, an option for selects, and JSON for JSON flags.
@@ -654,7 +657,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 - `Definitions.parse`, `Definitions.fromEnv`, `Definitions.manifest`, `flargs/schema.json`, and `flargs.gen.ts` output.
 - `Override.parse` and `Override.serialize`, with signatures and expiry.
 - Vectors: `test/vectors/definitions.json` (flags files and their parsed result) and `test/vectors/overrides.json`.
-- **Gate:** vectors cover every short and long form, `options`, `public`, `build`, `env`, invalid declarations, the same flags in JSON and TOML, unknown and invalid variables, and expired and wrong signatures. Type tests prove the types of a generated module.
+- **Gate:** vectors cover every type, a missing `type` or `default`, a `default` outside `options`, `options`, `public`, `build`, `env`, invalid declarations, the same flags in JSON and TOML, unknown and invalid variables, and expired and wrong signatures. Type tests prove the types of a generated module.
 
 ### Phase 2: Server
 

@@ -16,8 +16,8 @@
 ```json
 {
   "$schema": "./node_modules/flargs/schema.json",
-  "newCheckout": { "default": false, "public": true },
-  "pricing": ["a", "b", "c"]
+  "newCheckout": { "default": false, "public": true, "type": "boolean" },
+  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
 }
 ```
 
@@ -80,35 +80,34 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 
 ### Definitions
 
-`flags.json` declares every flag and its default. A value alone is the short form, and an object is the long form.
+`flags.json` declares every flag with its type and default.
 
 ```json
 {
   "$schema": "./node_modules/flargs/schema.json",
-  "limits": { "default": { "requests": 100 } },
-  "maintenanceBanner": { "build": true, "default": false, "public": true },
-  "newCheckout": { "default": false, "description": "Use the new checkout flow.", "public": true },
-  "pricing": ["a", "b", "c"]
+  "limits": { "default": { "requests": 100 }, "type": "json" },
+  "maintenanceBanner": { "build": true, "default": false, "public": true, "type": "boolean" },
+  "newCheckout": {
+    "default": false,
+    "description": "Use the new checkout flow.",
+    "public": true,
+    "type": "boolean"
+  },
+  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
 }
 ```
 
-| Value of a key      | Flag                                           |
-| ------------------- | ---------------------------------------------- |
-| `true` or `false`   | a boolean flag with that default               |
-| a number            | a number flag with that default                |
-| a string            | a string flag with that default                |
-| an array of strings | a select flag. The first option is the default |
-| an object           | the long form, with the fields below           |
+Every flag is an object with an explicit `type` and `default`. Flargs infers no type and no default from a value.
 
-| Field         | Meaning                                                                                    | Default                                          |
-| ------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| `build`       | `true` makes a build flag, which resolves when the bundle builds                           | `false`                                          |
-| `default`     | the default value. An object or an array makes a JSON flag                                 | required                                         |
-| `description` | the description, for the dev route, the admin API, and `.env.example`                      | none                                             |
-| `env`         | the environment variable name                                                              | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
-| `options`     | the values of a select flag. `default` must be one of them                                 | none                                             |
-| `public`      | `true` lets the value reach the browser                                                    | `false`                                          |
-| `type`        | `'boolean'`, `'json'`, `'number'`, `'select'`, or `'string'`, when inference is not enough | inferred                                         |
+| Field         | Meaning                                                                         | Default                                          |
+| ------------- | ------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `build`       | `true` makes a build flag, which resolves when the bundle builds                | `false`                                          |
+| `default`     | the default value. It must match `type`, and one of `options` for a select flag | required                                         |
+| `description` | the description, for the dev route, the admin API, and `.env.example`           | none                                             |
+| `env`         | the environment variable name                                                   | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
+| `options`     | the values of a select flag                                                     | required for `select`                            |
+| `public`      | `true` lets the value reach the browser                                         | `false`                                          |
+| `type`        | `'boolean'`, `'json'`, `'number'`, `'select'`, or `'string'`                    | required                                         |
 
 Each flag links to an environment variable: `newCheckout` reads `FEATURE_NEW_CHECKOUT`. A `.env` file, `.env.local`, or the deploy environment sets values that differ from the defaults. A `FEATURE_*` variable that the flags file does not declare throws at startup, so a typo does not fail silently.
 
@@ -288,20 +287,26 @@ flargs generate --url https://api.example.com/.flags --out src/flargs.gen.ts
 ```toml
 #:schema https://unpkg.com/flargs/schema.json
 # flags.toml: the same schema as flags.json. Keys are snake_case and map to camelCase.
-pricing = ["a", "b", "c"]
-
 [limits]
 default = { requests = 100 }
+type = "json"
 
 [maintenance_banner]
 build = true
 default = false
 public = true
+type = "boolean"
 
 [new_checkout]
 default = false
 description = "Use the new checkout flow."
 public = true
+type = "boolean"
+
+[pricing]
+default = "a"
+options = ["a", "b", "c"]
+type = "select"
 ```
 
 ```rust
