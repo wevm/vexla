@@ -326,7 +326,7 @@ flargs dev
 
 ## Documentation
 
-The [plan](.agent/plans/flargs.md) defines the API, the phases, and the acceptance gates until the documentation site exists.
+The documentation site is in progress. Until it is published, the usage examples above and the TSDoc of each export describe the API.
 
 ## License
 
