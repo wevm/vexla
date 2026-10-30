@@ -18,6 +18,7 @@ export function html(options: html.Options): string {
 :root { color-scheme: light dark; --bg: #fff; --fg: #000; --muted: #666; --line: #ddd; --accent: #000; }
 @media (prefers-color-scheme: dark) { :root { --bg: #0a0a0a; --fg: #fafafa; --muted: #999; --line: #262626; --accent: #fafafa; } }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
 main { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
 h1 { font-size: 18px; margin: 0 0 4px; }
@@ -34,7 +35,8 @@ button:hover { border-color: var(--accent); }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 form { margin-top: 32px; display: grid; gap: 8px; max-width: 480px; }
 #status { min-height: 1.5em; margin-top: 16px; color: var(--muted); }
-@media (max-width: 640px) { th:nth-child(3), td:nth-child(3) { display: none; } }
+.meta, .key { overflow-wrap: anywhere; }
+@media (max-width: 640px) { thead { display: none; } tr, td { display: block; } tr { border-bottom: 1px solid var(--line); padding: 12px 0; } td { border: 0; padding: 4px 0; } }
 </style>
 </head>
 <body>
