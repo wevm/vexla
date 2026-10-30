@@ -125,7 +125,7 @@ flags.pricing // 'a' | 'b' | 'c'
 flags.limits // { requests: number }
 ```
 
-### Runtime
+### Server
 
 `Flargs.create` adds overrides, a store, `decide`, the dev route, and the admin API. `flargs.fetch` is a fetch handler.
 
