@@ -1,0 +1,25 @@
+{
+  "name": "docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vocs build",
+    "check:types": "tsc",
+    "dev": "vocs dev",
+    "preview": "vocs preview"
+  },
+  "dependencies": {
+    "mermaid": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "vocs": "catalog:",
+    "waku": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

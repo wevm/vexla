@@ -6,6 +6,8 @@
     "check": "vp check --fix",
     "check:types": "tsc",
     "dev": "zile dev",
+    "docs:build": "pnpm --filter docs build",
+    "docs:dev": "pnpm --filter docs dev",
     "postinstall": "zile dev",
     "test": "vp test"
   },

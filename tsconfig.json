@@ -36,5 +36,5 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "exclude": [".claude", "dist", "node_modules"]
+  "exclude": [".claude", "dist", "docs", "node_modules"]
 }

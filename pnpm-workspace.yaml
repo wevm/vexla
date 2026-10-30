@@ -1,8 +1,11 @@
 packages:
   - '.'
+  - 'docs'
 
 allowBuilds:
+  es5-ext: false
   esbuild: true
+  vue-demi: false
 
 catalog:
   '@changesets/cli': '^3.0.3'
@@ -12,9 +15,12 @@ catalog:
   'esbuild': '0.28.2'
   'hono': '4.13.14'
   'incur': '0.7.1'
+  'mermaid': '11.17.2'
   'react': '19.3.1'
   'react-dom': '19.3.1'
   'typescript': '6.0.3'
   'vite': '8.3.5'
   'vite-plus': '0.2.2'
+  'vocs': '2.10.3'
+  'waku': '1.0.0-rc.3'
   'zile': '0.0.30'

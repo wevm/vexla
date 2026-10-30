@@ -1,0 +1,17 @@
+/*
+ * Theme overrides. This file is unlayered, so its rules take precedence over the layered styles of
+ * Vocs without `!important`.
+ */
+
+/* Dark mode uses black for the page and a lighter black for surfaces, such as the content panel. */
+:root {
+  --vocs-background-color-primary: light-dark(var(--vocs-color-gray14), black);
+  --vocs-background-color-surface: light-dark(white, oklch(0.16 0 0));
+}
+
+/* Square corners on every element, including the utilities and fixed radii of Vocs. */
+*,
+*::before,
+*::after {
+  border-radius: 0;
+}
