@@ -25,7 +25,13 @@ async function listen(flargs: { fetch: Flargs.Flargs['fetch'] }): Promise<string
 }
 
 const file = await listen(
-  Flargs.create({ authorize, definitions, env: {}, secret: 'remote-secret', store: Store.memory() }),
+  Flargs.create({
+    authorize,
+    definitions,
+    env: {},
+    secret: 'remote-secret',
+    store: Store.memory(),
+  }),
 )
 const store = await listen(
   Flargs.create({ authorize, env: {}, secret: 'remote-secret', store: Store.memory() }),
