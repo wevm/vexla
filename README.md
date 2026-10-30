@@ -37,18 +37,6 @@ if (flags.newCheckout) renderNewCheckout()
 
 The same definitions and reads scale from environment variables to a dev route, personal overrides, and an admin API on the database of the application.
 
-```mermaid
-flowchart LR
-  request[Request] --> override{Override?}
-  override -- no --> store{Store value?}
-  store -- no --> decide{decide?}
-  decide -- no --> fallback[default]
-  override -- yes --> value[Value]
-  store -- yes --> value
-  decide -- yes --> value
-  fallback --> value
-```
-
 ## Motivation
 
 Feature branches drift from `main`, end in large and risky merges, and keep finished work out of production. The fix is to push small changes to `main` continuously, with unfinished work behind a feature flag.
