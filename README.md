@@ -13,15 +13,12 @@
 
 ## Overview
 
-```bash
-# flags.env (committed): declares each flag and its default.
-
-# Use the new checkout flow.
-# @public
-FEATURE_NEW_CHECKOUT=false
-
-# @options a b c
-FEATURE_PRICING=a
+```json
+{
+  "$schema": "./node_modules/flargs/schema.json",
+  "newCheckout": { "default": false, "public": true },
+  "pricing": ["a", "b", "c"]
+}
 ```
 
 ```bash
@@ -32,12 +29,12 @@ FEATURE_NEW_CHECKOUT=true
 ```ts
 import { flags } from 'flargs/values'
 
-// Typed from flags.env. Resolves on the server, or from the page in a browser.
+// Typed from flags.json. Resolves on the server, or from the page in a browser.
 if (flags.newCheckout) renderNewCheckout()
 flags.pricing // 'a' | 'b' | 'c'
 ```
 
-The same `flags.env` and the same reads scale from environment variables to a dev route, personal overrides, and an admin API on the database of the application.
+The same flags file and the same reads scale from environment variables to a dev route, personal overrides, and an admin API on the database of the application.
 
 ## Motivation
 
@@ -57,18 +54,18 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 
 ## Philosophy
 
-- **Flags are environment variables:** Each flag is one line in `flags.env`, with one default and a generated type. Find All References locates every read.
+- **Declared once, set anywhere:** Each flag is one key in `flags.json` or `flags.toml`, with one default and a generated type. An environment variable sets its value. Find All References locates every read.
 - **Server-first:** The server resolves flags. A browser receives values, never rules.
 - **Private by default:** A private value never leaves the server. Visibility, not a variable prefix, controls what reaches a browser.
-- **Incremental:** Environment variables, a dev route, and an admin API use the same `flags.env` and the same reads.
+- **Incremental:** Environment variables, a dev route, and an admin API use the same flags file and the same reads.
 - **Portable:** The core, server, and browser entries have no dependencies. They run in Node, Bun, Deno, edge runtimes, and browsers.
 - **Tested:** Every test runs against a real server, browser, or build, with no mocks.
 
 ## Features
 
-- **Declarations:** One `FEATURE_*` line for each flag in a committed `flags.env`, with JSDoc-style tags for options, visibility, and build flags.
+- **Declarations:** One key for each flag in a committed `flags.json` or `flags.toml`, validated by a JSON Schema.
 - **Typed Values:** Generated types for every flag, such as `'a' | 'b' | 'c'` for a select flag.
-- **Zero Config:** With no `flags.env`, `FEATURE_NEW_CHECKOUT=true` alone declares a flag.
+- **Environment Variables:** Each flag links to a `FEATURE_*` variable. With no flags file, `FEATURE_NEW_CHECKOUT=true` alone declares a flag.
 - **Build Flags:** Compile to literals, so dead branches drop from the bundle and the value never reaches an API.
 - **Runtime Flags:** Resolve on the server for each request, from an override, a store value, `decide`, or the default.
 - **Dev Route:** A page at `/.flags` toggles flags for one browser, or for every request with admin access.
@@ -77,54 +74,59 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 - **Stores:** Memory, environment variables, Cloudflare KV, a remote Flargs API, or a table in the database of the application.
 - **Integrations:** A fetch handler for Next.js, Cloudflare Workers, and Bun, plus Hono middleware, Node listeners, React, and Vite.
 - **CLI and MCP:** Lists, sets, and links flags, checks the environment in CI, and generates types.
-- **Rust:** `flargs::flags!("flags.env")` generates a typed struct at compile time from the same file.
+- **Rust:** `flargs::flags!("flags.toml")` generates a typed struct at compile time.
 
 ## Usage
 
 ### Definitions
 
-`flags.env` declares every flag in dotenv syntax. The value of each variable is its default, and comment lines above it hold the description and tags.
+`flags.json` declares every flag and its default. A value alone is the short form, and an object is the long form.
 
-```bash
-# flags.env
-
-# Show the maintenance banner. Resolves when the bundle builds.
-# @build @public
-FEATURE_MAINTENANCE_BANNER=false
-
-# Use the new checkout flow. May reach the browser.
-# @public
-FEATURE_NEW_CHECKOUT=false
-
-# Pricing page variant. Private: the value never leaves the server.
-# @options a b c
-FEATURE_PRICING=a
-
-# A JSON value. The type comes from the default.
-FEATURE_LIMITS={"requests":100}
+```json
+{
+  "$schema": "./node_modules/flargs/schema.json",
+  "limits": { "default": { "requests": 100 } },
+  "maintenanceBanner": { "build": true, "default": false, "public": true },
+  "newCheckout": { "default": false, "description": "Use the new checkout flow.", "public": true },
+  "pricing": ["a", "b", "c"]
+}
 ```
 
-| Declaration            | Meaning                                                                                |
-| ---------------------- | -------------------------------------------------------------------------------------- |
-| `FEATURE_NEW_CHECKOUT` | the key `newCheckout`                                                                  |
-| `=false`               | the default. Booleans, numbers, and JSON keep their type, and other values are strings |
-| comment lines          | the description, shown in the dev route                                                |
-| `@options a b c`       | a select flag, typed `'a' \| 'b' \| 'c'`                                               |
-| `@public`              | the value may reach the browser. Flags are private otherwise                           |
-| `@build`               | a build flag, written into the bundle at build time                                    |
+| Value of a key      | Flag                                           |
+| ------------------- | ---------------------------------------------- |
+| `true` or `false`   | a boolean flag with that default               |
+| a number            | a number flag with that default                |
+| a string            | a string flag with that default                |
+| an array of strings | a select flag. The first option is the default |
+| an object           | the long form, with the fields below           |
 
-A `.env` file, `.env.local`, or the deploy environment sets values that differ from the defaults. A `FEATURE_*` variable that `flags.env` does not declare throws at startup, so a typo does not fail silently.
+| Field         | Meaning                                                                                    | Default                                          |
+| ------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `build`       | `true` makes a build flag, which resolves when the bundle builds                           | `false`                                          |
+| `default`     | the default value. An object or an array makes a JSON flag                                 | required                                         |
+| `description` | the description, for the dev route, the admin API, and `.env.example`                      | none                                             |
+| `env`         | the environment variable name                                                              | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
+| `options`     | the values of a select flag. `default` must be one of them                                 | none                                             |
+| `public`      | `true` lets the value reach the browser                                                    | `false`                                          |
+| `type`        | `'boolean'`, `'json'`, `'number'`, `'select'`, or `'string'`, when inference is not enough | inferred                                         |
+
+Each flag links to an environment variable: `newCheckout` reads `FEATURE_NEW_CHECKOUT`. A `.env` file, `.env.local`, or the deploy environment sets values that differ from the defaults. A `FEATURE_*` variable that the flags file does not declare throws at startup, so a typo does not fail silently.
+
+```bash
+# Writes .env.example: every variable, its default, and its description.
+flargs env
+```
 
 ### Types
 
-`flargs/vite` and `flargs generate` read `flags.env` and write `flargs.gen.ts`, which holds the parsed definitions and their types.
+`flargs/vite` and `flargs generate` read `flags.json` and write `flargs.gen.ts`, which holds the parsed definitions and their types.
 
 ```bash
-# Writes flargs.gen.ts. flargs/vite runs the same step on each change of flags.env.
+# Writes flargs.gen.ts. flargs/vite runs the same step on each change of flags.json.
 flargs generate
 ```
 
-With no `flags.env`, Flargs reads every `FEATURE_*` variable as a private, untyped flag. Flargs configuration uses a separate prefix: `FLARGS_SECRET`, `FLARGS_TOKEN`, and `FLARGS_URL`.
+With no flags file, Flargs reads every `FEATURE_*` variable as a private, untyped flag. Flargs configuration uses a separate prefix: `FLARGS_SECRET`, `FLARGS_TOKEN`, and `FLARGS_URL`.
 
 ### Runtime
 
@@ -202,7 +204,7 @@ import { defineConfig } from 'vite'
 import flargs from 'flargs/vite'
 
 export default defineConfig({
-  // Reads flags.env, writes flargs.gen.ts, and resolves build flags from the environment.
+  // Reads flags.json, writes flargs.gen.ts, and resolves build flags from the environment.
   plugins: [flargs()],
 })
 ```
@@ -269,24 +271,44 @@ flargs check
 flargs generate --url https://api.example.com/.flags --out src/flargs.gen.ts
 ```
 
-| Command                            | Purpose                                                  |
-| ---------------------------------- | -------------------------------------------------------- |
-| `flargs list`                      | lists every flag with its value and source               |
-| `flargs get <key>`                 | returns one flag                                         |
-| `flargs set <key> <value>`         | sets the store value                                     |
-| `flargs unset <key>`               | deletes the store value                                  |
-| `flargs link <url> <key=value...>` | returns a signed share link                              |
-| `flargs check`                     | validates the environment against `flags.env`            |
-| `flargs generate`                  | writes `flargs.gen.ts` from `flags.env`, or from `--url` |
-| `flargs dev`                       | serves the dev route for `flags.env`                     |
+| Command                            | Purpose                                                   |
+| ---------------------------------- | --------------------------------------------------------- |
+| `flargs list`                      | lists every flag with its value and source                |
+| `flargs get <key>`                 | returns one flag                                          |
+| `flargs set <key> <value>`         | sets the store value                                      |
+| `flargs unset <key>`               | deletes the store value                                   |
+| `flargs link <url> <key=value...>` | returns a signed share link                               |
+| `flargs check`                     | validates the environment against the flags file          |
+| `flargs env`                       | writes `.env.example` from the flags file                 |
+| `flargs generate`                  | writes `flargs.gen.ts` from `flags.json`, or from `--url` |
+| `flargs dev`                       | serves the dev route for a flags file                     |
 
 ## Rust
 
-```rust
-// Reads flags.env at compile time. A bad declaration fails the build at its line.
-flargs::flags!("flags.env");
+```toml
+#:schema https://unpkg.com/flargs/schema.json
+# flags.toml: the same schema as flags.json. Keys are snake_case and map to camelCase.
+pricing = ["a", "b", "c"]
 
-// Typed keys and enums come from the same file as in TypeScript.
+[limits]
+default = { requests = 100 }
+
+[maintenance_banner]
+build = true
+default = false
+public = true
+
+[new_checkout]
+default = false
+description = "Use the new checkout flow."
+public = true
+```
+
+```rust
+// Reads flags.toml at compile time. A bad declaration fails the build at its key.
+flargs::flags!("flags.toml");
+
+// Typed keys and enums come from the file.
 let pricing: Pricing = runtime.get(&parts, Flags::PRICING).await?;
 ```
 
@@ -298,7 +320,7 @@ let app = Router::new()
     .layer(runtime.layer());
 ```
 
-The crate reads the same `flags.env`, overrides, and signatures as TypeScript, so one file serves a TypeScript web app and a Rust API.
+The crate uses the same schema, overrides, and signatures as TypeScript. A project with a TypeScript app and a Rust service keeps one file, through the `path` option.
 
 ## License
 

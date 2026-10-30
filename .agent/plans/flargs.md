@@ -2,7 +2,7 @@
 
 Status: phase 0 done. Phase 1 is next.
 
-Flargs is a self-hosted feature flag library for TypeScript and Rust. It declares flags in a committed `flags.env` file, evaluates them on the server, and serves a dev route and an admin API from the host application. This plan defines the public API, the phases, and the acceptance gate of each phase.
+Flargs is a self-hosted feature flag library for TypeScript and Rust. It declares flags in a committed `flags.json` or `flags.toml` file, evaluates them on the server, and serves a dev route and an admin API from the host application. This plan defines the public API, the phases, and the acceptance gate of each phase.
 
 ## Motivation
 
@@ -17,23 +17,23 @@ Trunk-based development merges small changes to `main` often. Unfinished work sh
 
 The Vercel Flags SDK (`flags` on npm) is the reference design. Sources: https://vercel.com/docs/flags, https://flags-sdk.dev, read 2026-10-30.
 
-| Concept            | Vercel Flags SDK                                                                | Flargs                                                                                |
-| ------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Declaration        | `flag({ key, decide, defaultValue, options, identify })`, one callable per flag | one `FEATURE_*` line for each flag in a committed `flags.env` file                    |
-| Evaluation context | `identify({ headers, cookies })`, wrapped in `dedupe`                           | `identify(request)` on `Runtime.create`                                               |
-| Value source       | `decide` or an adapter (Vercel Flags, Flagsmith, and others)                    | override, store value, `decide`, then `default`                                       |
-| Overrides          | encrypted `vercel-flag-overrides` cookie, written by the Vercel Toolbar         | signed `flargs` cookie, written by the dev route, search parameters, or a signed link |
-| Discovery          | `/.well-known/vercel/flags`, guarded by `verifyAccess`                          | the admin API under the dev route path, guarded by `authorize`                        |
-| Admin UI           | Vercel dashboard and Flags Explorer                                             | the dev route, or a host UI on the admin API (for example, Tempo API Admin)           |
-| Build-time values  | precompute: flag values encoded in the URL, with `generatePermutations`         | `@build` flags compile to literals through `flargs/vite` or `Definitions.defines`     |
-| Client values      | `FlagValues` script tag, server-first                                           | `runtime.script` and `flags` from `flargs/values`, public flags only                  |
-| Frameworks         | Next.js, SvelteKit                                                              | any fetch runtime (Next.js, Workers, Bun), Hono, Node, Vite, React, Rust              |
+| Concept            | Vercel Flags SDK                                                                | Flargs                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Declaration        | `flag({ key, decide, defaultValue, options, identify })`, one callable per flag | one key for each flag in a committed `flags.json` or `flags.toml`, linked to a `FEATURE_*` variable |
+| Evaluation context | `identify({ headers, cookies })`, wrapped in `dedupe`                           | `identify(request)` on `Runtime.create`                                                             |
+| Value source       | `decide` or an adapter (Vercel Flags, Flagsmith, and others)                    | override, store value, `decide`, then `default`                                                     |
+| Overrides          | encrypted `vercel-flag-overrides` cookie, written by the Vercel Toolbar         | signed `flargs` cookie, written by the dev route, search parameters, or a signed link               |
+| Discovery          | `/.well-known/vercel/flags`, guarded by `verifyAccess`                          | the admin API under the dev route path, guarded by `authorize`                                      |
+| Admin UI           | Vercel dashboard and Flags Explorer                                             | the dev route, or a host UI on the admin API (for example, Tempo API Admin)                         |
+| Build-time values  | precompute: flag values encoded in the URL, with `generatePermutations`         | `build` flags compile to literals through `flargs/vite` or `Definitions.defines`                    |
+| Client values      | `FlagValues` script tag, server-first                                           | `runtime.script` and `flags` from `flargs/values`, public flags only                                |
+| Frameworks         | Next.js, SvelteKit                                                              | any fetch runtime (Next.js, Workers, Bun), Hono, Node, Vite, React, Rust                            |
 
 Flargs keeps these Vercel Flags SDK decisions:
 
 - **Typed declarations:** each flag has one declaration with a generated type. Find All References locates every read.
 - **Server-first:** the server evaluates flags. A client receives values, not rules.
-- **One default:** `flags.env` holds the default, so every caller falls back to the same value.
+- **One default:** the flags file holds the default, so every caller falls back to the same value.
 
 Flargs changes these Vercel Flags SDK decisions:
 
@@ -100,63 +100,89 @@ https://app.example.com/?flag.reset
 
 ## Definitions
 
-Flags are environment variables. A committed `flags.env` file, in dotenv syntax, declares every flag with its default. A gitignored `.env`, `.env.local`, or the deploy environment sets the values that differ from the defaults.
+A committed `flags.json` (TypeScript) or `flags.toml` (Rust) declares every flag with its default. Each flag links to one environment variable. A gitignored `.env`, `.env.local`, or the deploy environment sets the values that differ from the defaults.
 
-```bash
-# flags.env (committed): one line for each flag, and its default.
+```json
+{
+  "$schema": "./node_modules/flargs/schema.json",
+  "limits": { "default": { "requests": 100 } },
+  "maintenanceBanner": { "build": true, "default": false, "public": true },
+  "newCheckout": { "default": false, "description": "Use the new checkout flow.", "public": true },
+  "pricing": ["a", "b", "c"]
+}
+```
 
-# Use the new checkout flow.
-# @public
-FEATURE_NEW_CHECKOUT=false
+```toml
+#:schema https://unpkg.com/flargs/schema.json
+# flags.toml: the same flags for Rust. Keys are snake_case and map to camelCase.
+pricing = ["a", "b", "c"]
 
-# Pricing page variant.
-# @options a b c
-FEATURE_PRICING=a
+[limits]
+default = { requests = 100 }
 
-# Show the maintenance banner.
-# @build @public
-FEATURE_MAINTENANCE_BANNER=false
+[maintenance_banner]
+build = true
+default = false
+public = true
 
-FEATURE_LIMITS={"requests":100}
+[new_checkout]
+default = false
+description = "Use the new checkout flow."
+public = true
 ```
 
 ```bash
 # .env (gitignored): values for this device only.
 FEATURE_NEW_CHECKOUT=true
+FEATURE_PRICING=b
 ```
 
 ```ts
 import { flags } from 'flargs/values'
 
-// Typed from flags.env. Resolves from the environment, then the default in flags.env.
+// Typed from flags.json. Resolves from the environment, then the default.
 flags.newCheckout // boolean
 flags.pricing // 'a' | 'b' | 'c'
 ```
 
 ### Format
 
-| Part of a declaration            | Meaning                                                                                                                |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `FEATURE_NEW_CHECKOUT`           | the key `newCheckout`. `FEATURE_` and `SCREAMING_SNAKE_CASE` map to `camelCase`                                        |
-| `=false`                         | the default. `true` or `false` is a boolean, digits are a number, `{` or `[` starts JSON, and other values are strings |
-| comment lines above the variable | the description, for the dev route and the admin API                                                                   |
-| `# @options a b c`               | a select flag. The default must be one of the options                                                                  |
-| `# @public`                      | the value may reach the browser. A flag without it is private                                                          |
-| `# @build`                       | a build flag. The value resolves when the bundle builds                                                                |
+Both files follow one JSON Schema, published as `flargs/schema.json` and at a stable URL. The schema validates the files and completes keys in editors (JSON through `$schema`, TOML through Taplo).
 
-- **Path:** `flags.env` is the default path. The `path` option of `flargs/vite`, `flargs generate`, and `flargs::flags!` sets another, such as `.env.flags`. A `.gitignore` entry such as `.env*` also ignores `.env.flags`, so `flags.env` is the default.
-- **Visibility:** `@public`, not a variable prefix, controls whether a value reaches the browser. A private flag never reaches a bundle, whatever its name.
-- **Validation:** a value outside `@options`, or a value of the wrong type, throws at the first read. The error names the variable, and never contains the value.
-- **Unknown variables:** a `FEATURE_*` variable that `flags.env` does not declare throws at startup, so a typo such as `FEATURE_NEW_CHEKOUT` does not fail silently. `flargs check` runs the same check in CI.
+| Value of a key      | Flag                                           |
+| ------------------- | ---------------------------------------------- |
+| `true` or `false`   | a boolean flag with that default               |
+| a number            | a number flag with that default                |
+| a string            | a string flag with that default                |
+| an array of strings | a select flag. The first option is the default |
+| an object           | the long form, with the fields below           |
+
+| Field         | Meaning                                                                                    | Default                                          |
+| ------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `build`       | `true` makes a build flag, which resolves when the bundle builds                           | `false`                                          |
+| `default`     | the default value. An object or an array makes a JSON flag                                 | required                                         |
+| `description` | the description, for the dev route, the admin API, and `.env.example`                      | none                                             |
+| `env`         | the environment variable name                                                              | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
+| `options`     | the values of a select flag. `default` must be one of them                                 | none                                             |
+| `public`      | `true` lets the value reach the browser                                                    | `false`                                          |
+| `type`        | `'boolean'`, `'json'`, `'number'`, `'select'`, or `'string'`, when inference is not enough | inferred                                         |
+
+- **Environment variables:** `newCheckout` reads `FEATURE_NEW_CHECKOUT`. `env` sets another name. `envPrefix` on `Runtime.create`, `flargs/vite`, and `flargs::flags!` replaces `FEATURE_`.
+- **Environment values:** `true` and `false` for booleans, digits for numbers, an option for selects, and JSON for JSON flags.
+- **`.env.example`:** `flargs env` writes every variable with its default, and the description as a comment.
+- **Visibility:** `public`, not a variable prefix, controls whether a value reaches the browser. A private flag never reaches a bundle, whatever its variable.
+- **Validation:** a value outside `options`, or a value of the wrong type, throws at the first read. The error names the variable, and never contains the value.
+- **Unknown variables:** a `FEATURE_*` variable that the flags file does not declare throws at startup, so a typo such as `FEATURE_NEW_CHEKOUT` does not fail silently. `flargs check` runs the same check in CI.
+- **One file for two languages:** a project with a TypeScript app and a Rust service keeps one file. TypeScript reads `flags.toml`, and Rust reads `flags.json`, through the `path` option.
 - **Library variables:** `FLARGS_SECRET`, `FLARGS_TOKEN`, and `FLARGS_URL` configure Flargs itself, so they use the `FLARGS_` prefix.
 
 ### Zero Config
 
-With no `flags.env`, Flargs declares a flag for each `FEATURE_*` variable in the environment. Each flag is private, and its type comes from its value. There are no options, no defaults, and no typo check. A `flags.env` file adds them later, with no change to reads of `flags`.
+With no flags file, Flargs declares a flag for each `FEATURE_*` variable in the environment. Each flag is private, and its type comes from its value. There are no options, no defaults, and no typo check. A flags file adds them later, with no change to reads of `flags`.
 
 ### Generated Module
 
-`flargs generate` reads `flags.env` and writes `flargs.gen.ts`. `flargs/vite` writes the same file at startup and on each change of `flags.env`.
+`flargs generate` reads `flags.json` and writes `flargs.gen.ts`. `flargs/vite` writes the same file at startup and on each change of `flags.json`. A JSON import widens strings, so `'a' | 'b'` needs the generated module.
 
 ```ts
 // flargs.gen.ts (generated, gitignored): the parsed definitions and their types.
@@ -172,13 +198,13 @@ declare module 'flargs' {
 }
 ```
 
-- **Runtime:** `Runtime.create` and `flargs/vite` take `definitions` from this module. No runtime reads `flags.env` from disk, so edge runtimes need no file system.
+- **Runtime:** `Runtime.create` and `flargs/vite` take `definitions` from this module. No runtime reads the flags file from disk, so edge runtimes need no file system.
 - **Types:** `flags`, `runtime.get`, `runtime.evaluate`, and `useFlag` read `Register`. `Register` is an `interface`, since declaration merging requires it.
-- **Content mappers:** a TypeScript 7.1 content mapper can replace the generated module later, with `import definitions from './flags.env'`. See [Out of Scope](#out-of-scope).
+- **Content mappers:** a TypeScript 7.1 content mapper can replace the generated module later, with `import definitions from './flags.json'`. See [Out of Scope](#out-of-scope).
 
 ### Growth
 
-A project grows in three steps, with no change to `flags.env` or to reads of `flags`:
+A project grows in three steps, with no change to the flags file or to reads of `flags`:
 
 1. Environment variables, set for each deploy.
 2. A `Runtime` with the dev route and personal overrides.
@@ -188,16 +214,16 @@ A project grows in three steps, with no change to `flags.env` or to reads of `fl
 
 ### `flargs`
 
-| Export                                      | Purpose                                                                                      |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `Definitions.parse(text)`                   | parses `flags.env` text into definitions, and throws with the line of an invalid declaration |
-| `Definitions.fromEnv(env)`                  | infers definitions from `FEATURE_*` variables, for zero config                               |
-| `Definitions.manifest(definitions)`         | returns the JSON manifest, the wire format of the admin API                                  |
-| `Definitions.defines(definitions, options)` | returns `define` replacements for build flags, for any bundler                               |
-| `Definitions.InvalidDeclarationError`       | thrown when a line of `flags.env` is invalid                                                 |
-| `Override.parse(input, options)`            | parses and verifies overrides from a `URL`, `URLSearchParams`, or cookie value               |
-| `Override.serialize(values, options)`       | returns search parameters, signed when `secret` is set                                       |
-| `Override.InvalidSignatureError`            | thrown when a signature does not match or has expired                                        |
+| Export                                      | Purpose                                                                                     |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `Definitions.parse(input)`                  | validates a parsed `flags.json` or `flags.toml` against the schema, and returns definitions |
+| `Definitions.fromEnv(env)`                  | infers definitions from `FEATURE_*` variables, for zero config                              |
+| `Definitions.manifest(definitions)`         | returns the JSON manifest, the wire format of the admin API                                 |
+| `Definitions.defines(definitions, options)` | returns `define` replacements for build flags, for any bundler                              |
+| `Definitions.InvalidDeclarationError`       | thrown when a flag declaration is invalid. The error names the key                          |
+| `Override.parse(input, options)`            | parses and verifies overrides from a `URL`, `URLSearchParams`, or cookie value              |
+| `Override.serialize(values, options)`       | returns search parameters, signed when `secret` is set                                      |
+| `Override.InvalidSignatureError`            | thrown when a signature does not match or has expired                                       |
 
 ### `flargs/server`
 
@@ -483,13 +509,13 @@ flags.newCheckout
 
 Types come from `flargs.gen.ts`, as described in [Generated Module](#generated-module).
 
-| Declaration                  | Value type                               |
-| ---------------------------- | ---------------------------------------- |
-| `FEATURE_X=false`            | `boolean`                                |
-| `FEATURE_X=3`                | `number`                                 |
-| `# @options a b`             | `'a' \| 'b'`                             |
-| `FEATURE_X={"requests":100}` | `{ requests: number }`, from the default |
-| other values                 | `string`                                 |
+| Declaration                          | Value type                               |
+| ------------------------------------ | ---------------------------------------- |
+| `false`                              | `boolean`                                |
+| `3`                                  | `number`                                 |
+| `["a", "b"]`                         | `'a' \| 'b'`                             |
+| `{ "default": { "requests": 100 } }` | `{ requests: number }`, from the default |
+| a string                             | `string`                                 |
 
 Without a generated module, `flags` is `Readonly<Record<string, unknown>>`. A `decide` function on `Runtime.create` must return the type of its flag, or `undefined`. A `decide` key for a build flag is a type error.
 
@@ -514,13 +540,13 @@ import { defineConfig } from 'vite'
 import flargs from 'flargs/vite'
 
 export default defineConfig({
-  // Reads flags.env, writes flargs.gen.ts, and replaces each build flag read with a literal.
+  // Reads flags.json, writes flargs.gen.ts, and replaces each build flag read with a literal.
   plugins: [flargs()],
 })
 ```
 
-- The plugin writes `flargs.gen.ts` at startup and on each change of `flags.env`.
-- A build flag value resolves from its variable in the environment, then `store`, then the default in `flags.env`. `store` takes the same `Store` contract as `Runtime.create`, such as `Store.http`.
+- The plugin writes `flargs.gen.ts` at startup and on each change of `flags.json`.
+- A build flag value resolves from its variable in the environment, then `store`, then the default in `flags.json`. `store` takes the same `Store` contract as `Runtime.create`, such as `Store.http`.
 - The plugin replaces `flags.<key>` with a literal for every build flag, where `flags` is the import from `flargs/values`. Dead branches drop from the bundle.
 - A read of a private flag in browser code is a build error.
 - In dev mode, the dev route also lists build flags. A change writes an override file and triggers a full reload.
@@ -535,16 +561,17 @@ The CLI uses incur, so `--llms`, `--mcp`, `--format`, and `skills add` are avail
 flargs list --url https://api-admin.example.com/.flags
 ```
 
-| Command                            | Purpose                                                                            |
-| ---------------------------------- | ---------------------------------------------------------------------------------- |
-| `flargs list`                      | lists every flag with its value and source                                         |
-| `flargs get <key>`                 | returns one flag                                                                   |
-| `flargs set <key> <value>`         | sets the store value                                                               |
-| `flargs unset <key>`               | deletes the store value                                                            |
-| `flargs link <url> <key=value...>` | returns a signed share URL. `--expires` sets the lifetime                          |
-| `flargs check`                     | validates the environment against `flags.env`, for CI                              |
-| `flargs generate`                  | writes `flargs.gen.ts` from `flags.env`, or from `--url`                           |
-| `flargs dev`                       | serves the dev route for `flags.env`, for an application with no TypeScript server |
+| Command                            | Purpose                                                                             |
+| ---------------------------------- | ----------------------------------------------------------------------------------- |
+| `flargs list`                      | lists every flag with its value and source                                          |
+| `flargs get <key>`                 | returns one flag                                                                    |
+| `flargs set <key> <value>`         | sets the store value                                                                |
+| `flargs unset <key>`               | deletes the store value                                                             |
+| `flargs link <url> <key=value...>` | returns a signed share URL. `--expires` sets the lifetime                           |
+| `flargs check`                     | validates the environment against the flags file, for CI                            |
+| `flargs env`                       | writes `.env.example` from the flags file                                           |
+| `flargs generate`                  | writes `flargs.gen.ts` from `flags.json`, or from `--url`                           |
+| `flargs dev`                       | serves the dev route for `flags.json`, for an application with no TypeScript server |
 
 Options: `--url` (default `FLARGS_URL`), and the admin token from `FLARGS_TOKEN`. The CLI never accepts a token in argv.
 
@@ -559,14 +586,14 @@ flargs generate --url https://api.example.com/.flags --out src/flargs.gen.ts
 
 ### Rust
 
-The `flargs` crate reads the same `flags.env` file. `flargs::flags!` parses it at compile time and generates a typed struct, so Rust needs no generated file.
+The `flargs` crate reads `flags.toml`. `flargs::flags!` parses it at compile time and generates a typed struct, so Rust needs no generated file.
 
 ```rust
-// Reads flags.env at compile time. A bad declaration fails the build at its line.
-flargs::flags!("flags.env");
+// Reads flags.toml at compile time. A bad declaration fails the build at its line.
+flargs::flags!("flags.toml");
 
 // Generated: `Flags`, one typed key for each runtime flag, one const for each build flag,
-// and `Pricing` (an enum with the variants A, B, and C) from `@options a b c`.
+// and `Pricing` (an enum with the variants A, B, and C) from `pricing = ["a", "b", "c"]`.
 if Flags::MAINTENANCE_BANNER {
     banner();
 }
@@ -598,7 +625,7 @@ async fn checkout(flags: flargs::axum::Flags<Flags>) -> Result<Response, flargs:
 }
 ```
 
-- **Build constants:** the macro reads each build flag variable with `option_env!`, then the default in `flags.env`. `flargs::build::pull` in `build.rs` sets the variables from the admin API.
+- **Build constants:** the macro reads each build flag variable with `option_env!`, then the default in `flags.toml`. `flargs::build::pull` in `build.rs` sets the variables from the admin API.
 - **Request input:** each method takes `&http::request::Parts`, so every framework on the `http` crate can call it.
 - **Access:** `authorize` returns `Access`, with the variants `None`, `Read`, `Response(http::Response<Body>)`, and `Write`, as in [Authorization](#authorization).
 - **Store:** `Store` is a trait with `delete`, `get`, and `set`.
@@ -624,10 +651,10 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 
 ### Phase 1: Definitions and Overrides
 
-- `Definitions.parse`, `Definitions.fromEnv`, `Definitions.manifest`, and `flargs.gen.ts` output.
+- `Definitions.parse`, `Definitions.fromEnv`, `Definitions.manifest`, `flargs/schema.json`, and `flargs.gen.ts` output.
 - `Override.parse` and `Override.serialize`, with signatures and expiry.
-- Vectors: `test/vectors/definitions.json` (`flags.env` text and its parsed result) and `test/vectors/overrides.json`.
-- **Gate:** vectors cover every value type, `@options`, `@public`, `@build`, invalid lines, unknown and invalid variables, and expired and wrong signatures. Type tests prove the types of a generated module.
+- Vectors: `test/vectors/definitions.json` (flags files and their parsed result) and `test/vectors/overrides.json`.
+- **Gate:** vectors cover every short and long form, `options`, `public`, `build`, `env`, invalid declarations, the same flags in JSON and TOML, unknown and invalid variables, and expired and wrong signatures. Type tests prove the types of a generated module.
 
 ### Phase 2: Server
 
@@ -653,7 +680,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 
 ### Phase 6: CLI
 
-- `list`, `get`, `set`, `unset`, `link`, `check`, `generate`, and `dev`.
+- `list`, `get`, `set`, `unset`, `link`, `check`, `env`, `generate`, and `dev`.
 - **Gate:** the built CLI runs against a local `runtime.fetch`. No output contains `FLARGS_TOKEN` or `FLARGS_SECRET`. A `.test-d.ts` fixture type-checks against the output of `flargs generate`.
 
 ### Phase 7: Stores
@@ -664,7 +691,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 ### Phase 8: Rust
 
 - `crates/flargs` and `crates/flargs-macros`, with the `axum`, `build`, `client`, `macros`, and `server` features.
-- **Gate:** the crate passes every vector. Its `HttpStore` and `Client` run against the TypeScript `runtime.fetch`. `trybuild` fixtures reject an invalid `flags.env` line and a `decide` for a build flag.
+- **Gate:** the crate passes every vector. Its `HttpStore` and `Client` run against the TypeScript `runtime.fetch`. `trybuild` fixtures reject an invalid `flags.toml` declaration and a `decide` for a build flag.
 
 ### Phase 9: Documentation
 
@@ -678,7 +705,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 - **Vercel Toolbar compatibility:** a `/.well-known/vercel/flags` adapter. Add it when a host uses the Toolbar.
 - **Audit log and history:** a host store can record writes. Add an API when two hosts need the same shape.
 - **Real-time updates:** the client refreshes on request. Add a stream when a page must change without a reload.
-- **Content mapper:** a TypeScript 7.1 content mapper (`flargs/content-mapper`) that types `import definitions from './flags.env'` with no generated module. Add it when content mappers leave the prototype stage.
+- **Content mapper:** a TypeScript 7.1 content mapper (`flargs/content-mapper`) that types `import definitions from './flags.json'` with no generated module. Add it when content mappers leave the prototype stage.
 
 ## Open Questions
 
