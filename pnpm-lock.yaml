@@ -15,6 +15,9 @@ catalogs:
     esbuild:
       specifier: 0.28.2
       version: 0.28.2
+    hono:
+      specifier: 4.13.14
+      version: 4.13.14
     incur:
       specifier: 0.7.1
       version: 0.7.1
@@ -45,6 +48,9 @@ importers:
       esbuild:
         specifier: 'catalog:'
         version: 0.28.2
+      hono:
+        specifier: 'catalog:'
+        version: 4.13.14
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -1096,6 +1102,10 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  hono@4.13.14:
+    resolution: {integrity: sha512-yhRLQ21U6qa9Hsu2N7Qcbh8tE+WKEcoErjIo56LeSGiGXGp9sA7UpE86Ui9uexb61KakiGwuHMn2QdV7w6i6kQ==}
+    engines: {node: '>=16.9.0'}
 
   human-id@4.2.2:
     resolution: {integrity: sha512-Z+8unD6em/MJwyrkWQ2M3wygRGI1+MztbutiNwk1DCuEPXOZRWGjtcMPZYP1exY9iNZMhd7ZOSMQSo9WYtiQRw==}
@@ -2195,6 +2205,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  hono@4.13.14: {}
 
   human-id@4.2.2: {}
 

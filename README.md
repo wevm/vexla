@@ -169,11 +169,11 @@ app.use(Flargs.middleware(runtime))
 ```
 
 ```ts
-// Node: converts the fetch handler to a request listener.
+// Node: serves /.flags, and resolves `flags` for each request of the app.
 import * as Http from 'node:http'
 import { Request } from 'flargs/node'
 
-Http.createServer(Request.toNodeListener(runtime.fetch, { runtime })).listen(3000)
+Http.createServer(Request.toNodeListener(app.fetch, { runtime })).listen(3000)
 ```
 
 ### Values

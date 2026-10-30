@@ -8,6 +8,8 @@
     "target": "esnext",
     "paths": {
       "flargs": ["./src/index.ts"],
+      "flargs/hono": ["./src/hono/index.ts"],
+      "flargs/node": ["./src/node/index.ts"],
       "flargs/server": ["./src/server/index.ts"]
     },
     "types": ["node", "vite-plus/test/globals"],

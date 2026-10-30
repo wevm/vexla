@@ -13,6 +13,7 @@
     "@changesets/cli": "catalog:",
     "@types/node": "catalog:",
     "esbuild": "catalog:",
+    "hono": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:",
     "zile": "catalog:"
@@ -40,6 +41,16 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./hono": {
+      "src": "./src/hono/index.ts",
+      "types": "./dist/hono/index.d.ts",
+      "default": "./dist/hono/index.js"
+    },
+    "./node": {
+      "src": "./src/node/index.ts",
+      "types": "./dist/node/index.d.ts",
+      "default": "./dist/node/index.js"
+    },
     "./server": {
       "src": "./src/server/index.ts",
       "types": "./dist/server/index.d.ts",
@@ -55,6 +66,14 @@
   ],
   "dependencies": {
     "incur": "catalog:"
+  },
+  "peerDependencies": {
+    "hono": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "hono": {
+      "optional": true
+    }
   },
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts"

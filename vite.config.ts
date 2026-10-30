@@ -6,6 +6,14 @@ export default defineConfig({
     // Longer specifiers come first, since the bare `flargs` pattern is anchored.
     alias: [
       {
+        find: 'flargs/hono',
+        replacement: Path.resolve(import.meta.dirname, 'src/hono/index.ts'),
+      },
+      {
+        find: 'flargs/node',
+        replacement: Path.resolve(import.meta.dirname, 'src/node/index.ts'),
+      },
+      {
         find: 'flargs/server',
         replacement: Path.resolve(import.meta.dirname, 'src/server/index.ts'),
       },
