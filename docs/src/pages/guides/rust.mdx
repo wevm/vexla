@@ -57,6 +57,38 @@ if Flags::MAINTENANCE_BANNER {
 }
 ```
 
+### Serve the Flags
+
+`Runtime` resolves runtime flags for each request, in the same order as `Flargs.create`: an override, the store value, `decide`, the environment, then the default. `runtime.layer()` serves the dev route and the admin API under `/.flags`, and scopes values to each request.
+
+```rust [src/main.rs]
+use axum::{Router, routing::get};
+use flargs::{MemoryStore, Runtime};
+
+// One runtime per process. `decide` receives what `identify` returns.
+let runtime = Runtime::<Flags>::builder()
+    .decide(Flags::PRICING, |plan: &String| (plan == "enterprise").then_some(Pricing::C))
+    .identify(|parts| plan_of(parts))
+    .secret(std::env::var("FLARGS_SECRET")?)
+    .store(MemoryStore::new())
+    .build()?;
+
+let app = Router::new()
+    .route("/checkout", get(checkout))
+    .layer(runtime.layer());
+```
+
+### Read a Flag
+
+The `flargs::axum::Flags` extractor reads the runtime from the layer. `get` returns the typed value of one flag, and `evaluate` returns every runtime value.
+
+```rust [src/checkout.rs]
+// The extractor evaluates the flag for this request only.
+async fn checkout(flags: flargs::axum::Flags<Flags>) -> Result<String, flargs::Error> {
+    Ok(if flags.get(Flags::NEW_CHECKOUT).await? { "new".into() } else { "old".into() })
+}
+```
+
 ## Recipes
 
 ### Parse Overrides
@@ -82,6 +114,29 @@ let overrides = overrides::parse(
 ```rust [src/flags.rs]
 // Each variable of the file starts with APP_, such as APP_NEW_CHECKOUT.
 flargs::flags!(".env.flags", env_prefix = "APP_");
+```
+
+### Remote Store
+
+With the `client` feature, `HttpStore` reads and writes the admin API of another Flargs server, such as a TypeScript admin service. It caches the manifest for five seconds. `reqwest` has no TLS backend by default, so a service that calls an `https` URL enables one on its own `reqwest` dependency.
+
+```rust [src/main.rs]
+use flargs::client::HttpStore;
+
+// The token is a bearer token that the remote `authorize` accepts.
+let store = HttpStore::new("https://api.example.com/.flags").token(std::env::var("FLARGS_TOKEN")?);
+let runtime = Runtime::<Flags>::builder().secret(secret).store(store).build()?;
+```
+
+### Build Values From the Admin API
+
+With the `build` feature, `flargs::build::pull` in `build.rs` sets each build flag variable from the admin API. A build flag then takes the store value, then the local variable, then the default.
+
+```rust [build.rs]
+// Reads the manifest with FLARGS_TOKEN and prints `cargo:rustc-env` lines.
+fn main() -> Result<(), flargs::client::Error> {
+    flargs::build::pull("https://api.example.com/.flags")
+}
 ```
 
 ### Retirement
