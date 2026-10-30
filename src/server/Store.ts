@@ -16,7 +16,7 @@ export type Store = {
   /** Sets the value of a flag. The runtime validates `value` before the call. */
   set: (key: string, value: Definitions.Json) => Promise<void>
   /**
-   * Definition operations. Required only when `Runtime.create` has no `definitions`, so the store
+   * Definition operations. Required only when `Flargs.create` has no `definitions`, so the store
    * declares the flags.
    */
   definitions?:

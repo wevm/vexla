@@ -3,7 +3,7 @@ import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { Definitions, Values } from 'flargs'
 import { useFlag } from 'flargs/react'
-import { Runtime } from 'flargs/server'
+import { Flargs } from 'flargs/server'
 
 const definitions = Definitions.parse({
   newCheckout: { default: false, public: true, type: 'boolean' },
@@ -15,9 +15,9 @@ function Checkout() {
 
 describe('useFlag', () => {
   test('reads the value of the request on the server', async () => {
-    const runtime = Runtime.create({ definitions, dev: true })
+    const flargs = Flargs.create({ definitions, dev: true })
     const render = (url: string) =>
-      Values.run(runtime, new Request(url), () => renderToString(createElement(Checkout)))
+      Values.run(flargs, new Request(url), () => renderToString(createElement(Checkout)))
 
     expect(await render('https://app.example.com/?flag.newCheckout=true')).toMatchInlineSnapshot(
       `"<p>new</p>"`,

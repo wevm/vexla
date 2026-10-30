@@ -6,7 +6,7 @@ import * as Path from 'node:path'
 import * as Esbuild from 'esbuild'
 import ts from 'typescript'
 import { Definitions } from 'flargs'
-import { Runtime, Store } from 'flargs/server'
+import { Flargs, Store } from 'flargs/server'
 import * as Http from '../../test/Http.js'
 
 const flags = {
@@ -192,14 +192,14 @@ describe('stale', () => {
 describe('admin API', () => {
   test('list, set, get, link, and prune, with the token from FLARGS_TOKEN', async () => {
     const store = Store.memory({ values: { oldFlag: true } })
-    const runtime = Runtime.create({
+    const flargs = Flargs.create({
       authorize: (request) =>
         request.headers.get('authorization') === 'Bearer secret-token' ? 'write' : undefined,
       definitions: Definitions.parse(flags),
       secret: 'test-secret',
       store,
     })
-    const server = await Http.serve(runtime.fetch)
+    const server = await Http.serve(flargs.fetch)
     const env = { FLARGS_TOKEN: 'secret-token', FLARGS_URL: `${server.url}/.flags` }
 
     expect(
@@ -250,8 +250,8 @@ describe('admin API', () => {
   })
 
   test('define on a store with no flags file', async () => {
-    const runtime = Runtime.create({ dev: true, store: Store.memory() })
-    const server = await Http.serve(runtime.fetch)
+    const flargs = Flargs.create({ dev: true, store: Store.memory() })
+    const server = await Http.serve(flargs.fetch)
     const env = { FLARGS_URL: `${server.url}/.flags` }
 
     const define = await run(

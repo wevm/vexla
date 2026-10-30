@@ -1,6 +1,6 @@
 /** @module Runs Store.http against a second runtime over real HTTP. */
 import { Definitions } from 'flargs'
-import { Runtime, Store } from 'flargs/server'
+import { Flargs, Store } from 'flargs/server'
 import * as Http from '../../test/Http.js'
 
 const definitions = Definitions.parse({
@@ -8,8 +8,8 @@ const definitions = Definitions.parse({
 })
 
 describe('http', () => {
-  test('a value set on the remote runtime applies to the local runtime', async () => {
-    const remote = Runtime.create({
+  test('a value set on the remote flargs applies to the local runtime', async () => {
+    const remote = Flargs.create({
       authorize: (request) =>
         request.headers.get('authorization') === 'Bearer admin' ? 'write' : undefined,
       definitions,
@@ -19,7 +19,7 @@ describe('http', () => {
     const server = await Http.serve(remote.fetch)
 
     const store = Store.http({ token: 'admin', ttl: 0, url: `${server.url}/.flags` })
-    const local = Runtime.create({ definitions, secret: 'local-secret', store })
+    const local = Flargs.create({ definitions, secret: 'local-secret', store })
     const read = () => local.get(new Request('https://app.example.com/'), 'newCheckout')
 
     expect(await read()).toMatchInlineSnapshot(`false`)
@@ -33,8 +33,8 @@ describe('http', () => {
     await server.close()
   })
 
-  test('store definitions through a remote runtime, with no flags file', async () => {
-    const remote = Runtime.create({
+  test('store definitions through a remote flargs, with no flags file', async () => {
+    const remote = Flargs.create({
       authorize: () => 'write',
       secret: 'remote-secret',
       store: Store.memory(),
@@ -46,7 +46,7 @@ describe('http', () => {
       'beta',
       Definitions.parse({ beta: { default: true, type: 'boolean' } })['beta']!,
     )
-    const local = Runtime.create({ secret: 'local-secret', store })
+    const local = Flargs.create({ secret: 'local-secret', store })
     expect(
       await local.get(new Request('https://app.example.com/'), 'beta' as never),
     ).toMatchInlineSnapshot(`true`)
@@ -54,7 +54,7 @@ describe('http', () => {
   })
 
   test('an error status throws HttpError without the token', async () => {
-    const remote = Runtime.create({ definitions, secret: 'remote-secret', store: Store.memory() })
+    const remote = Flargs.create({ definitions, secret: 'remote-secret', store: Store.memory() })
     const server = await Http.serve(remote.fetch)
     const store = Store.http({ token: 'wrong-token', url: `${server.url}/.flags` })
     const error = await store.get(['newCheckout']).catch((error: unknown) => error)

@@ -1,7 +1,7 @@
 /**
  * @module The flag values of the current request or page. On the server, `Values.run` scopes the
  * values of one request with `AsyncLocalStorage`. In a browser, the values come from the script
- * that `runtime.script` embeds, or from `Values.load`. Outside both, values come from `FEATURE_*`
+ * that `flargs.script` embeds, or from `Values.load`. Outside both, values come from `FEATURE_*`
  * environment variables, as in zero config.
  */
 import * as Definitions from './Definitions.js'
@@ -64,7 +64,7 @@ export function snapshot(): Snapshot {
  * @throws {Error} When the runtime has no `AsyncLocalStorage`.
  */
 export async function run<result>(
-  runtime: Evaluator,
+  flargs: Evaluator,
   request: Request,
   fn: () => result,
 ): Promise<Awaited<result>> {
@@ -72,7 +72,7 @@ export async function run<result>(
     throw new Error(
       '`Values.run` needs `AsyncLocalStorage`. Run it in Node, Bun, Deno, or Workers with `nodejs_compat`.',
     )
-  const values = (await runtime.evaluate(request)) as Snapshot
+  const values = (await flargs.evaluate(request)) as Snapshot
   return storage.run(values, () => fn()) as Awaited<result>
 }
 

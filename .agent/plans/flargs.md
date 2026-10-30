@@ -43,17 +43,17 @@ Flargs changes these Vercel Flags SDK decisions:
 
 ### Resolution Time
 
-| Time      | Resolves                                         | Overrides                                    | Reaches the client                                                        |
-| --------- | ------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------- |
-| `build`   | when the bundle is built, from `env` and `store` | dev mode only, through the dev server        | as a literal in the bundle, or through `runtime.script`, only if `public` |
-| `runtime` | on the server for each request                   | dev mode, public flags, and signed overrides | through `runtime.script` or `Values.load`, only if `public`               |
+| Time      | Resolves                                         | Overrides                                    | Reaches the client                                                       |
+| --------- | ------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------ |
+| `build`   | when the bundle is built, from `env` and `store` | dev mode only, through the dev server        | as a literal in the bundle, or through `flargs.script`, only if `public` |
+| `runtime` | on the server for each request                   | dev mode, public flags, and signed overrides | through `flargs.script` or `Values.load`, only if `public`               |
 
 A build flag never appears in the values endpoint or in the admin API write path. A bundler replaces each read with a literal, so dead branches drop from the bundle.
 
 ### Visibility
 
 - **`private` (default):** the value stays on the server. Only the authorized admin API returns it.
-- **`public`:** the values endpoint, `runtime.script`, and the bundle can contain the value. An unsigned override from a search parameter applies in production.
+- **`public`:** the values endpoint, `flargs.script`, and the bundle can contain the value. An unsigned override from a search parameter applies in production.
 
 ### Resolution Order
 
@@ -71,7 +71,7 @@ flowchart LR
 
 - **Override:** from the `flargs` cookie or the request search parameters. Search parameters take precedence over the cookie.
 - **Store value:** set through the admin API or the CLI. It applies to every request.
-- **`decide`:** code on `Runtime.create`, keyed by flag, with the `identify` context. It returns `undefined` to fall through.
+- **`decide`:** code on `Flargs.create`, keyed by flag, with the `identify` context. It returns `undefined` to fall through.
 - **`default`:** required on every declaration.
 
 An invalid override, store value, or `decide` result never selects a value. The server reports it through `onError` and continues with the next source. A stored value that a changed type or changed `options` invalidates therefore falls back to `decide`, then the default.
@@ -171,7 +171,7 @@ Every flag is an object with an explicit `type` and `default`. Flargs infers no 
 | `public`      | `true` lets the value reach the browser                                         | `false`                                          |
 | `type`        | `'boolean'`, `'json'`, `'number'`, `'select'`, or `'string'`                    | required                                         |
 
-- **Environment variables:** `newCheckout` reads `FEATURE_NEW_CHECKOUT`. `env` sets another name. `envPrefix` on `Runtime.create`, `flargs/vite`, and `flargs::flags!` replaces `FEATURE_`.
+- **Environment variables:** `newCheckout` reads `FEATURE_NEW_CHECKOUT`. `env` sets another name. `envPrefix` on `Flargs.create`, `flargs/vite`, and `flargs::flags!` replaces `FEATURE_`.
 - **Environment values:** `true` and `false` for booleans, digits for numbers, an option for selects, and JSON for JSON flags.
 - **`.env.example`:** `flargs env` writes every variable with its default, and the description as a comment.
 - **Visibility:** `public`, not a variable prefix, controls whether a value reaches the browser. A private flag never reaches a bundle, whatever its variable.
@@ -202,17 +202,17 @@ declare module 'flargs' {
 }
 ```
 
-- **Runtime:** `Runtime.create` and `flargs/vite` take `definitions` from this module. No runtime reads the flags file from disk, so edge runtimes need no file system.
-- **Types:** `flags`, `runtime.get`, `runtime.evaluate`, and `useFlag` read `Register`. `Register` is an `interface`, since declaration merging requires it.
+- **Runtime:** `Flargs.create` and `flargs/vite` take `definitions` from this module. No runtime reads the flags file from disk, so edge runtimes need no file system.
+- **Types:** `flags`, `flargs.get`, `flargs.evaluate`, and `useFlag` read `Register`. `Register` is an `interface`, since declaration merging requires it.
 - **Content mappers:** a TypeScript 7.1 content mapper can replace the generated module later. See [Out of Scope](#out-of-scope).
 
 ### Store Definitions
 
-A project declares its flags in a flags file or in the store. With no `definitions`, `Runtime.create` reads the definitions from the store, so an admin UI creates flags with no deploy.
+A project declares its flags in a flags file or in the store. With no `definitions`, `Flargs.create` reads the definitions from the store, so an admin UI creates flags with no deploy.
 
 ```ts
 // No flags.json: the store holds the definitions and the values.
-const runtime = Runtime.create({
+const flargs = Flargs.create({
   authorize,
   secret: process.env.FLARGS_SECRET,
   store: Store.from(database.flags),
@@ -228,7 +228,7 @@ PUT /.flags/definitions/newCheckout
 - **One source:** with `definitions`, the flags file is the only source of definitions, and the definition routes return `409`. Without `definitions`, the store is the only source.
 - **Same schema:** a store definition follows the schema of a flag in `flags.json`, and the runtime validates it on write and on read.
 - **Cache:** the runtime reads the definitions once, and again after each definition write through its own admin API. `Store.http` reads them from the remote admin API.
-- **Store down:** if the store cannot return definitions, evaluation throws `Runtime.DefinitionsUnavailableError`. With no definitions, no default exists.
+- **Store down:** if the store cannot return definitions, evaluation throws `Flargs.DefinitionsUnavailableError`. With no definitions, no default exists.
 - **Types:** `flargs generate --url` writes `flargs.gen.ts` from the manifest of a running server.
 - **Environment variables:** each store flag links to its `FEATURE_*` variable, as a file flag does.
 
@@ -264,14 +264,14 @@ A project grows in three steps, with no change to the flags file or to reads of 
 
 ### `flargs/server`
 
-`Runtime.create` returns the runtime instance of the flags. It holds the store, the secret, and `identify`. It listens on no port. Its `fetch` property is a fetch handler, as in Hono and Cloudflare Workers.
+`Flargs.create` returns the Flargs instance. It holds the store, the secret, and `identify`. It listens on no port. Its `fetch` property is a fetch handler, as in Hono and Cloudflare Workers.
 
 ```ts
-import { Runtime, Store } from 'flargs/server'
+import { Flargs, Store } from 'flargs/server'
 import { definitions } from './flargs.gen.js'
 
 // One instance per application instance.
-export const runtime = Runtime.create({
+export const flargs = Flargs.create({
   authorize: (request) => Admin.verify(request),
   decide: {
     // Return undefined to fall through to the default.
@@ -286,24 +286,24 @@ export const runtime = Runtime.create({
 })
 
 // Evaluate one flag. The instance caches the result for this request.
-const newCheckout = await runtime.get(request, 'newCheckout')
+const newCheckout = await flargs.get(request, 'newCheckout')
 
 // Serve the dev route and the admin API.
-const response = await runtime.fetch(request)
+const response = await flargs.fetch(request)
 ```
 
-| Export                                | Purpose                                                                               |
-| ------------------------------------- | ------------------------------------------------------------------------------------- |
-| `Runtime.create(options)`             | returns `{ evaluate, fetch, get, script }`                                            |
-| `runtime.evaluate(request, options?)` | returns every runtime value. `options.visibility: 'public'` returns public flags only |
-| `runtime.fetch(request)`              | serves the dev route and the admin API, and returns `404` outside `path`              |
-| `runtime.get(request, key)`           | returns one typed value, and runs `decide` for that flag only                         |
-| `runtime.script(request)`             | returns a `<script>` element with public values, escaped with `safeJson`              |
-| `Store.memory()`                      | in-memory store, for dev and tests                                                    |
-| `Store.http(options)`                 | reads and writes a remote Flargs admin API, such as a central admin service           |
-| `Store.kv(namespace)`                 | Cloudflare KV store                                                                   |
-| `Store.env(env)`                      | read-only store over `FEATURE_*` variables                                            |
-| `Store.from(store)`                   | types a host store, such as a Postgres table                                          |
+| Export                               | Purpose                                                                               |
+| ------------------------------------ | ------------------------------------------------------------------------------------- |
+| `Flargs.create(options)`             | returns `{ evaluate, fetch, get, script }`                                            |
+| `flargs.evaluate(request, options?)` | returns every runtime value. `options.visibility: 'public'` returns public flags only |
+| `flargs.fetch(request)`              | serves the dev route and the admin API, and returns `404` outside `path`              |
+| `flargs.get(request, key)`           | returns one typed value, and runs `decide` for that flag only                         |
+| `flargs.script(request)`             | returns a `<script>` element with public values, escaped with `safeJson`              |
+| `Store.memory()`                     | in-memory store, for dev and tests                                                    |
+| `Store.http(options)`                | reads and writes a remote Flargs admin API, such as a central admin service           |
+| `Store.kv(namespace)`                | Cloudflare KV store                                                                   |
+| `Store.env(env)`                     | read-only store over `FEATURE_*` variables                                            |
+| `Store.from(store)`                  | types a host store, such as a Postgres table                                          |
 
 `get` and `evaluate` cache results per `Request` object in a `WeakMap` that the instance owns. Several reads in one request run `identify`, the store read, and each `decide` once.
 
@@ -317,7 +317,7 @@ type Store = {
   set: (key: string, value: unknown) => Promise<void>
   // Optional: lists every key with a value, so `flargs prune` finds orphan values.
   keys?: () => Promise<readonly string[]>
-  // Required only for store definitions, when Runtime.create has no `definitions`.
+  // Required only for store definitions, when Flargs.create has no `definitions`.
   definitions?: {
     delete: (key: string) => Promise<void>
     list: () => Promise<Record<string, Definitions.Definition>>
@@ -374,7 +374,7 @@ A change to a flag needs no database migration. Existing rows resolve as follows
 | Change `type` or `options` | a value that fails validation | reported through `onError`, then `decide`, then the default         |
 | Rename a flag              | the row of the old key        | the new key has no value. The old row is an orphan                  |
 
-`Runtime.create` options:
+`Flargs.create` options:
 
 | Option        | Purpose                                                                                   | Default                                  |
 | ------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------- |
@@ -392,33 +392,33 @@ A change to a flag needs no database migration. Existing rows resolve as follows
 
 ### Integrations
 
-`runtime.fetch` mounts in every fetch-based runtime. Two entries cover the other cases.
+`flargs.fetch` mounts in every fetch-based runtime. Two entries cover the other cases.
 
 ```ts
-// Cloudflare Workers and Bun: route the path to runtime.fetch.
+// Cloudflare Workers and Bun: route the path to flargs.fetch.
 export default {
   fetch: (request: Request) =>
     new URL(request.url).pathname.startsWith('/.flags')
-      ? runtime.fetch(request)
+      ? flargs.fetch(request)
       : app.fetch(request),
 }
 ```
 
 ```ts
 // Next.js: app/.flags/[...path]/route.ts
-export const DELETE = runtime.fetch
-export const GET = runtime.fetch
-export const POST = runtime.fetch
-export const PUT = runtime.fetch
+export const DELETE = flargs.fetch
+export const GET = flargs.fetch
+export const POST = flargs.fetch
+export const PUT = flargs.fetch
 ```
 
 ```ts
 // Hono: flargs/hono serves the path and sets c.var.flags for the request.
 import { Hono } from 'hono'
-import * as Flargs from 'flargs/hono'
+import { type Env, middleware } from 'flargs/hono'
 
-const app = new Hono()
-app.use(Flargs.middleware(runtime))
+const app = new Hono<Env<typeof flargs>>()
+app.use(middleware(flargs))
 
 app.get('/checkout', async (c) => {
   // c.var.flags.get closes over c.req.raw.
@@ -431,17 +431,17 @@ app.get('/checkout', async (c) => {
 import * as Http from 'node:http'
 import { Request } from 'flargs/node'
 
-Http.createServer(Request.toNodeListener(runtime.fetch)).listen(3000)
+Http.createServer(Request.toNodeListener(flargs.fetch)).listen(3000)
 
 // In an Express or node:http route, convert the request before a read.
-const newCheckout = await runtime.get(Request.fromNodeListener(req, res), 'newCheckout')
+const newCheckout = await flargs.get(Request.fromNodeListener(req, res), 'newCheckout')
 ```
 
-| Entry         | Export                                      | Purpose                                                                                                                                                        |
-| ------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `flargs/hono` | `middleware(runtime)`                       | serves `path` through `runtime.fetch`, runs the next handler in `Values.run`, and sets `c.var.flags` with `evaluate`, `get`, and `script` bound to the request |
-| `flargs/node` | `Request.toNodeListener(handler, options?)` | converts a fetch handler to a `node:http` request listener. With `options.runtime`, it runs the handler in `Values.run`                                        |
-| `flargs/node` | `Request.fromNodeListener(req, res)`        | converts a `node:http` request to a fetch `Request`                                                                                                            |
+| Entry         | Export                                      | Purpose                                                                                                                                                       |
+| ------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `flargs/hono` | `middleware(flargs)`                        | serves `path` through `flargs.fetch`, runs the next handler in `Values.run`, and sets `c.var.flags` with `evaluate`, `get`, and `script` bound to the request |
+| `flargs/node` | `Request.toNodeListener(handler, options?)` | converts a fetch handler to a `node:http` request listener. With `options.flargs`, it runs the handler in `Values.run`                                        |
+| `flargs/node` | `Request.fromNodeListener(req, res)`        | converts a `node:http` request to a fetch `Request`                                                                                                           |
 
 The `flargs/node` names follow `Request.toNodeListener` in `wevm/mppx`. React Server Components in Next.js receive no `Request`. Support for `{ cookies, headers, url }` input waits for the Next.js guide.
 
@@ -495,7 +495,7 @@ Manifest response:
 - **Dev mode:** `dev: true` grants `write` to every request, and `authorize` does not run.
 - **Default:** without `authorize`, every request outside dev mode receives `undefined`.
 - **Errors:** if `authorize` throws, the request receives `undefined` and `onError` receives the error.
-- **Public values:** `GET /.flags/values`, `runtime.get`, and `runtime.script` never call `authorize`.
+- **Public values:** `GET /.flags/values`, `flargs.get`, and `flargs.script` never call `authorize`.
 
 Callers and credentials:
 
@@ -515,7 +515,7 @@ const resource = Resource.create({
   resource: 'https://api.example.com',
 })
 
-const runtime = Runtime.create({
+const flargs = Flargs.create({
   async authorize(request) {
     // The admin UI session has full access.
     if (await Admin.verify(request)) return 'write'
@@ -559,28 +559,28 @@ if (flags.newCheckout) newCheckout()
 if (flags.maintenanceBanner) showBanner()
 ```
 
-| Condition                        | Source of `flags`                                                                                 |
-| -------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `browser`                        | the JSON script from `runtime.script`, parsed at the first read, or the response of `Values.load` |
-| `node`, `bun`, `deno`, `workerd` | the values of the current request, stored by `Values.run` in `AsyncLocalStorage`                  |
+| Condition                        | Source of `flags`                                                                                |
+| -------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `browser`                        | the JSON script from `flargs.script`, parsed at the first read, or the response of `Values.load` |
+| `node`, `bun`, `deno`, `workerd` | the values of the current request, stored by `Values.run` in `AsyncLocalStorage`                 |
 
-| Export                             | Condition | Purpose                                                                                 |
-| ---------------------------------- | --------- | --------------------------------------------------------------------------------------- |
-| `flags`                            | all       | the typed values. A key that the page or request does not have reads as its `default`   |
-| `Values.load(options?)`            | `browser` | requests `GET <url>/values`, and resolves when `flags` holds the response               |
-| `Values.run(runtime, request, fn)` | server    | evaluates every runtime flag for `request`, then runs `fn` with those values in `flags` |
-| `Values.subscribe(fn)`             | `browser` | calls `fn` after each `Values.load`, and returns an unsubscribe function                |
+| Export                            | Condition | Purpose                                                                                 |
+| --------------------------------- | --------- | --------------------------------------------------------------------------------------- |
+| `flags`                           | all       | the typed values. A key that the page or request does not have reads as its `default`   |
+| `Values.load(options?)`           | `browser` | requests `GET <url>/values`, and resolves when `flags` holds the response               |
+| `Values.run(flargs, request, fn)` | server    | evaluates every runtime flag for `request`, then runs `fn` with those values in `flags` |
+| `Values.subscribe(fn)`            | `browser` | calls `fn` after each `Values.load`, and returns an unsubscribe function                |
 
 - **Page state:** in a browser, the page is the lifecycle of the values, so `flargs` keeps one snapshot for the page. This is the only module-scope state in Flargs.
 - **Server state:** `flargs/hono` and `Request.toNodeListener` of `flargs/node` call `Values.run` for every request. Other fetch runtimes call it directly.
-- **Eager evaluation:** `Values.run` runs every `decide`. A flag with an expensive `decide` uses `runtime.get(request, key)` in place of `flags`.
-- **Build flags:** `runtime.script` and the values endpoint also contain public build flag values, so `flags` works with no bundler. `flargs/vite` replaces build flag reads with literals.
+- **Eager evaluation:** `Values.run` runs every `decide`. A flag with an expensive `decide` uses `flargs.get(request, key)` in place of `flags`.
+- **Build flags:** `flargs.script` and the values endpoint also contain public build flag values, so `flags` works with no bundler. `flargs/vite` replaces build flag reads with literals.
 - **Private flags:** in a browser, a private flag reads as its `default`. With `flargs/vite`, a read of a private flag in browser code is a build error.
 
 ```ts
 // Cloudflare Workers: every read of flags inside app.fetch uses this request.
 export default {
-  fetch: (request: Request) => Values.run(runtime, request, () => app.fetch(request)),
+  fetch: (request: Request) => Values.run(flargs, request, () => app.fetch(request)),
 }
 ```
 
@@ -598,7 +598,7 @@ flags.newCheckout
 ```
 
 - **Overrides:** browsers block third-party cookies, so the API cannot store the `flargs` cookie for the client. `Values.load` copies `flag.*` parameters from `location` to `sessionStorage`, and sends them as search parameters on each request. Signed overrides keep their signature.
-- **CORS:** `Runtime.create` takes `cors: { origins }`. The values endpoint returns CORS headers for those origins only. Admin routes never return CORS headers.
+- **CORS:** `Flargs.create` takes `cors: { origins }`. The values endpoint returns CORS headers for those origins only. Admin routes never return CORS headers.
 - **Types:** `flargs generate --url` writes `flargs.gen.ts` from the manifest of the API. See [CLI](#cli).
 
 ### Types
@@ -613,7 +613,7 @@ Types come from `flargs.gen.ts`, as described in [Generated Module](#generated-m
 | `{ "default": { "requests": 100 } }` | `{ requests: number }`, from the default |
 | a string                             | `string`                                 |
 
-Without a generated module, `flags` is `Readonly<Record<string, unknown>>`. A `decide` function on `Runtime.create` must return the type of its flag, or `undefined`. A `decide` key for a build flag is a type error.
+Without a generated module, `flags` is `Readonly<Record<string, unknown>>`. A `decide` function on `Flargs.create` must return the type of its flag, or `undefined`. A `decide` key for a build flag is a type error.
 
 ### `flargs/react`
 
@@ -642,7 +642,7 @@ export default defineConfig({
 ```
 
 - The plugin writes `flargs.gen.ts` at startup and on each change of `flags.json`.
-- A build flag value resolves from its variable in the environment, then `store`, then the default in `flags.json`. `store` takes the same `Store` contract as `Runtime.create`, such as `Store.http`.
+- A build flag value resolves from its variable in the environment, then `store`, then the default in `flags.json`. `store` takes the same `Store` contract as `Flargs.create`, such as `Store.http`.
 - The plugin replaces `flags.<key>` with a literal for every build flag, where `flags` is the import from `flargs`. Dead branches drop from the bundle.
 - A read of a private flag in browser code is a build error.
 - In dev mode, the dev route also lists build flags. A change writes an override file and triggers a full reload.
@@ -756,7 +756,7 @@ if Flags::MAINTENANCE_BANNER {
 ```
 
 ```rust
-// One runtime per process. The builder mirrors Runtime.create in TypeScript.
+// One runtime per process. The builder mirrors Flargs.create in TypeScript.
 let runtime = flargs::Runtime::<Flags>::builder()
     .authorize(authorize)
     .decide(Flags::PRICING, |user: &User| (user.plan == Plan::Enterprise).then_some(Pricing::C))
@@ -766,15 +766,15 @@ let runtime = flargs::Runtime::<Flags>::builder()
     .build()?;
 
 // Evaluate one flag. The runtime caches results for each request.
-let new_checkout: bool = runtime.get(&parts, Flags::NEW_CHECKOUT).await?;
+let new_checkout: bool = flargs.get(&parts, Flags::NEW_CHECKOUT).await?;
 ```
 
 ```rust
 // axum: the tower::Service serves /.flags, and the extractor reads flags for the request.
 let app = Router::new()
-    .nest_service("/.flags", runtime.service())
+    .nest_service("/.flags", flargs.service())
     .route("/checkout", get(checkout))
-    .layer(runtime.layer());
+    .layer(flargs.layer());
 
 async fn checkout(flags: flargs::axum::Flags<Flags>) -> Result<Response, flargs::Error> {
     Ok(if flags.get(Flags::NEW_CHECKOUT).await? { new_checkout() } else { checkout_page() })
@@ -788,7 +788,7 @@ async fn checkout(flags: flargs::axum::Flags<Flags>) -> Result<Response, flargs:
 
 | Crate or feature     | Contents                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------- |
-| `flargs` (default)   | `Key`, `overrides::parse`, `overrides::serialize`, `Runtime`, `Store`, and `MemoryStore` |
+| `flargs` (default)   | `Key`, `overrides::parse`, `overrides::serialize`, `Flargs`, `Store`, and `MemoryStore`  |
 | `flargs-definitions` | the flags file parser, shared by `flargs` (as `flargs::definitions`) and `flargs-macros` |
 | `flargs-macros`      | `flargs::flags!`, re-exported by the `macros` feature (on by default)                    |
 | `axum` feature       | the `flargs::axum::Flags` extractor                                                      |
@@ -815,7 +815,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 
 ### Phase 2: Server
 
-- `Runtime.create`, `evaluate`, `fetch`, `get`, `script`, and `Store.memory`.
+- `Flargs.create`, `evaluate`, `fetch`, `get`, `script`, and `Store.memory`.
 - `flargs/node` and `flargs/hono`.
 - The HTTP API and the resolution order.
 - **Gate:** integration tests over a local HTTP server cover each resolution source, each override mode, each `authorize` return value on each route, and the absence of private values in public responses. Vectors: `test/vectors/evaluate.json`.
@@ -838,17 +838,17 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 ### Phase 6: CLI
 
 - `list`, `get`, `set`, `unset`, `define`, `undefine`, `prune`, `retire`, `stale`, `link`, `check`, `env`, `generate`, and `dev`.
-- **Gate:** the built CLI runs against a local `runtime.fetch`. No output contains `FLARGS_TOKEN` or `FLARGS_SECRET`. A `.test-d.ts` fixture type-checks against the output of `flargs generate`. `flargs retire` on a fixture app rewrites every read, removes dead branches, and leaves a project that passes `tsc`.
+- **Gate:** the built CLI runs against a local `flargs.fetch`. No output contains `FLARGS_TOKEN` or `FLARGS_SECRET`. A `.test-d.ts` fixture type-checks against the output of `flargs generate`. `flargs retire` on a fixture app rewrites every read, removes dead branches, and leaves a project that passes `tsc`.
 
 ### Phase 7: Stores
 
 - `Store.env`, `Store.http`, `Store.kv`, and `Store.from`, and store definitions.
-- **Gate:** one `Runtime.create` instance uses `Store.http` to write through a second instance, and a value set on the second applies to the first. A flag defined through the admin API resolves with no flags file, and a definition route returns `409` when `definitions` is set.
+- **Gate:** one `Flargs.create` instance uses `Store.http` to write through a second instance, and a value set on the second applies to the first. A flag defined through the admin API resolves with no flags file, and a definition route returns `409` when `definitions` is set.
 
 ### Phase 8: Rust
 
 - `crates/flargs` and `crates/flargs-macros`, with the `axum`, `build`, `client`, `macros`, and `server` features.
-- **Gate:** the crate passes every vector. Its `HttpStore` and `Client` run against the TypeScript `runtime.fetch`. `trybuild` fixtures reject an invalid `flags.toml` declaration and a `decide` for a build flag.
+- **Gate:** the crate passes every vector. Its `HttpStore` and `Client` run against the TypeScript `flargs.fetch`. `trybuild` fixtures reject an invalid `flags.toml` declaration and a `decide` for a build flag.
 
 ### Phase 9: Documentation
 

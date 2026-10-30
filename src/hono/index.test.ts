@@ -1,8 +1,8 @@
 /** @module Runs a Hono app with the middleware behind a local HTTP server. */
 import { Hono } from 'hono'
 import { Definitions, flags } from 'flargs'
-import * as Flargs from 'flargs/hono'
-import { Runtime } from 'flargs/server'
+import { type Env, middleware } from 'flargs/hono'
+import { Flargs } from 'flargs/server'
 import * as Http from '../../test/Http.js'
 
 const definitions = Definitions.parse({
@@ -11,14 +11,14 @@ const definitions = Definitions.parse({
 })
 
 describe('middleware', () => {
-  test('serves the runtime path, and scopes flags and c.var.flags to the request', async () => {
-    const runtime = Runtime.create({
+  test('serves the flargs path, and scopes flags and c.var.flags to the request', async () => {
+    const flargs = Flargs.create({
       decide: { pricing: () => 'b' },
       definitions,
       secret: 'test-secret',
     })
-    const app = new Hono<Flargs.Env<typeof runtime>>()
-    app.use(Flargs.middleware(runtime))
+    const app = new Hono<Env<typeof flargs>>()
+    app.use(middleware(flargs))
     app.get('/', async (c) =>
       c.json({ flag: flags['newCheckout'], get: await c.var.flags.get('pricing') }),
     )

@@ -112,7 +112,7 @@ A project with no flags file declares its flags in the store. An admin UI or the
 
 ```ts
 // No flags.json: the store holds the definitions and the values.
-const runtime = Runtime.create({
+const flargs = Flargs.create({
   authorize,
   secret: process.env.FLARGS_SECRET,
   store: Store.from(database.flags),
@@ -135,13 +135,13 @@ flags.limits // { requests: number }
 
 ### Runtime
 
-`Runtime.create` adds overrides, a store, `decide`, the dev route, and the admin API. `runtime.fetch` is a fetch handler.
+`Flargs.create` adds overrides, a store, `decide`, the dev route, and the admin API. `flargs.fetch` is a fetch handler.
 
 ```ts
-import { Runtime, Store } from 'flargs/server'
+import { Flargs, Store } from 'flargs/server'
 import { definitions } from './flargs.gen.js'
 
-export const runtime = Runtime.create({
+export const flargs = Flargs.create({
   authorize: (request) => Admin.access(request),
   decide: {
     // Returns undefined to fall through to the store value or the default.
@@ -155,17 +155,17 @@ export const runtime = Runtime.create({
 })
 
 // Evaluates one flag for one request.
-const pricing = await runtime.get(request, 'pricing')
+const pricing = await flargs.get(request, 'pricing')
 
 // Serves the dev route and the admin API under /.flags.
-const response = await runtime.fetch(request)
+const response = await flargs.fetch(request)
 ```
 
 ```ts
 // Hono: serves /.flags and resolves `flags` for each request.
-import * as Flargs from 'flargs/hono'
+import { middleware } from 'flargs/hono'
 
-app.use(Flargs.middleware(runtime))
+app.use(middleware(flargs))
 ```
 
 ```ts
@@ -173,7 +173,7 @@ app.use(Flargs.middleware(runtime))
 import * as Http from 'node:http'
 import { Request } from 'flargs/node'
 
-Http.createServer(Request.toNodeListener(app.fetch, { runtime })).listen(3000)
+Http.createServer(Request.toNodeListener(app.fetch, { flargs })).listen(3000)
 ```
 
 ### Values
@@ -275,13 +275,13 @@ type = "select"
 // Generates `Flags`, typed keys, and the `Pricing` enum from flags.toml.
 flargs::flags!("flags.toml");
 
-let pricing: Pricing = runtime.get(&parts, Flags::PRICING).await?;
+let pricing: Pricing = flargs.get(&parts, Flags::PRICING).await?;
 
 // axum: serves /.flags, and evaluates flags for each request.
 let app = Router::new()
-    .nest_service("/.flags", runtime.service())
+    .nest_service("/.flags", flargs.service())
     .route("/checkout", get(checkout))
-    .layer(runtime.layer());
+    .layer(flargs.layer());
 ```
 
 ## CLI

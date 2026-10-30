@@ -17,7 +17,7 @@ export type Access = 'read' | 'write' | undefined
 export type Source = 'decide' | 'default' | 'env' | 'override' | 'store'
 
 /** The runtime instance. */
-export type Runtime<definitions = Registered> = {
+export type Flargs<definitions = Registered> = {
   /** Returns the definitions: `definitions`, or the store definitions, or zero config from `env`. */
   definitions: () => Promise<Definitions.Definitions>
   /** Returns every value for `request`. `visibility: 'public'` returns public flags only. */
@@ -43,7 +43,7 @@ export type Runtime<definitions = Registered> = {
 /** Returns a runtime instance. It listens on no port: `fetch` is a fetch handler. */
 export function create<
   const definitions extends Definitions.Definitions = Registered & Definitions.Definitions,
->(options: create.Options<definitions> = {}): Runtime<definitions> {
+>(options: create.Options<definitions> = {}): Flargs<definitions> {
   const path = (options.path ?? '/.flags').replace(/\/$/, '')
   const dev = options.dev ?? false
   const env = options.env ?? globalThis.process?.env ?? {}
@@ -52,7 +52,7 @@ export function create<
 
   if (!dev && !options.secret)
     throw new TypeError(
-      '`Runtime.create` needs `secret` outside dev mode. Set `secret`, such as from `FLARGS_SECRET`.',
+      '`Flargs.create` needs `secret` outside dev mode. Set `secret`, such as from `FLARGS_SECRET`.',
     )
 
   // Definitions from the store are read once, and again after a write through this runtime.
@@ -239,9 +239,9 @@ export function create<
     return `${Override.cookie}=${encodeURIComponent(params.toString())}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${dev ? '' : '; Secure'}`
   }
 
-  const runtime: Runtime<definitions> = {
+  const flargs: Flargs<definitions> = {
     definitions,
-    evaluate: evaluate as Runtime<definitions>['evaluate'],
+    evaluate: evaluate as Flargs<definitions>['evaluate'],
 
     async fetch(request) {
       const url = new URL(request.url)
@@ -454,7 +454,7 @@ export function create<
     return json(404, { error: 'not_found' })
   }
 
-  return runtime
+  return flargs
 }
 
 export declare namespace create {
@@ -505,7 +505,7 @@ export declare namespace create {
 
 /** Thrown when the store cannot return its definitions. With no definitions, no default exists. */
 export class DefinitionsUnavailableError extends Errors.BaseError {
-  override name = 'Runtime.DefinitionsUnavailableError'
+  override name = 'Flargs.DefinitionsUnavailableError'
 
   constructor(options: { cause: unknown }) {
     super('The store did not return the flag definitions.', {
@@ -517,7 +517,7 @@ export class DefinitionsUnavailableError extends Errors.BaseError {
 
 /** Thrown when a read names a key that no flag declares. */
 export class UnknownFlagError extends Errors.BaseError {
-  override name = 'Runtime.UnknownFlagError'
+  override name = 'Flargs.UnknownFlagError'
 
   /** The key. */
   readonly key: string

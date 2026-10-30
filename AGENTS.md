@@ -9,7 +9,7 @@ Source commit: `78decd57e6823ec5de899a5acb8bbdb9c227b3a3`. Retrieved 2026-10-30.
 
 - Flargs is a self-hosted feature flag library. It declares flags in a committed `flags.json` or `flags.toml` file, evaluates them on the server, and serves a dev route and an admin API from the host application. It is a self-hosted alternative to the Vercel Flags SDK.
 - Flargs supports trunk-based development. Unfinished work merges to `main` behind a flag, and the flag, not the branch, controls the release.
-- Flargs covers four roles: the definitions (`flags.json` or `flags.toml`, validated by `Definitions` in `flargs`), the runtime instance (`Runtime.create` in `flargs/server`, served through `runtime.fetch`), the values (`flags` in `flargs`), and the build (`flargs/vite`). The CLI and the Rust crate use the same wire format. Stay general purpose. Never add code for one product or one deployment.
+- Flargs covers four roles: the definitions (`flags.json` or `flags.toml`, validated by `Definitions` in `flargs`), the instance (`Flargs.create` in `flargs/server`, served through `flargs.fetch`), the values (`flags` in `flargs`), and the build (`flargs/vite`). The CLI and the Rust crate use the same wire format. Stay general purpose. Never add code for one product or one deployment.
 - A flag resolves at one of two times. A `build` flag resolves when the bundle is built, compiles to a literal, and never reaches the API. A `runtime` flag resolves on the server for each request.
 - `flags.json` (TypeScript), `flags.toml` (Rust), or the store declares each flag with its default, following one JSON Schema. A project uses one source: with `definitions`, the store holds values only. Each flag links to a `FEATURE_*` environment variable. A gitignored `.env` or the deploy environment sets values.
 - `public: true`, not a variable prefix, controls whether a value reaches the browser. Flargs configuration variables use the `FLARGS_` prefix.
@@ -26,7 +26,7 @@ Source commit: `78decd57e6823ec5de899a5acb8bbdb9c227b3a3`. Retrieved 2026-10-30.
 ## Security Conventions
 
 - Secrets (`FLARGS_SECRET`, admin tokens, signatures) never appear in errors, logs, CLI output, MCP output, or snapshots.
-- The values endpoint, `runtime.script`, and the output of `flargs types` contain public flags only, unless `--visibility all` is set. Return a private value only to a request that `authorize` grants `read` or `write`.
+- The values endpoint, `flargs.script`, and the output of `flargs types` contain public flags only, unless `--visibility all` is set. Return a private value only to a request that `authorize` grants `read` or `write`.
 - `authorize` is the only check on the admin API. Write a store value or sign a link only with `write`. `FLARGS_SECRET` signs overrides and never authenticates a request.
 - Never serve the dev route in production without `authorize`. Dev mode is an explicit option, never inferred from a hostname or a header.
 - Sign overrides and share links with HMAC-SHA256 over the canonical override string. Verify before parsing values, and reject an expired signature.
@@ -88,13 +88,13 @@ Source commit: `78decd57e6823ec5de899a5acb8bbdb9c227b3a3`. Retrieved 2026-10-30.
 
 - Organize each module file as one conceptual namespace containing its public types, constants, functions, and errors. Consumers should read calls as `Module.operation(...)`.
 - Prefer stateless module functions for pure behavior. Do not create an instance when inputs fully describe the operation.
-- When behavior needs dependencies or lifecycle state, expose a factory such as `Runtime.create(options)` that returns a plain object of operations and data.
+- When behavior needs dependencies or lifecycle state, expose a factory such as `Flargs.create(options)` that returns a plain object of operations and data.
 - Construct instances explicitly at the application boundary and pass them down. Do not hide construction in imports or module-scope singletons.
 - Scope an instance to the lifecycle that owns its state, such as one CLI run, one serverless instance, or one test. Do not share mutable state more broadly than required.
 - Inject environment-specific capabilities through factory options: `env`, `fetch`, and `store`. Read `process.env` and `globalThis.fetch` only as defaults at that boundary, so tests inject them and nothing stubs a global.
 - Type dependencies by the smallest capability the module consumes, not by the concrete SDK client. This keeps adapters interchangeable without wrapper classes.
 - Let factory operations close over shared dependencies and state. Do not return methods that depend on `this` or require binding.
-- Name the returned public shape after its role (`Client`, `Runtime`, `Store`) when that role is meaningful. Use `create.ReturnType` for a factory-specific shape that has no independent domain name.
+- Name the returned public shape after its role (`Client`, `Flargs`, `Store`) when that role is meaningful. Use `create.ReturnType` for a factory-specific shape that has no independent domain name.
 - Keep one authoritative instance value. Derive related helpers and views from that instance instead of duplicating configuration or state.
 - Keep mutable caches private to the instance. Expose explicit operations, such as `invalidate`, and provide reset or disposal only when the lifecycle requires it.
 - Avoid side-effect registration. `sideEffects: false` means an import used only to install global behavior can disappear from a bundle.
@@ -173,11 +173,11 @@ Applies to documentation, comments, TSDoc, interface copy, commit messages, and 
 - Runtime coverage is integration-only. Do not write unit tests, private-helper tests, or per-function suites disguised as integration tests.
 - Colocate integration suites and consumer type fixtures with their owning module: `Client.test.ts` and `Client.test-d.ts` beside `Client.ts`. Keep the shared harness under `test/`.
 - No mocking, stubbing, fake implementations, module replacements, fake timers, or stubbed globals. Run every flow against a real server or platform:
-  - **Server:** `runtime.fetch` behind a local HTTP server on a random port, with its own `Store.memory()`.
-  - **Admin store:** a second `Runtime.create` instance as the remote store for `Store.http`, so writes travel over real HTTP.
+  - **Server:** `flargs.fetch` behind a local HTTP server on a random port, with its own `Store.memory()`.
+  - **Admin store:** a second `Flargs.create` instance as the remote store for `Store.http`, so writes travel over real HTTP.
   - **Browser:** the dev route and `flargs/react` in a real browser through Vitest browser mode.
   - **Build:** a real Vite build of a fixture app, with assertions on the emitted bundle.
-  - **Processes:** the built CLI against a local `runtime.fetch`, and the Rust crate against the same server and vectors.
+  - **Processes:** the built CLI against a local `flargs.fetch`, and the Rust crate against the same server and vectors.
 - Write store values through the admin API. Never write into a store directly in a test that covers the server.
 - Cover complete supported flows as they land. Before a later stage exists, test the real available public boundary, and do not fabricate a downstream stage.
 - Exclude colocated tests and type fixtures from published files and build outputs.
@@ -213,7 +213,7 @@ The `flargs` crate evaluates the same manifest, overrides, and signatures as the
 ## Git Conventions
 
 - Conventional commits, lowercase, no trailing period: `feat:`, `fix:`, `perf:`, `refactor:`, `docs:`, `test:`, `chore:`. Scope optional.
-- Name the thing that changed, in the identifiers the codebase already uses. Prefer `feat: add Runtime.create` over `feat: let apps read flags`.
+- Name the thing that changed, in the identifiers the codebase already uses. Prefer `feat: add Flargs.create` over `feat: let apps read flags`.
 - State the change, not the reason for it. Leave `because`, `so that`, and `in order to` out of the subject.
 - Write each message to stand alone for a reader who has not seen the pull request or the task that produced it.
 - Never force push and never amend a pushed commit. Correct a mistake with a follow-up commit.
@@ -223,7 +223,7 @@ The `flargs` crate evaluates the same manifest, overrides, and signatures as the
 
 - `src/`: flat PascalCase modules of the core entry (`Definitions`, `Override`, `Values`), with colocated tests. `src/index.ts` re-exports them as namespaces, and exports `flags` directly.
 - `src/hono/`, `src/node/`, `src/react/`, `src/server/`, `src/vite/`, `src/zile/`: the `flargs/hono`, `flargs/node`, `flargs/react`, `flargs/server`, `flargs/vite`, and `flargs/zile` entries.
-- `src/server/ui/`: the dev route page, one HTML document with inline styles and no runtime dependency.
+- `src/server/internal/Page.ts`: the dev route page, one HTML document with inline styles and no runtime dependency.
 - `src/cli/`: the incur CLI. `bin.ts` is the entry, and each command lives in its own file.
 - `src/internal/`: helpers that no entry exports.
 - `crates/flargs/`: the Rust crate. `crates/flargs-definitions/`: the parser that the crate and the macro share. `crates/flargs-macros/`: the `flargs::flags!` macro.

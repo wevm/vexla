@@ -1,6 +1,6 @@
 /** @module Reads flags inside and outside a request scope. */
 import { Definitions, flags, Values } from 'flargs'
-import { Runtime } from 'flargs/server'
+import { Flargs } from 'flargs/server'
 
 const definitions = Definitions.parse({
   pricing: { default: 'a', options: ['a', 'b', 'c'], type: 'select' },
@@ -8,10 +8,10 @@ const definitions = Definitions.parse({
 
 describe('run', () => {
   test('concurrent requests read their own values', async () => {
-    const runtime = Runtime.create({ definitions, dev: true })
+    const flargs = Flargs.create({ definitions, dev: true })
     const read = (value: string) =>
       Values.run(
-        runtime,
+        flargs,
         new Request(`https://app.example.com/?flag.pricing=${value}`),
         async () => {
           await new Promise((resolve) => setTimeout(resolve, 10))

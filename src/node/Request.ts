@@ -1,14 +1,14 @@
 /** @module Conversion between `node:http` and the fetch API, for Node servers and Express. */
 import type * as Http from 'node:http'
 import * as Values from '../Values.js'
-import type * as Runtime from '../server/Runtime.js'
+import type * as Flargs from '../server/Flargs.js'
 
 /** A fetch handler. */
 export type Handler = (request: globalThis.Request) => Response | Promise<Response>
 
 /**
- * Returns a `node:http` request listener for `handler`. With `runtime`, requests under its path
- * reach `runtime.fetch`, other requests run in `Values.run`, and override search parameters
+ * Returns a `node:http` request listener for `handler`. With `flargs`, requests under its path
+ * reach `flargs.fetch`, other requests run in `Values.run`, and override search parameters
  * persist in the `flargs` cookie.
  */
 export function toNodeListener(
@@ -18,17 +18,17 @@ export function toNodeListener(
   return (incoming, outgoing) => {
     void (async () => {
       const request = fromNodeListener(incoming)
-      const runtime = options.runtime
+      const flargs = options.flargs
 
       const response = await (async () => {
-        if (!runtime) return handler(request)
+        if (!flargs) return handler(request)
 
         const pathname = new URL(request.url).pathname
-        if (pathname === runtime.path || pathname.startsWith(`${runtime.path}/`))
-          return runtime.fetch(request)
+        if (pathname === flargs.path || pathname.startsWith(`${flargs.path}/`))
+          return flargs.fetch(request)
 
-        const response = await Values.run(runtime, request, () => handler(request))
-        const cookie = await runtime.setCookie(request)
+        const response = await Values.run(flargs, request, () => handler(request))
+        const cookie = await flargs.setCookie(request)
         if (!cookie) return response
 
         const headers = new Headers(response.headers)
@@ -57,8 +57,8 @@ export declare namespace toNodeListener {
   type Options = {
     /** Receives errors that the handler throws. The response is `500`. */
     onError?: ((error: unknown) => void) | undefined
-    /** A runtime: serves its path, and scopes `flags` to each request. */
-    runtime?: Runtime.Runtime<any> | undefined
+    /** A Flargs instance: serves its path, and scopes `flags` to each request. */
+    flargs?: Flargs.Flargs<any> | undefined
   }
 }
 

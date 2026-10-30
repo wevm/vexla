@@ -1,6 +1,6 @@
 /** @module Runs the runtime behind a local HTTP server: resolution, overrides, access, and the admin API. */
 import { Definitions, Override } from 'flargs'
-import { Runtime, Store } from 'flargs/server'
+import { Flargs, Store } from 'flargs/server'
 import * as Http from '../../test/Http.js'
 
 const definitions = Definitions.parse({
@@ -13,15 +13,15 @@ const definitions = Definitions.parse({
 
 const secret = 'test-secret'
 
-// Serves the runtime path through `runtime.fetch`, and `/app` with the values of the request.
-async function serve(options: Runtime.create.Options<typeof definitions>) {
-  const runtime = Runtime.create({ definitions, secret, ...options })
+// Serves the runtime path through `flargs.fetch`, and `/app` with the values of the request.
+async function serve(options: Flargs.create.Options<typeof definitions>) {
+  const flargs = Flargs.create({ definitions, secret, ...options })
   const server = await Http.serve(async (request) => {
     const url = new URL(request.url)
-    if (url.pathname.startsWith('/.flags')) return runtime.fetch(request)
-    return Response.json(await runtime.evaluate(request))
+    if (url.pathname.startsWith('/.flags')) return flargs.fetch(request)
+    return Response.json(await flargs.evaluate(request))
   })
-  return { runtime, ...server }
+  return { flargs, ...server }
 }
 
 describe('evaluate', () => {
@@ -99,7 +99,7 @@ describe('evaluate', () => {
 
   test('get runs decide for one flag only', async () => {
     const calls: string[] = []
-    const runtime = Runtime.create({
+    const flargs = Flargs.create({
       decide: {
         pricing: () => (calls.push('pricing'), 'b'),
         title: () => (calls.push('title'), undefined),
@@ -108,8 +108,8 @@ describe('evaluate', () => {
       secret,
     })
     const request = new Request('https://app.example.com/')
-    expect(await runtime.get(request, 'pricing')).toMatchInlineSnapshot(`"b"`)
-    expect(await runtime.get(request, 'pricing')).toMatchInlineSnapshot(`"b"`)
+    expect(await flargs.get(request, 'pricing')).toMatchInlineSnapshot(`"b"`)
+    expect(await flargs.get(request, 'pricing')).toMatchInlineSnapshot(`"b"`)
     expect(calls).toMatchInlineSnapshot(`
       [
         "pricing",
@@ -160,8 +160,8 @@ describe('overrides', () => {
   })
 
   test('setCookie stores search parameter overrides, and the cookie applies on the next request', async () => {
-    const runtime = Runtime.create({ definitions, secret })
-    const cookie = await runtime.setCookie(
+    const flargs = Flargs.create({ definitions, secret })
+    const cookie = await flargs.setCookie(
       new Request('https://app.example.com/?flag.newCheckout=true'),
     )
     expect(cookie).toMatch(/^flargs=.+; Path=\/; Max-Age=2592000; HttpOnly; SameSite=Lax; Secure$/)
@@ -169,20 +169,20 @@ describe('overrides', () => {
     const next = new Request('https://app.example.com/', {
       headers: { cookie: cookie!.split(';')[0]! },
     })
-    expect(await runtime.get(next, 'newCheckout')).toMatchInlineSnapshot(`true`)
-    expect(await runtime.setCookie(new Request('https://app.example.com/'))).toMatchInlineSnapshot(
+    expect(await flargs.get(next, 'newCheckout')).toMatchInlineSnapshot(`true`)
+    expect(await flargs.setCookie(new Request('https://app.example.com/'))).toMatchInlineSnapshot(
       `undefined`,
     )
   })
 
   test('a forged cookie is ignored', async () => {
-    const runtime = Runtime.create({ definitions, secret })
+    const flargs = Flargs.create({ definitions, secret })
     const request = new Request('https://app.example.com/', {
       headers: {
         cookie: `flargs=${encodeURIComponent('flag.pricing=c&flag.exp=9999999999&flag.sig=forged')}`,
       },
     })
-    expect(await runtime.get(request, 'pricing')).toMatchInlineSnapshot(`"a"`)
+    expect(await flargs.get(request, 'pricing')).toMatchInlineSnapshot(`"a"`)
   })
 })
 
@@ -236,14 +236,14 @@ describe('fetch', () => {
   })
 
   test('public responses never hold private values', async () => {
-    const runtime = Runtime.create({
+    const flargs = Flargs.create({
       definitions,
       secret,
       store: Store.memory({ values: { pricing: 'c' } }),
     })
     const request = new Request('https://app.example.com/.flags/values')
 
-    const values = await (await runtime.fetch(request)).json()
+    const values = await (await flargs.fetch(request)).json()
     expect(Object.keys(values)).toMatchInlineSnapshot(`
       [
         "banner",
@@ -251,18 +251,18 @@ describe('fetch', () => {
         "title",
       ]
     `)
-    expect(await runtime.script(new Request('https://app.example.com/'))).toMatchInlineSnapshot(
+    expect(await flargs.script(new Request('https://app.example.com/'))).toMatchInlineSnapshot(
       `"<script type="application/json" id="__flargs">{"banner":false,"newCheckout":false,"title":"Hello"}</script>"`,
     )
   })
 
   test('script escapes a value that would close the element', async () => {
-    const runtime = Runtime.create({
+    const flargs = Flargs.create({
       definitions,
       secret,
       store: Store.memory({ values: { title: '</script><script>alert(1)' } }),
     })
-    expect(await runtime.script(new Request('https://app.example.com/'))).not.toContain(
+    expect(await flargs.script(new Request('https://app.example.com/'))).not.toContain(
       '</script><script>',
     )
   })
@@ -288,16 +288,16 @@ describe('fetch', () => {
 
   test('orphan values are listed and may be deleted', async () => {
     const store = Store.memory({ values: { oldFlag: true, title: 'Stored' } })
-    const runtime = Runtime.create({ definitions, dev: true, store })
+    const flargs = Flargs.create({ definitions, dev: true, store })
     const manifest = await (
-      await runtime.fetch(new Request('https://app.example.com/.flags/manifest'))
+      await flargs.fetch(new Request('https://app.example.com/.flags/manifest'))
     ).json()
     expect(manifest.orphans).toMatchInlineSnapshot(`
       [
         "oldFlag",
       ]
     `)
-    const deleted = await runtime.fetch(
+    const deleted = await flargs.fetch(
       new Request('https://app.example.com/.flags/values/oldFlag', { method: 'DELETE' }),
     )
     expect(deleted.status).toMatchInlineSnapshot(`200`)
@@ -366,11 +366,11 @@ describe('fetch', () => {
   })
 
   test('store definitions, and 409 with a flags file', async () => {
-    const runtime = Runtime.create({ secret, store: Store.memory() })
+    const flargs = Flargs.create({ secret, store: Store.memory() })
     const server = await Http.serve(async (request) =>
       new URL(request.url).pathname.startsWith('/.flags')
-        ? runtime.fetch(request)
-        : Response.json(await runtime.evaluate(request)),
+        ? flargs.fetch(request)
+        : Response.json(await flargs.evaluate(request)),
     )
     // A runtime with no authorize has no access outside dev mode.
     expect(
@@ -379,7 +379,7 @@ describe('fetch', () => {
     await server.close()
 
     const store = Store.memory()
-    const open = Runtime.create({ dev: true, store })
+    const open = Flargs.create({ dev: true, store })
     const created = await open.fetch(
       new Request('https://app.example.com/.flags/definitions/beta', {
         body: JSON.stringify({ default: false, public: true, type: 'boolean' }),
@@ -399,7 +399,7 @@ describe('fetch', () => {
     )
     expect(invalid.status).toMatchInlineSnapshot(`400`)
 
-    const withFile = Runtime.create({ definitions, dev: true, store })
+    const withFile = Flargs.create({ definitions, dev: true, store })
     const conflict = await withFile.fetch(
       new Request('https://app.example.com/.flags/definitions/beta', { body: '{}', method: 'PUT' }),
     )
@@ -407,7 +407,7 @@ describe('fetch', () => {
   })
 
   test('store definitions unavailable', async () => {
-    const runtime = Runtime.create({
+    const flargs = Flargs.create({
       dev: true,
       store: {
         ...Store.memory(),
@@ -421,28 +421,28 @@ describe('fetch', () => {
       },
     })
     await expect(
-      runtime.get(new Request('https://app.example.com/'), 'beta' as never),
-    ).rejects.toThrow(Runtime.DefinitionsUnavailableError)
+      flargs.get(new Request('https://app.example.com/'), 'beta' as never),
+    ).rejects.toThrow(Flargs.DefinitionsUnavailableError)
     expect(
-      (await runtime.fetch(new Request('https://app.example.com/.flags/manifest'))).status,
+      (await flargs.fetch(new Request('https://app.example.com/.flags/manifest'))).status,
     ).toMatchInlineSnapshot(`503`)
   })
 
   test('cors on the values endpoint only', async () => {
-    const runtime = Runtime.create({
+    const flargs = Flargs.create({
       cors: { origins: ['https://web.example.com'] },
       definitions,
       secret,
     })
     const headers = { origin: 'https://web.example.com' }
-    const values = await runtime.fetch(
+    const values = await flargs.fetch(
       new Request('https://api.example.com/.flags/values', { headers }),
     )
     expect(values.headers.get('access-control-allow-origin')).toMatchInlineSnapshot(
       `"https://web.example.com"`,
     )
 
-    const other = await runtime.fetch(
+    const other = await flargs.fetch(
       new Request('https://api.example.com/.flags/values', {
         headers: { origin: 'https://evil.example.com' },
       }),
@@ -451,24 +451,24 @@ describe('fetch', () => {
   })
 
   test('dev route page', async () => {
-    const runtime = Runtime.create({ definitions, dev: true })
-    const response = await runtime.fetch(new Request('https://app.example.com/.flags'))
+    const flargs = Flargs.create({ definitions, dev: true })
+    const response = await flargs.fetch(new Request('https://app.example.com/.flags'))
     expect(response.headers.get('content-type')).toMatchInlineSnapshot(`"text/html; charset=utf-8"`)
     expect(await response.text()).toContain('<title>Flags</title>')
   })
 
   test('outside the path', async () => {
-    const runtime = Runtime.create({ definitions, dev: true })
+    const flargs = Flargs.create({ definitions, dev: true })
     expect(
-      (await runtime.fetch(new Request('https://app.example.com/other'))).status,
+      (await flargs.fetch(new Request('https://app.example.com/other'))).status,
     ).toMatchInlineSnapshot(`404`)
   })
 })
 
 describe('create', () => {
   test('needs a secret outside dev mode', () => {
-    expect(() => Runtime.create({ definitions })).toThrowErrorMatchingInlineSnapshot(
-      `[TypeError: \`Runtime.create\` needs \`secret\` outside dev mode. Set \`secret\`, such as from \`FLARGS_SECRET\`.]`,
+    expect(() => Flargs.create({ definitions })).toThrowErrorMatchingInlineSnapshot(
+      `[TypeError: \`Flargs.create\` needs \`secret\` outside dev mode. Set \`secret\`, such as from \`FLARGS_SECRET\`.]`,
     )
   })
 })
