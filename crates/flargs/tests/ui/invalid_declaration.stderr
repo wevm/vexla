@@ -1,7 +1,7 @@
-error: ../../../../crates/flargs/tests/ui/invalid_declaration.toml: The default of pricing is not one of its options.
+error: ../../../../crates/flargs/tests/ui/invalid_declaration.env.flags: The default of pricing is not one of its options (line 2).
 
-       To resolve: Fix the declaration of pricing in the flags file, as the JSON Schema describes.
+       To resolve: Fix the declaration of pricing in `.env.flags`, or in the store definition.
  --> tests/ui/invalid_declaration.rs:3:16
   |
-3 | flargs::flags!("../../../../crates/flargs/tests/ui/invalid_declaration.toml");
-  |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3 | flargs::flags!("../../../../crates/flargs/tests/ui/invalid_declaration.env.flags");
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

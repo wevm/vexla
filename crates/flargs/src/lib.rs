@@ -1,9 +1,10 @@
 //! Self-hosted feature flags for Rust. The crate reads the same flags file, override format, and
 //! signatures as the TypeScript `flargs` package, and serves the same HTTP API.
 //!
-//! - [`definitions`]: validation of `flags.toml` and `flags.json`, and the decoding of variable values.
+//! - [`definitions`]: the `.env.flags` file, validation of definitions, and the decoding of variable
+//!   values.
 //! - [`overrides`]: the `flag.*` search parameters, with HMAC-SHA256 signatures.
-//! - [`flags!`]: typed flags from a flags file at compile time (the `macros` feature, on by default).
+//! - [`flags!`]: typed flags from `.env.flags` at compile time (the `macros` feature, on by default).
 //! - [`Runtime`]: resolves flag values for each request, in the order override, store value,
 //!   `decide`, environment, then default.
 //! - [`Store`] and [`MemoryStore`]: where the admin API keeps values, and optionally definitions.
@@ -20,11 +21,13 @@ use std::marker::PhantomData;
 
 pub use flargs_definitions as definitions;
 pub use flargs_definitions::Json;
-/// Reads a flags file at compile time and generates typed flags.
+/// Reads `.env.flags` at compile time and generates typed flags.
 ///
-/// The path is relative to `CARGO_MANIFEST_DIR` and ends in `.toml` or `.json`. An optional
-/// `env_prefix = "..."` replaces `FEATURE_`. An invalid declaration fails the build with an error
-/// that names the key.
+/// The path is relative to `CARGO_MANIFEST_DIR`, and the file has the format of `.env.flags`: each
+/// `FEATURE_*` variable declares a flag with its default, and the comment lines above it hold the
+/// description and tags such as `@type {boolean}`. An optional `env_prefix = "..."` replaces
+/// `FEATURE_`. An invalid declaration fails the build with an error that names the key and the
+/// line.
 ///
 /// The macro generates:
 ///
@@ -38,7 +41,7 @@ pub use flargs_definitions::Json;
 ///   `Pricing::A`, and [`FlagValue`].
 ///
 /// ```ignore
-/// flargs::flags!("flags.toml");
+/// flargs::flags!(".env.flags");
 ///
 /// if Flags::MAINTENANCE_BANNER {
 ///     // ...

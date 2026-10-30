@@ -1,0 +1,7 @@
+error: ../../../../crates/flargs/tests/ui/missing_type.env.flags: The flag newCheckout needs a `@type` tag, such as `# @type {boolean}` (line 2).
+
+       To resolve: Fix the declaration of newCheckout in `.env.flags`, or in the store definition.
+ --> tests/ui/missing_type.rs:3:16
+  |
+3 | flargs::flags!("../../../../crates/flargs/tests/ui/missing_type.env.flags");
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

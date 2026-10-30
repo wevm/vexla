@@ -13,7 +13,7 @@ use reqwest::header::{COOKIE, SET_COOKIE};
 use serde_json::{Map, json};
 
 mod typed {
-    flargs::flags!("tests/fixtures/runtime.toml");
+    flargs::flags!("tests/fixtures/runtime.env.flags");
 }
 
 use typed::{Flags, Pricing};
@@ -21,7 +21,7 @@ use typed::{Flags, Pricing};
 const SECRET: &str = "test-secret";
 
 fn definitions() -> Definitions {
-    definitions::parse_toml(include_str!("fixtures/runtime.toml"), ENV_PREFIX)
+    definitions::parse_file(include_str!("fixtures/runtime.env.flags"), ENV_PREFIX)
         .expect("valid definitions")
 }
 

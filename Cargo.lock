@@ -226,7 +226,6 @@ version = "0.0.0"
 dependencies = [
  "serde",
  "serde_json",
- "toml",
 ]
 
 [[package]]
@@ -236,7 +235,6 @@ dependencies = [
  "flargs-definitions",
  "proc-macro2",
  "quote",
- "serde_json",
  "syn",
 ]
 

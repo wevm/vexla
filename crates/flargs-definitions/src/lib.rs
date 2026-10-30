@@ -1,10 +1,9 @@
-//! Flag definitions: validation of `flags.json` and `flags.toml`, inference from `FEATURE_*`
-//! variables, the mapping between keys and environment variables, and the decoding of variable
-//! values.
+//! Flag definitions: the `.env.flags` file, validation of definition objects (the store and the
+//! admin API), inference from `FEATURE_*` variables, the mapping between keys and environment
+//! variables, and the decoding of variable values.
 //!
 //! The `flargs` crate re-exports this crate as `flargs::definitions`. The `flargs::flags!` macro
-//! validates a flags file with the same functions at compile time, so the shared vectors cover
-//! both.
+//! parses `.env.flags` with the same functions at compile time, so the shared vectors cover both.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -131,7 +130,8 @@ impl fmt::Display for Type {
 /// Returned when a declaration in a flags file does not follow the schema.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InvalidDeclarationError {
-    /// The key of the flag, or `(root)` when the file itself is invalid.
+    /// The key of the flag, the variable name when it lacks the prefix, `line N` for a line that is
+    /// not a comment or a `NAME=value` line, or `(root)` when the input is not an object.
     pub key: String,
     /// What failed.
     pub reason: String,
@@ -141,7 +141,7 @@ impl fmt::Display for InvalidDeclarationError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}\n\nTo resolve: Fix the declaration of {} in the flags file, as the JSON Schema describes.",
+            "{}\n\nTo resolve: Fix the declaration of {} in `.env.flags`, or in the store definition.",
             self.reason, self.key
         )
     }
@@ -315,8 +315,8 @@ pub fn key_of(name: &str, prefix: &str) -> String {
     camel_case(&name.get(prefix.len()..).unwrap_or_default().to_lowercase())
 }
 
-/// Returns the definitions of a parsed `flags.json` or `flags.toml`. Keys in `snake_case`, as in
-/// TOML, map to `camelCase`. Every flag must declare `type` and `default`.
+/// Returns the definitions in a definition object, the format of the store and of the admin API.
+/// Keys in `snake_case` map to `camelCase`. Every flag must declare `type` and `default`.
 ///
 /// # Errors
 ///
@@ -364,36 +364,159 @@ pub fn parse(input: &Json, prefix: &str) -> Result<Definitions, InvalidDeclarati
     Ok(definitions)
 }
 
-/// Returns the definitions of the text of a `flags.toml`, as [`parse`] does for JSON.
+/// Returns the definitions in the text of `.env.flags`. Each variable with `prefix` declares a
+/// flag, and its value is the default. Comment lines directly above it hold the description and
+/// tags:
+///
+/// - `@type {boolean}`, `{number}`, `{string}`, `{json}`, or a union of string literals such as
+///   `{'a' | 'b'}` for a select flag. Required.
+/// - `@public`: the value may reach a browser.
+/// - `@build`: the value resolves when the bundle builds.
+/// - `@expires 2027-01-31`: the date after which the flag is due for retirement.
+///
+/// Several tags may share a line. Comment lines without a tag form the description.
 ///
 /// # Errors
 ///
-/// Returns [`InvalidDeclarationError`] when the text is not TOML, when a declaration holds a value
-/// that JSON cannot represent (a date or a non-finite float), or when a declaration does not
-/// follow the schema.
-pub fn parse_toml(text: &str, prefix: &str) -> Result<Definitions, InvalidDeclarationError> {
-    let table: toml::Table =
-        text.parse()
-            .map_err(|error: toml::de::Error| InvalidDeclarationError {
-                key: "(root)".to_owned(),
-                reason: format!("The flags file is not valid TOML: {}", error.message()),
-            })?;
+/// Returns [`InvalidDeclarationError`] when a line or a declaration is invalid. The reason names
+/// the line.
+pub fn parse_file(text: &str, prefix: &str) -> Result<Definitions, InvalidDeclarationError> {
+    let entries = scan(text)?;
+    let mut declarations: Vec<(String, usize, Map<String, Value>, bool)> = Vec::new();
 
-    let mut input = Map::new();
-    for (name, value) in table {
-        let Some(value) = json_of(value) else {
-            let key = camel_case(&name);
-            return Err(InvalidDeclarationError {
-                reason: format!(
-                    "The declaration of {key} holds a value that JSON cannot represent, such as a TOML date."
-                ),
-                key,
-            });
+    for entry in &entries {
+        let fail = |key: &str, reason: String| at(key.to_owned(), &reason, entry.line);
+
+        if entry.name.len() == prefix.len() || !entry.name.starts_with(prefix) {
+            return Err(fail(
+                &entry.name,
+                format!("The variable {} does not start with {prefix}.", entry.name),
+            ));
+        }
+        let key = key_of(&entry.name, prefix);
+
+        let mut description = Vec::new();
+        let mut declaration = Map::new();
+        let mut r#type = None;
+        declaration.insert("env".to_owned(), Value::String(entry.name.clone()));
+
+        for comment in &entry.comments {
+            let Some(tags) = tags(comment) else {
+                let text = comment.trim();
+                if !text.is_empty() {
+                    description.push(text);
+                }
+                continue;
+            };
+
+            for tag in tags {
+                match (
+                    tag.name,
+                    tag.argument.filter(|argument| !argument.is_empty()),
+                ) {
+                    ("type", Some(argument)) => {
+                        let Some((parsed, options)) = type_of(argument) else {
+                            return Err(fail(
+                                &key,
+                                format!("`@type {{{argument}}}` of {key} is not a flag type."),
+                            ));
+                        };
+                        r#type = Some(parsed);
+                        // As `Object.assign` in TypeScript, a later `@type` keeps earlier options.
+                        if let Some(options) = options {
+                            declaration.insert("options".to_owned(), Value::from(options));
+                        }
+                    }
+                    ("type", None) => {
+                        return Err(fail(
+                            &key,
+                            format!(
+                                "`@type` of {key} needs a type in braces, such as {{boolean}}."
+                            ),
+                        ));
+                    }
+                    ("build" | "public", _) if tag.argument.is_some() => {
+                        return Err(fail(
+                            &key,
+                            format!("`@{}` of {key} takes no value.", tag.name),
+                        ));
+                    }
+                    ("build" | "public", _) => {
+                        declaration.insert(tag.name.to_owned(), Value::Bool(true));
+                    }
+                    ("expires", Some(argument)) => {
+                        declaration
+                            .insert("expires".to_owned(), Value::String(argument.to_owned()));
+                    }
+                    ("expires", None) => {
+                        return Err(fail(
+                            &key,
+                            format!("`@expires` of {key} needs a date in the form YYYY-MM-DD."),
+                        ));
+                    }
+                    (name, _) => {
+                        return Err(fail(
+                            &key,
+                            format!("The tag `@{name}` of {key} is not a Flargs tag."),
+                        ));
+                    }
+                }
+            }
+        }
+
+        if !description.is_empty() {
+            declaration.insert(
+                "description".to_owned(),
+                Value::String(description.join(" ")),
+            );
+        }
+        let Some(r#type) = r#type else {
+            return Err(fail(
+                &key,
+                format!("The flag {key} needs a `@type` tag, such as `# @type {{boolean}}`."),
+            ));
         };
-        input.insert(name, value);
+        declaration.insert("type".to_owned(), Value::String(r#type.as_str().to_owned()));
+
+        let text = Value::String(entry.value.clone());
+        let default = match r#type {
+            Type::Boolean => match entry.value.as_str() {
+                "true" => Some(Value::Bool(true)),
+                "false" => Some(Value::Bool(false)),
+                _ => Some(text),
+            },
+            Type::Json => serde_json::from_str(&entry.value).ok().map(normalize),
+            Type::Number => Some(js_number(&entry.value).and_then(number).unwrap_or(text)),
+            Type::Select | Type::String => Some(text),
+        };
+        let parsed = default.is_some();
+        declaration.insert("default".to_owned(), default.unwrap_or(Value::Null));
+
+        if declarations.iter().any(|declaration| declaration.0 == key) {
+            return Err(fail(&key, format!("The flag {key} is declared twice.")));
+        }
+        declarations.push((key, entry.line, declaration, parsed));
     }
 
-    parse(&Value::Object(input), prefix)
+    // Every line parses before any declaration validates, in file order, as in TypeScript.
+    let mut definitions = Definitions::new();
+    for (key, line, declaration, parsed) in declarations {
+        let definition = declare(&key, &Value::Object(declaration), prefix)
+            .and_then(|definition| {
+                if parsed {
+                    return Ok(definition);
+                }
+                // A JSON default that does not parse fails after every other check of the flag.
+                Err(InvalidDeclarationError {
+                    reason: format!("The default of {key} is not a json value."),
+                    key: key.clone(),
+                })
+            })
+            .map_err(|error| at(error.key, &error.reason, line))?;
+        definitions.insert(key, definition);
+    }
+
+    Ok(definitions)
 }
 
 /// Returns `true` when `value` is a value of the flag.
@@ -430,6 +553,17 @@ pub fn values(
                 .map(|raw| decode(definition, raw, key).map(|value| (key.clone(), value)))
         })
         .collect()
+}
+
+/// Returns an error whose reason names `line`.
+fn at(key: String, reason: &str, line: usize) -> InvalidDeclarationError {
+    InvalidDeclarationError {
+        key,
+        reason: format!(
+            "{} (line {line}).",
+            reason.strip_suffix('.').unwrap_or(reason)
+        ),
+    }
 }
 
 fn camel_case(value: &str) -> String {
@@ -602,6 +736,168 @@ fn declare(
     Ok(definition)
 }
 
+/// One `NAME=value` line of `.env.flags`, with the comment lines directly above it.
+struct Entry {
+    /// The comment lines above the variable, without `#`. A blank line ends a comment block.
+    comments: Vec<String>,
+    /// The 1-based line number of the variable.
+    line: usize,
+    /// The variable name.
+    name: String,
+    /// The value, with surrounding quotes removed.
+    value: String,
+}
+
+/// A tag in a comment line, such as `@type {'a' | 'b'}` or `@public`.
+struct Tag<'a> {
+    /// The text in braces, or the word after the tag, if any.
+    argument: Option<&'a str>,
+    /// The tag name, without `@`. Empty when the text after `@` is not a name.
+    name: &'a str,
+}
+
+/// Returns the entries of `.env.flags`, or an error that names the first line that is neither
+/// blank, a comment, nor `NAME=value`.
+fn scan(text: &str) -> Result<Vec<Entry>, InvalidDeclarationError> {
+    let mut entries = Vec::new();
+    let mut comments = Vec::new();
+
+    for (index, line) in text.split('\n').enumerate() {
+        let line = js_trim(line);
+
+        if line.is_empty() {
+            comments.clear();
+            continue;
+        }
+
+        if let Some(comment) = line.strip_prefix('#') {
+            comments.push(
+                comment
+                    .strip_prefix(char::is_whitespace)
+                    .unwrap_or(comment)
+                    .to_owned(),
+            );
+            continue;
+        }
+
+        let Some((name, value)) = assignment(line) else {
+            let line = index + 1;
+            return Err(InvalidDeclarationError {
+                key: format!("line {line}"),
+                reason: format!("Line {line} is not a comment or a NAME=value line."),
+            });
+        };
+        entries.push(Entry {
+            comments: std::mem::take(&mut comments),
+            line: index + 1,
+            name: name.to_owned(),
+            value: unquote(value),
+        });
+    }
+
+    Ok(entries)
+}
+
+/// Returns the name and the raw value of a line that matches
+/// `^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$`.
+fn assignment(line: &str) -> Option<(&str, &str)> {
+    fn variable(text: &str) -> Option<(&str, &str)> {
+        let rest =
+            text.trim_start_matches(|char: char| char.is_ascii_alphanumeric() || char == '_');
+        let name = text.strip_suffix(rest)?;
+        if !name.starts_with(|char: char| char.is_ascii_alphabetic() || char == '_') {
+            return None;
+        }
+        let value = rest.trim_start().strip_prefix('=')?.trim_start();
+        Some((name, value))
+    }
+
+    line.strip_prefix("export")
+        .filter(|rest| rest.starts_with(char::is_whitespace))
+        .and_then(|rest| variable(rest.trim_start()))
+        .or_else(|| variable(line))
+}
+
+/// Returns the tags of a comment line that starts with `@`, or `None` for a description line.
+/// Several tags may share a line: `@type {boolean} @public @build`.
+fn tags(comment: &str) -> Option<Vec<Tag<'_>>> {
+    let mut rest = comment.trim();
+    if !rest.starts_with('@') {
+        return None;
+    }
+
+    let mut tags = Vec::new();
+    while !rest.is_empty() {
+        let after = rest.strip_prefix('@').unwrap_or_default();
+        let remainder = after.trim_start_matches(|char: char| char.is_ascii_alphabetic());
+        let name = after.strip_suffix(remainder).unwrap_or_default();
+        if name.is_empty() {
+            tags.push(Tag {
+                argument: Some(rest),
+                name: "",
+            });
+            break;
+        }
+        rest = remainder.trim_start();
+
+        let argument = if let Some(braced) = rest.strip_prefix('{') {
+            // Without `}`, the brace stays in `rest`, and the next pass reports an unknown tag.
+            braced.split_once('}').map(|(value, after)| {
+                rest = after.trim_start();
+                value.trim()
+            })
+        } else if !rest.is_empty() && !rest.starts_with('@') {
+            let (word, after) = rest.split_once(char::is_whitespace).unwrap_or((rest, ""));
+            rest = after.trim_start();
+            Some(word)
+        } else {
+            None
+        };
+
+        tags.push(Tag { argument, name });
+    }
+
+    Some(tags)
+}
+
+/// Returns the type in the braces of `@type`, and the options of a select flag.
+fn type_of(text: &str) -> Option<(Type, Option<Vec<String>>)> {
+    let text = text.trim();
+    if let Some(r#type) = Type::of(text).filter(|r#type| *r#type != Type::Select) {
+        return Some((r#type, None));
+    }
+
+    let options = text
+        .split('|')
+        .map(|part| {
+            let part = part.trim();
+            let quote = part
+                .chars()
+                .next()
+                .filter(|char| matches!(char, '\'' | '"'))?;
+            part.strip_prefix(quote)?
+                .strip_suffix(quote)
+                .map(str::to_owned)
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some((Type::Select, Some(options)))
+}
+
+/// Returns `value` without surrounding quotes. Double quotes decode as a JSON string.
+fn unquote(value: &str) -> String {
+    if let Some(inner) = value
+        .strip_prefix('"')
+        .and_then(|rest| rest.strip_suffix('"'))
+    {
+        return serde_json::from_str(value).unwrap_or_else(|_| inner.to_owned());
+    }
+    value
+        .strip_prefix('\'')
+        .and_then(|rest| rest.strip_suffix('\''))
+        .unwrap_or(value)
+        .to_owned()
+}
+
 fn infer(raw: &str) -> (Type, Json) {
     if raw == "true" || raw == "false" {
         return (Type::Boolean, Value::Bool(raw == "true"));
@@ -642,10 +938,16 @@ fn is_variable(env: &str) -> bool {
         && bytes.all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_')
 }
 
+/// Returns `text` without the whitespace that `String.prototype.trim` removes in JavaScript, which
+/// includes a byte order mark.
+fn js_trim(text: &str) -> &str {
+    text.trim_matches(|char: char| char.is_whitespace() || char == '\u{feff}')
+}
+
 /// Returns the number that `Number(raw)` returns in JavaScript, or `None` for `NaN` and a blank
 /// string.
 fn js_number(raw: &str) -> Option<f64> {
-    let text = raw.trim_matches(|char: char| char.is_whitespace() || char == '\u{feff}');
+    let text = js_trim(raw);
 
     let radix = match text.get(..2) {
         Some("0b" | "0B") => Some(2),
@@ -669,26 +971,6 @@ fn js_number(raw: &str) -> Option<f64> {
         return None;
     }
     text.parse().ok()
-}
-
-fn json_of(value: toml::Value) -> Option<Json> {
-    match value {
-        toml::Value::Array(items) => items
-            .into_iter()
-            .map(json_of)
-            .collect::<Option<_>>()
-            .map(Value::Array),
-        toml::Value::Boolean(value) => Some(Value::Bool(value)),
-        toml::Value::Datetime(_) => None,
-        toml::Value::Float(value) => number(value),
-        toml::Value::Integer(value) => Some(Value::from(value)),
-        toml::Value::String(value) => Some(Value::String(value)),
-        toml::Value::Table(table) => table
-            .into_iter()
-            .map(|(key, value)| json_of(value).map(|value| (key, value)))
-            .collect::<Option<_>>()
-            .map(Value::Object),
-    }
 }
 
 /// Recursively writes integral floats as integers, as JavaScript does, so `3.0` encodes as `3`.

@@ -1,7 +1,0 @@
-error: ../../../../crates/flargs/tests/ui/missing_default.toml: The declaration of newCheckout needs a `default`.
-
-       To resolve: Fix the declaration of newCheckout in the flags file, as the JSON Schema describes.
- --> tests/ui/missing_default.rs:3:16
-  |
-3 | flargs::flags!("../../../../crates/flargs/tests/ui/missing_default.toml");
-  |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,6 +1,6 @@
-//! The `flargs::flags!` macro. It reads `flags.toml` or `flags.json` at compile time, validates it
-//! with `flargs-definitions`, the parser that the shared vectors cover, and emits typed items that
-//! call into `flargs`. Use it through the `macros` feature of `flargs`.
+//! The `flargs::flags!` macro. It reads `.env.flags` at compile time, parses it with
+//! `flargs-definitions`, the parser that the shared vectors cover, and emits typed items that call
+//! into `flargs`. Use it through the `macros` feature of `flargs`.
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -12,7 +12,7 @@ use quote::quote;
 use syn::parse::{Parse, ParseStream};
 use syn::{Ident, LitStr, Token};
 
-/// Reads a flags file at compile time and generates `Flags`, one `flargs::Key` for each runtime
+/// Reads `.env.flags` at compile time and generates `Flags`, one `flargs::Key` for each runtime
 /// flag, one constant for each build flag, and one enum for each select flag. See `flargs::flags!`.
 #[proc_macro]
 pub fn flags(input: TokenStream) -> TokenStream {
@@ -68,18 +68,8 @@ fn expand(input: &Input) -> syn::Result<Tokens> {
         ))
     })?;
 
-    let parsed = match path.extension().and_then(|extension| extension.to_str()) {
-        Some("json") => serde_json::from_str(&text)
-            .map_err(|error| fail(format!("{file} is not valid JSON: {error}")))
-            .map(|json| definitions::parse(&json, &prefix))?,
-        Some("toml") => definitions::parse_toml(&text, &prefix),
-        _ => {
-            return Err(fail(format!(
-                "flargs::flags! reads a .toml or .json file, not {file}."
-            )));
-        }
-    };
-    let definitions = parsed.map_err(|error| fail(format!("{file}: {error}")))?;
+    let definitions = definitions::parse_file(&text, &prefix)
+        .map_err(|error| fail(format!("{file}: {error}")))?;
 
     let mut constants = Vec::new();
     let mut declarations = Vec::new();

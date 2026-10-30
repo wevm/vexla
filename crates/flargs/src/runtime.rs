@@ -119,7 +119,7 @@ impl<F: FlagSet> Builder<F> {
         self
     }
 
-    /// Sets the definitions, such as from [`definitions::parse_toml`]. Default: the definitions of
+    /// Sets the definitions, such as from [`definitions::parse_file`]. Default: the definitions of
     /// `F`. Without them, the store holds the definitions, or the environment declares them.
     #[must_use]
     pub fn definitions(mut self, definitions: Definitions) -> Self {

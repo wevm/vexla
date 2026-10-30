@@ -1,5 +1,5 @@
-//! Runs `test/vectors/definitions.json` against `flargs::definitions`, and parses the same flags
-//! from TOML.
+//! Runs `test/vectors/definitions.json` and `test/vectors/file.json` against
+//! `flargs::definitions`.
 
 use std::collections::BTreeMap;
 
@@ -60,74 +60,73 @@ mod parse {
     }
 
     #[test]
-    fn toml() {
-        let text = r#"
-            [limits]
-            default = { requests = 100 }
-            type = "json"
-
-            [maintenance_banner]
-            build = true
-            default = false
-            public = true
-            type = "boolean"
-
-            [new_checkout]
-            default = false
-            description = "Use the new checkout flow."
-            public = true
-            type = "boolean"
-
-            [pricing]
-            default = "a"
-            options = ["a", "b", "c"]
-            type = "select"
-
-            [retries]
-            default = 3
-            type = "number"
-
-            [title]
-            default = "Hello"
-            env = "APP_TITLE"
-            expires = "2027-01-31"
-            type = "string"
-        "#;
-        let expected = &super::vectors()["parse"][0]["output"];
-
-        let output = definitions::parse_toml(text, ENV_PREFIX).expect("valid TOML");
-
-        assert_eq!(&serde_json::to_value(output).expect("serializes"), expected);
-    }
-
-    #[test]
-    fn toml_errors() {
-        let error = definitions::parse_toml("[new_checkout]\ntype = \"boolean\"\n", ENV_PREFIX)
-            .expect_err("no default");
-        insta::assert_snapshot!(error, @r"
-        The declaration of newCheckout needs a `default`.
-
-        To resolve: Fix the declaration of newCheckout in the flags file, as the JSON Schema describes.
-        ");
-
-        let error = definitions::parse_toml(
-            "[new_checkout]\ndefault = false\nexpires = 2027-01-31\ntype = \"boolean\"\n",
-            ENV_PREFIX,
-        )
-        .expect_err("a TOML date");
-        assert_eq!(error.key, "newCheckout");
-
-        let error = definitions::parse_toml("[new_checkout", ENV_PREFIX).expect_err("not TOML");
-        assert_eq!(error.key, "(root)");
-    }
-
-    #[test]
     fn env_prefix() {
         let input = serde_json::json!({ "newCheckout": { "default": false, "type": "boolean" } });
 
         let output = definitions::parse(&input, "APP_").expect("valid");
 
         assert_eq!(output["newCheckout"].env, "APP_NEW_CHECKOUT");
+    }
+}
+
+mod parse_file {
+    use super::*;
+
+    #[test]
+    fn vectors() {
+        let text = include_str!("../../../test/vectors/file.json");
+        let vectors: Json = serde_json::from_str(text).expect("the vectors are JSON");
+
+        for case in vectors["parseFile"].as_array().expect("parseFile") {
+            let name = str(&case["name"]);
+            let result = definitions::parse_file(str(&case["text"]), ENV_PREFIX);
+
+            if let Some(key) = case.get("error") {
+                assert_eq!(result.expect_err(name).key, str(key), "{name}");
+            } else {
+                let output = serde_json::to_value(result.expect(name)).expect("serializes");
+                assert_eq!(output, case["output"], "{name}");
+            }
+        }
+    }
+
+    #[test]
+    fn errors() {
+        let error =
+            definitions::parse_file("# @type {number}\nFEATURE_RETRIES=three\n", ENV_PREFIX)
+                .expect_err("not a number");
+        insta::assert_snapshot!(error, @r"
+        The default of retries is not a number value (line 2).
+
+        To resolve: Fix the declaration of retries in `.env.flags`, or in the store definition.
+        ");
+
+        let error = definitions::parse_file("# @type {boolean}\nFEATURE_BETA false\n", ENV_PREFIX)
+            .expect_err("not a NAME=value line");
+        insta::assert_snapshot!(error, @r"
+        Line 2 is not a comment or a NAME=value line.
+
+        To resolve: Fix the declaration of line 2 in `.env.flags`, or in the store definition.
+        ");
+    }
+
+    #[test]
+    fn lines() {
+        let text = "\u{feff}# Beta.\r\n# @type {string}\r\nexport FEATURE_BETA = \"a\\nb\"\r\n";
+
+        let output = definitions::parse_file(text, ENV_PREFIX).expect("valid");
+
+        assert_eq!(output["beta"].description.as_deref(), Some("Beta."));
+        assert_eq!(output["beta"].default, serde_json::json!("a\nb"));
+    }
+
+    #[test]
+    fn env_prefix() {
+        let output = definitions::parse_file("# @type {boolean}\nAPP_NEW_CHECKOUT=true\n", "APP_")
+            .expect("valid");
+
+        assert_eq!(output["newCheckout"].env, "APP_NEW_CHECKOUT");
+        assert_eq!(output["newCheckout"].default, serde_json::json!(true));
     }
 }
 
