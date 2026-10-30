@@ -15,17 +15,17 @@ Trunk-based development merges small changes to `main` often. Unfinished work sh
 
 The Vercel Flags SDK (`flags` on npm) is the reference design. Sources: https://vercel.com/docs/flags, https://flags-sdk.dev, read 2026-10-30.
 
-| Concept | Vercel Flags SDK | Flargs |
-| --- | --- | --- |
-| Declaration | `flag({ key, decide, defaultValue, options, identify })`, one callable per flag | `f.boolean`, `f.select`, `f.json` in one `Flags.define` record |
-| Evaluation context | `identify({ headers, cookies })`, wrapped in `dedupe` | `identify(request)` on `Runtime.create` |
-| Value source | `decide` or an adapter (Vercel Flags, Flagsmith, and others) | override, store value, `decide`, then `default` |
-| Overrides | encrypted `vercel-flag-overrides` cookie, written by the Vercel Toolbar | signed `flargs` cookie, written by the dev route, search parameters, or a signed link |
-| Discovery | `/.well-known/vercel/flags`, guarded by `verifyAccess` | the admin API under the dev route path, guarded by `authorize` |
-| Admin UI | Vercel dashboard and Flags Explorer | the dev route, or a host UI on the admin API (for example, Tempo API Admin) |
-| Build-time values | precompute: flag values encoded in the URL, with `generatePermutations` | `build` flags compile to literals through `flargs/vite` or `Flags.defines` |
-| Client values | `FlagValues` script tag, server-first | `runtime.script` and `flags` from `flargs/values`, public flags only |
-| Frameworks | Next.js, SvelteKit | any fetch runtime (Next.js, Workers, Bun), Hono, Node, Vite, React, Rust |
+| Concept            | Vercel Flags SDK                                                                | Flargs                                                                                |
+| ------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Declaration        | `flag({ key, decide, defaultValue, options, identify })`, one callable per flag | `f.boolean`, `f.select`, `f.json` in one `Flags.define` record                        |
+| Evaluation context | `identify({ headers, cookies })`, wrapped in `dedupe`                           | `identify(request)` on `Runtime.create`                                               |
+| Value source       | `decide` or an adapter (Vercel Flags, Flagsmith, and others)                    | override, store value, `decide`, then `default`                                       |
+| Overrides          | encrypted `vercel-flag-overrides` cookie, written by the Vercel Toolbar         | signed `flargs` cookie, written by the dev route, search parameters, or a signed link |
+| Discovery          | `/.well-known/vercel/flags`, guarded by `verifyAccess`                          | the admin API under the dev route path, guarded by `authorize`                        |
+| Admin UI           | Vercel dashboard and Flags Explorer                                             | the dev route, or a host UI on the admin API (for example, Tempo API Admin)           |
+| Build-time values  | precompute: flag values encoded in the URL, with `generatePermutations`         | `build` flags compile to literals through `flargs/vite` or `Flags.defines`            |
+| Client values      | `FlagValues` script tag, server-first                                           | `runtime.script` and `flags` from `flargs/values`, public flags only                  |
+| Frameworks         | Next.js, SvelteKit                                                              | any fetch runtime (Next.js, Workers, Bun), Hono, Node, Vite, React, Rust              |
 
 Flargs keeps these Vercel Flags SDK decisions:
 
@@ -43,10 +43,10 @@ Flargs changes these Vercel Flags SDK decisions:
 
 ### Resolution Time
 
-| Time | Resolves | Overrides | Reaches the client |
-| --- | --- | --- | --- |
-| `build` | when the bundle is built, from `env` and `store` | dev mode only, through the dev server | as a literal in the bundle, or through `runtime.script`, only if `public` |
-| `runtime` | on the server for each request | dev mode, public flags, and signed overrides | through `runtime.script` or `Values.load`, only if `public` |
+| Time      | Resolves                                         | Overrides                                    | Reaches the client                                                        |
+| --------- | ------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------------------- |
+| `build`   | when the bundle is built, from `env` and `store` | dev mode only, through the dev server        | as a literal in the bundle, or through `runtime.script`, only if `public` |
+| `runtime` | on the server for each request                   | dev mode, public flags, and signed overrides | through `runtime.script` or `Values.load`, only if `public`               |
 
 A build flag never appears in the values endpoint or in the admin API write path. A bundler replaces each read with a literal, so dead branches drop from the bundle.
 
@@ -78,10 +78,10 @@ An invalid override, store value, or `decide` result never selects a value. The 
 
 ### Overrides
 
-| Mode | Private runtime flag | Public runtime flag | Build flag |
-| --- | --- | --- | --- |
-| Dev (`dev: true`) | unsigned | unsigned | unsigned, through the dev server |
-| Production | signed only | unsigned or signed | rejected |
+| Mode              | Private runtime flag | Public runtime flag | Build flag                       |
+| ----------------- | -------------------- | ------------------- | -------------------------------- |
+| Dev (`dev: true`) | unsigned             | unsigned            | unsigned, through the dev server |
+| Production        | signed only          | unsigned or signed  | rejected                         |
 
 Search parameter format:
 
@@ -114,11 +114,11 @@ import { flags } from 'flargs/values'
 flags.newCheckout
 ```
 
-| Declaration | Variable value |
-| --- | --- |
-| `f.boolean` | `true` or `false` |
-| `f.select` | one option value |
-| `f.json` | JSON, validated by the schema |
+| Declaration | Variable value                |
+| ----------- | ----------------------------- |
+| `f.boolean` | `true` or `false`             |
+| `f.select`  | one option value              |
+| `f.json`    | JSON, validated by the schema |
 
 - **Names:** `newCheckout` reads `FEATURE_NEW_CHECKOUT`. The `env` option of a declaration sets the variable name directly. `envPrefix` on `Runtime.create`, `flargs/vite`, and `#[flags(env_prefix)]` replaces `FEATURE_`.
 - **Unrelated variables:** Flargs reads only the variables of declared flags. Another `FEATURE_*` variable has no effect.
@@ -168,30 +168,30 @@ export const definitions = Flags.define({
 
 `f` is the declaration namespace, in the style of `z` in Zod. `src/Flag.ts` holds the declarations, and `src/index.ts` exports the module as `f`.
 
-| Export | Purpose |
-| --- | --- |
-| `f.boolean(options)` | declares a boolean flag |
-| `f.select(options)` | declares a flag with a `const` tuple of `options` |
-| `f.json(options)` | declares a flag with a JSON value, validated by a Standard Schema |
-| `Flags.define(record)` | returns typed definitions, keyed by flag key |
-| `Flags.manifest(definitions)` | returns the JSON manifest, the cross-language contract |
-| `Flags.defines(definitions, options)` | returns `define` replacements for build flags, for any bundler |
-| `Override.parse(input, options)` | parses and verifies overrides from a `URL`, `URLSearchParams`, or cookie value |
-| `Override.serialize(values, options)` | returns search parameters, signed when `secret` is set |
-| `Override.InvalidSignatureError` | thrown when a signature does not match or has expired |
+| Export                                | Purpose                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------ |
+| `f.boolean(options)`                  | declares a boolean flag                                                        |
+| `f.select(options)`                   | declares a flag with a `const` tuple of `options`                              |
+| `f.json(options)`                     | declares a flag with a JSON value, validated by a Standard Schema              |
+| `Flags.define(record)`                | returns typed definitions, keyed by flag key                                   |
+| `Flags.manifest(definitions)`         | returns the JSON manifest, the cross-language contract                         |
+| `Flags.defines(definitions, options)` | returns `define` replacements for build flags, for any bundler                 |
+| `Override.parse(input, options)`      | parses and verifies overrides from a `URL`, `URLSearchParams`, or cookie value |
+| `Override.serialize(values, options)` | returns search parameters, signed when `secret` is set                         |
+| `Override.InvalidSignatureError`      | thrown when a signature does not match or has expired                          |
 
 `f.*` options:
 
-| Option | Type | Default |
-| --- | --- | --- |
-| `decide` | `(context) => Value \| undefined \| Promise<Value \| undefined>` | none |
-| `default` | `Value` | required |
-| `env` | `string`, the environment variable name | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
-| `description` | `string` | none |
-| `options` | `readonly Value[]` for `select` | required for `select` |
-| `resolve` | `'build' \| 'runtime'` | `'runtime'` |
-| `schema` | Standard Schema for `json` | required for `json` |
-| `visibility` | `'private' \| 'public'` | `'private'` |
+| Option        | Type                                                             | Default                                          |
+| ------------- | ---------------------------------------------------------------- | ------------------------------------------------ |
+| `decide`      | `(context) => Value \| undefined \| Promise<Value \| undefined>` | none                                             |
+| `default`     | `Value`                                                          | required                                         |
+| `env`         | `string`, the environment variable name                          | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
+| `description` | `string`                                                         | none                                             |
+| `options`     | `readonly Value[]` for `select`                                  | required for `select`                            |
+| `resolve`     | `'build' \| 'runtime'`                                           | `'runtime'`                                      |
+| `schema`      | Standard Schema for `json`                                       | required for `json`                              |
+| `visibility`  | `'private' \| 'public'`                                          | `'private'`                                      |
 
 A build flag cannot declare `decide`. The type rejects it, since no request context exists at build time.
 
@@ -221,18 +221,18 @@ const newCheckout = await runtime.get(request, 'newCheckout')
 const response = await runtime.fetch(request)
 ```
 
-| Export | Purpose |
-| --- | --- |
-| `Runtime.create(options)` | returns `{ evaluate, fetch, get, script }` |
+| Export                                | Purpose                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------- |
+| `Runtime.create(options)`             | returns `{ evaluate, fetch, get, script }`                                            |
 | `runtime.evaluate(request, options?)` | returns every runtime value. `options.visibility: 'public'` returns public flags only |
-| `runtime.fetch(request)` | serves the dev route and the admin API, and returns `404` outside `path` |
-| `runtime.get(request, key)` | returns one typed value, and runs `decide` for that flag only |
-| `runtime.script(request)` | returns a `<script>` element with public values, escaped with `safeJson` |
-| `Store.memory()` | in-memory store, for dev and tests |
-| `Store.http(options)` | reads and writes a remote Flargs admin API, such as a central admin service |
-| `Store.kv(namespace)` | Cloudflare KV store |
-| `Store.env(env)` | read-only store over `FEATURE_*` variables |
-| `Store.from(store)` | types a host store, such as a Postgres table |
+| `runtime.fetch(request)`              | serves the dev route and the admin API, and returns `404` outside `path`              |
+| `runtime.get(request, key)`           | returns one typed value, and runs `decide` for that flag only                         |
+| `runtime.script(request)`             | returns a `<script>` element with public values, escaped with `safeJson`              |
+| `Store.memory()`                      | in-memory store, for dev and tests                                                    |
+| `Store.http(options)`                 | reads and writes a remote Flargs admin API, such as a central admin service           |
+| `Store.kv(namespace)`                 | Cloudflare KV store                                                                   |
+| `Store.env(env)`                      | read-only store over `FEATURE_*` variables                                            |
+| `Store.from(store)`                   | types a host store, such as a Postgres table                                          |
 
 `get` and `evaluate` cache results per `Request` object in a `WeakMap` that the instance owns. Several reads in one request run `identify`, the store read, and each `decide` once.
 
@@ -249,18 +249,18 @@ type Store = {
 
 `Runtime.create` options:
 
-| Option | Purpose | Default |
-| --- | --- | --- |
-| `authorize` | returns the access of an admin request: `'read'`, `'write'`, `undefined`, or a `Response` | `undefined` outside dev mode |
-| `definitions` | the result of `Flags.define` | required |
-| `dev` | enables unsigned overrides for every flag and an open dev route | `false` |
-| `identify` | returns the `decide` context for a request | `undefined` context |
-| `onError` | receives invalid overrides, store values, and `decide` errors | none |
-| `path` | the dev route and admin API path | `'/.flags'` |
-| `secret` | the HMAC secret for overrides and links | required outside dev mode |
-| `store` | the store for admin values | none, so the store step is skipped |
-| `cors` | `{ origins }` that receive CORS headers on the values endpoint | none |
-| `envPrefix` | the prefix of flag environment variables | `'FEATURE_'` |
+| Option        | Purpose                                                                                   | Default                            |
+| ------------- | ----------------------------------------------------------------------------------------- | ---------------------------------- |
+| `authorize`   | returns the access of an admin request: `'read'`, `'write'`, `undefined`, or a `Response` | `undefined` outside dev mode       |
+| `definitions` | the result of `Flags.define`                                                              | required                           |
+| `dev`         | enables unsigned overrides for every flag and an open dev route                           | `false`                            |
+| `identify`    | returns the `decide` context for a request                                                | `undefined` context                |
+| `onError`     | receives invalid overrides, store values, and `decide` errors                             | none                               |
+| `path`        | the dev route and admin API path                                                          | `'/.flags'`                        |
+| `secret`      | the HMAC secret for overrides and links                                                   | required outside dev mode          |
+| `store`       | the store for admin values                                                                | none, so the store step is skipped |
+| `cors`        | `{ origins }` that receive CORS headers on the values endpoint                            | none                               |
+| `envPrefix`   | the prefix of flag environment variables                                                  | `'FEATURE_'`                       |
 
 ### Integrations
 
@@ -270,7 +270,9 @@ type Store = {
 // Cloudflare Workers and Bun: route the path to runtime.fetch.
 export default {
   fetch: (request: Request) =>
-    new URL(request.url).pathname.startsWith('/.flags') ? runtime.fetch(request) : app.fetch(request),
+    new URL(request.url).pathname.startsWith('/.flags')
+      ? runtime.fetch(request)
+      : app.fetch(request),
 }
 ```
 
@@ -307,11 +309,11 @@ Http.createServer(Request.toNodeListener(runtime.fetch)).listen(3000)
 const newCheckout = await runtime.get(Request.fromNodeListener(req, res), 'newCheckout')
 ```
 
-| Entry | Export | Purpose |
-| --- | --- | --- |
-| `flargs/hono` | `middleware(runtime)` | serves `path` through `runtime.fetch`, runs the next handler in `Values.run`, and sets `c.var.flags` with `evaluate`, `get`, and `script` bound to the request |
-| `flargs/node` | `Request.toNodeListener(handler, options?)` | converts a fetch handler to a `node:http` request listener. With `options.runtime`, it runs the handler in `Values.run` |
-| `flargs/node` | `Request.fromNodeListener(req, res)` | converts a `node:http` request to a fetch `Request` |
+| Entry         | Export                                      | Purpose                                                                                                                                                        |
+| ------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `flargs/hono` | `middleware(runtime)`                       | serves `path` through `runtime.fetch`, runs the next handler in `Values.run`, and sets `c.var.flags` with `evaluate`, `get`, and `script` bound to the request |
+| `flargs/node` | `Request.toNodeListener(handler, options?)` | converts a fetch handler to a `node:http` request listener. With `options.runtime`, it runs the handler in `Values.run`                                        |
+| `flargs/node` | `Request.fromNodeListener(req, res)`        | converts a `node:http` request to a fetch `Request`                                                                                                            |
 
 The `flargs/node` names follow `Request.toNodeListener` in `wevm/mppx`. React Server Components in Next.js receive no `Request`. Support for `{ cookies, headers, url }` input waits for the Next.js guide.
 
@@ -319,16 +321,16 @@ The `flargs/node` names follow `Request.toNodeListener` in `wevm/mppx`. React Se
 
 All routes live under `path`. The access column names the minimum return value of `authorize`, as defined in [Authorization](#authorization).
 
-| Route | Access | Response |
-| --- | --- | --- |
-| `GET /.flags` | `read` | the dev route page |
-| `GET /.flags/manifest` | `read` | the manifest, with the store value and override of each flag |
-| `PUT /.flags/values/:key` | `write` | sets the store value. Body: `{ "value": true }` |
-| `DELETE /.flags/values/:key` | `write` | deletes the store value |
-| `PUT /.flags/overrides` | `read` | sets the `flargs` cookie. Body: `{ "values": { "newCheckout": true } }` |
-| `DELETE /.flags/overrides` | `read` | clears the `flargs` cookie |
-| `POST /.flags/links` | `write` | returns a signed share URL. Body: `{ "expiresAt": 1767225600000, "url": "/checkout", "values": {} }` |
-| `GET /.flags/values` | none | the public runtime values for the request |
+| Route                        | Access  | Response                                                                                             |
+| ---------------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `GET /.flags`                | `read`  | the dev route page                                                                                   |
+| `GET /.flags/manifest`       | `read`  | the manifest, with the store value and override of each flag                                         |
+| `PUT /.flags/values/:key`    | `write` | sets the store value. Body: `{ "value": true }`                                                      |
+| `DELETE /.flags/values/:key` | `write` | deletes the store value                                                                              |
+| `PUT /.flags/overrides`      | `read`  | sets the `flargs` cookie. Body: `{ "values": { "newCheckout": true } }`                              |
+| `DELETE /.flags/overrides`   | `read`  | clears the `flargs` cookie                                                                           |
+| `POST /.flags/links`         | `write` | returns a signed share URL. Body: `{ "expiresAt": 1767225600000, "url": "/checkout", "values": {} }` |
+| `GET /.flags/values`         | none    | the public runtime values for the request                                                            |
 
 Manifest response:
 
@@ -353,12 +355,12 @@ Manifest response:
 
 `authorize(request)` is the only check on the admin API. The host supplies it and returns the access of the request. Flargs defines no credential format, and `FLARGS_SECRET` never authenticates a request.
 
-| Return value | Access | Status of a rejected route |
-| --- | --- | --- |
-| `'write'` | every admin route | none |
-| `'read'` | admin routes that change no store value and sign no link | `403` on a `write` route |
-| `undefined` | the values endpoint only | `401` on an admin route |
-| a `Response` | the values endpoint only | this `Response` on an admin route |
+| Return value | Access                                                   | Status of a rejected route        |
+| ------------ | -------------------------------------------------------- | --------------------------------- |
+| `'write'`    | every admin route                                        | none                              |
+| `'read'`     | admin routes that change no store value and sign no link | `403` on a `write` route          |
+| `undefined`  | the values endpoint only                                 | `401` on an admin route           |
+| a `Response` | the values endpoint only                                 | this `Response` on an admin route |
 
 - **Dev mode:** `dev: true` grants `write` to every request, and `authorize` does not run.
 - **Default:** without `authorize`, every request outside dev mode receives `undefined`.
@@ -367,12 +369,12 @@ Manifest response:
 
 Callers and credentials:
 
-| Caller | Credential | Access |
-| --- | --- | --- |
-| Host admin UI, such as Tempo API Admin | the session cookie of the admin UI | `write` |
-| CLI on a device (such as a laptop) | a Handshakes access token from a device grant, in `FLARGS_TOKEN` | `write` |
-| CI build | a Handshakes access token from a token exchange of the CI OIDC token | `read` |
-| `Store.http` in another application | a Handshakes access token for that service | `read`, or `write` for a remote admin UI |
+| Caller                                 | Credential                                                           | Access                                   |
+| -------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------- |
+| Host admin UI, such as Tempo API Admin | the session cookie of the admin UI                                   | `write`                                  |
+| CLI on a device (such as a laptop)     | a Handshakes access token from a device grant, in `FLARGS_TOKEN`     | `write`                                  |
+| CI build                               | a Handshakes access token from a token exchange of the CI OIDC token | `read`                                   |
+| `Store.http` in another application    | a Handshakes access token for that service                           | `read`, or `write` for a remote admin UI |
 
 ```ts
 import { Resource } from 'handshakes/server'
@@ -426,17 +428,17 @@ if (flags.newCheckout) newCheckout()
 if (flags.maintenanceBanner) showBanner()
 ```
 
-| Condition | Source of `flags` |
-| --- | --- |
-| `browser` | the JSON script from `runtime.script`, parsed at the first read, or the response of `Values.load` |
-| `node`, `bun`, `deno`, `workerd` | the values of the current request, stored by `Values.run` in `AsyncLocalStorage` |
+| Condition                        | Source of `flags`                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `browser`                        | the JSON script from `runtime.script`, parsed at the first read, or the response of `Values.load` |
+| `node`, `bun`, `deno`, `workerd` | the values of the current request, stored by `Values.run` in `AsyncLocalStorage`                  |
 
-| Export | Condition | Purpose |
-| --- | --- | --- |
-| `flags` | all | the typed values. A key that the page or request does not have reads as its `default` |
-| `Values.load(options?)` | `browser` | requests `GET <url>/values`, and resolves when `flags` holds the response |
-| `Values.run(runtime, request, fn)` | server | evaluates every runtime flag for `request`, then runs `fn` with those values in `flags` |
-| `Values.subscribe(fn)` | `browser` | calls `fn` after each `Values.load`, and returns an unsubscribe function |
+| Export                             | Condition | Purpose                                                                                 |
+| ---------------------------------- | --------- | --------------------------------------------------------------------------------------- |
+| `flags`                            | all       | the typed values. A key that the page or request does not have reads as its `default`   |
+| `Values.load(options?)`            | `browser` | requests `GET <url>/values`, and resolves when `flags` holds the response               |
+| `Values.run(runtime, request, fn)` | server    | evaluates every runtime flag for `request`, then runs `fn` with those values in `flags` |
+| `Values.subscribe(fn)`             | `browser` | calls `fn` after each `Values.load`, and returns an unsubscribe function                |
 
 - **Page state:** in a browser, the page is the lifecycle of the values, so `flargs/values` keeps one snapshot for the page. This is the only module-scope state in Flargs.
 - **Server state:** `flargs/hono` and `Request.toNodeListener` of `flargs/node` call `Values.run` for every request. Other fetch runtimes call it directly.
@@ -486,11 +488,11 @@ declare module 'flargs' {
 }
 ```
 
-| Declaration | Value type |
-| --- | --- |
-| `f.boolean` | `boolean` |
-| `f.select({ options: ['a', 'b'] })` | `'a' \| 'b'`, from a `const` generic |
-| `f.json({ schema })` | the output type of the Standard Schema |
+| Declaration                         | Value type                             |
+| ----------------------------------- | -------------------------------------- |
+| `f.boolean`                         | `boolean`                              |
+| `f.select({ options: ['a', 'b'] })` | `'a' \| 'b'`, from a `const` generic   |
+| `f.json({ schema })`                | the output type of the Standard Schema |
 
 `flags`, `runtime.get`, `runtime.evaluate`, and `useFlag` read `Register`. Without a registration, `flags` is `Readonly<Record<string, unknown>>`. `Register` is an `interface`, since declaration merging requires it.
 
@@ -536,16 +538,16 @@ The CLI uses incur, so `--llms`, `--mcp`, `--format`, and `skills add` are avail
 flargs list --url https://api-admin.example.com/.flags
 ```
 
-| Command | Purpose |
-| --- | --- |
-| `flargs list` | lists every flag with its value and source |
-| `flargs get <key>` | returns one flag |
-| `flargs set <key> <value>` | sets the store value |
-| `flargs unset <key>` | deletes the store value |
-| `flargs link <url> <key=value...>` | returns a signed share URL. `--expires` sets the lifetime |
-| `flargs manifest <file>` | writes the manifest of a flags module, for Rust and other languages |
-| `flargs types` | writes a `.d.ts` file with the `Register` declaration, from `--url` or a manifest file |
-| `flargs dev` | serves the dev route for a manifest, for an application with no TypeScript server |
+| Command                            | Purpose                                                                                |
+| ---------------------------------- | -------------------------------------------------------------------------------------- |
+| `flargs list`                      | lists every flag with its value and source                                             |
+| `flargs get <key>`                 | returns one flag                                                                       |
+| `flargs set <key> <value>`         | sets the store value                                                                   |
+| `flargs unset <key>`               | deletes the store value                                                                |
+| `flargs link <url> <key=value...>` | returns a signed share URL. `--expires` sets the lifetime                              |
+| `flargs manifest <file>`           | writes the manifest of a flags module, for Rust and other languages                    |
+| `flargs types`                     | writes a `.d.ts` file with the `Register` declaration, from `--url` or a manifest file |
+| `flargs dev`                       | serves the dev route for a manifest, for an application with no TypeScript server      |
 
 Options: `--url` (default `FLARGS_URL`), and the admin token from `FLARGS_TOKEN`. The CLI never accepts a token in argv.
 
@@ -601,19 +603,19 @@ async fn decide_pricing(user: &User) -> Option<Pricing> {
 }
 ```
 
-| Attribute | Meaning |
-| --- | --- |
-| `#[flag(build)]` | `resolve: 'build'`. The derive rejects `decide` on a build flag at compile time |
-| `#[flag(decide = path)]` | an `async fn(&Context) -> Option<T>` |
-| `#[flag(default = expr)]` | required, as `default` in TypeScript |
-| `#[flag(env = "NAME")]` | sets the environment variable name |
-| `#[flag(json)]` | a JSON flag. The type implements `Serialize` and `DeserializeOwned` |
-| `#[flag(public)]` | `visibility: 'public'`. A field without it is private |
-| `#[flag(rename = "key")]` | sets the manifest key |
-| `#[flags(context = T)]` | the type that `identify` returns |
-| `#[flags(env_prefix = "...")]` | the prefix of flag environment variables. The default is `FEATURE_` |
-| `#[flags(manifest = "path")]` | compares the struct with a manifest at compile time |
-| `#[flags(rename_all = "camelCase")]` | the key case. The default is `camelCase`, as in TypeScript |
+| Attribute                            | Meaning                                                                         |
+| ------------------------------------ | ------------------------------------------------------------------------------- |
+| `#[flag(build)]`                     | `resolve: 'build'`. The derive rejects `decide` on a build flag at compile time |
+| `#[flag(decide = path)]`             | an `async fn(&Context) -> Option<T>`                                            |
+| `#[flag(default = expr)]`            | required, as `default` in TypeScript                                            |
+| `#[flag(env = "NAME")]`              | sets the environment variable name                                              |
+| `#[flag(json)]`                      | a JSON flag. The type implements `Serialize` and `DeserializeOwned`             |
+| `#[flag(public)]`                    | `visibility: 'public'`. A field without it is private                           |
+| `#[flag(rename = "key")]`            | sets the manifest key                                                           |
+| `#[flags(context = T)]`              | the type that `identify` returns                                                |
+| `#[flags(env_prefix = "...")]`       | the prefix of flag environment variables. The default is `FEATURE_`             |
+| `#[flags(manifest = "path")]`        | compares the struct with a manifest at compile time                             |
+| `#[flags(rename_all = "camelCase")]` | the key case. The default is `camelCase`, as in TypeScript                      |
 
 The field type selects the flag type: `bool` is a boolean flag, an enum with `#[derive(Options)]` is a select flag, and `#[flag(json)]` is a JSON flag.
 
@@ -679,21 +681,21 @@ async fn checkout(flags: flargs::axum::Flags<AppFlags>) -> Result<Response, flar
 
 #### Manifest Direction
 
-| Owner | Rust code | Result |
-| --- | --- | --- |
-| Rust | `AppFlags::manifest()`, written by `flargs manifest` | the dev route, admin API, and TypeScript client use the Rust definitions |
-| TypeScript | `#[flags(manifest = "../web/flags.json")]` | compilation fails when a key, type, default, option, or visibility differs |
+| Owner      | Rust code                                            | Result                                                                     |
+| ---------- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| Rust       | `AppFlags::manifest()`, written by `flargs manifest` | the dev route, admin API, and TypeScript client use the Rust definitions   |
+| TypeScript | `#[flags(manifest = "../web/flags.json")]`           | compilation fails when a key, type, default, option, or visibility differs |
 
 #### Crates and Features
 
-| Crate or feature | Contents |
-| --- | --- |
+| Crate or feature   | Contents                                                                                                         |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | `flargs` (default) | `Flags` and `Options` traits, `Key`, `Override::parse`, `Override::serialize`, `Runtime`, `Store`, `MemoryStore` |
-| `flargs-derive` | the `Flags` and `Options` derives, re-exported by the `derive` feature (on by default) |
-| `axum` feature | the `flargs::axum::Flags` extractor |
-| `build` feature | `flargs::build::pull` |
-| `client` feature | `HttpStore` and `Client`, for the admin API and the values endpoint |
-| `server` feature | `Runtime::service` and `Runtime::layer`, a `tower::Service` and a `tower::Layer` |
+| `flargs-derive`    | the `Flags` and `Options` derives, re-exported by the `derive` feature (on by default)                           |
+| `axum` feature     | the `flargs::axum::Flags` extractor                                                                              |
+| `build` feature    | `flargs::build::pull`                                                                                            |
+| `client` feature   | `HttpStore` and `Client`, for the admin API and the values endpoint                                              |
+| `server` feature   | `Runtime::service` and `Runtime::layer`, a `tower::Service` and a `tower::Layer`                                 |
 
 ## Phases
 

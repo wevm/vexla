@@ -132,13 +132,13 @@ declare module 'flargs' {
 }
 ```
 
-| Option | Purpose | Default |
-| --- | --- | --- |
-| `decide` | returns a value from the request context, or `undefined` to fall through | none |
-| `default` | the value when no other source has one | required |
-| `env` | the environment variable name | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
-| `resolve` | `'build'` or `'runtime'` | `'runtime'` |
-| `visibility` | `'private'` or `'public'` | `'private'` |
+| Option       | Purpose                                                                  | Default                                          |
+| ------------ | ------------------------------------------------------------------------ | ------------------------------------------------ |
+| `decide`     | returns a value from the request context, or `undefined` to fall through | none                                             |
+| `default`    | the value when no other source has one                                   | required                                         |
+| `env`        | the environment variable name                                            | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
+| `resolve`    | `'build'` or `'runtime'`                                                 | `'runtime'`                                      |
+| `visibility` | `'private'` or `'public'`                                                | `'private'`                                      |
 
 ### Environment Variables
 
@@ -202,11 +202,11 @@ import { flags } from 'flargs/values'
 if (flags.newCheckout) renderNewCheckout()
 ```
 
-| Where | Source of `flags` |
-| --- | --- |
-| Server | the current request, through Hono middleware, a Node listener, or `Values.run` |
-| Browser | the JSON script from `runtime.script`, or `Values.load` for a client on another origin |
-| No runtime | environment variables, then defaults |
+| Where      | Source of `flags`                                                                      |
+| ---------- | -------------------------------------------------------------------------------------- |
+| Server     | the current request, through Hono middleware, a Node listener, or `Values.run`         |
+| Browser    | the JSON script from `runtime.script`, or `Values.load` for a client on another origin |
+| No runtime | environment variables, then defaults                                                   |
 
 ```tsx
 // React: renders again when the values change. No provider is necessary.
@@ -232,10 +232,10 @@ export default defineConfig({
 
 ### Overrides
 
-| Mode | Private runtime flag | Public runtime flag | Build flag |
-| --- | --- | --- | --- |
-| Dev | unsigned | unsigned | unsigned, through the dev server |
-| Production | signed only | unsigned or signed | rejected |
+| Mode       | Private runtime flag | Public runtime flag | Build flag                       |
+| ---------- | -------------------- | ------------------- | -------------------------------- |
+| Dev        | unsigned             | unsigned            | unsigned, through the dev server |
+| Production | signed only          | unsigned or signed  | rejected                         |
 
 ```txt
 https://app.example.com/checkout?flag.newCheckout=true
@@ -249,15 +249,15 @@ The server stores valid overrides in a signed `HttpOnly` cookie, so they persist
 
 The admin API lives under `/.flags`. `authorize` returns the access of each request, and Flargs defines no credential format.
 
-| Route | Access | Purpose |
-| --- | --- | --- |
-| `GET /.flags` | `read` | the dev route page |
-| `GET /.flags/manifest` | `read` | definitions, store values, and overrides |
-| `PUT /.flags/values/:key` | `write` | sets a store value for every request |
-| `DELETE /.flags/values/:key` | `write` | deletes a store value |
-| `PUT /.flags/overrides` | `read` | sets personal overrides |
-| `POST /.flags/links` | `write` | returns a signed share link |
-| `GET /.flags/values` | none | public values for the request |
+| Route                        | Access  | Purpose                                  |
+| ---------------------------- | ------- | ---------------------------------------- |
+| `GET /.flags`                | `read`  | the dev route page                       |
+| `GET /.flags/manifest`       | `read`  | definitions, store values, and overrides |
+| `PUT /.flags/values/:key`    | `write` | sets a store value for every request     |
+| `DELETE /.flags/values/:key` | `write` | deletes a store value                    |
+| `PUT /.flags/overrides`      | `read`  | sets personal overrides                  |
+| `POST /.flags/links`         | `write` | returns a signed share link              |
+| `GET /.flags/values`         | none    | public values for the request            |
 
 ```ts
 // The admin UI session writes. CI tokens from Handshakes read.
@@ -289,16 +289,16 @@ flargs link https://app.example.com/checkout pricing=c --expires 7d
 flargs types --url https://api.example.com/.flags --out src/flargs.d.ts
 ```
 
-| Command | Purpose |
-| --- | --- |
-| `flargs list` | lists every flag with its value and source |
-| `flargs get <key>` | returns one flag |
-| `flargs set <key> <value>` | sets the store value |
-| `flargs unset <key>` | deletes the store value |
-| `flargs link <url> <key=value...>` | returns a signed share link |
-| `flargs manifest <file>` | writes the manifest of a definitions module |
-| `flargs types` | writes a `.d.ts` file with the `Register` declaration |
-| `flargs dev` | serves the dev route for a manifest |
+| Command                            | Purpose                                               |
+| ---------------------------------- | ----------------------------------------------------- |
+| `flargs list`                      | lists every flag with its value and source            |
+| `flargs get <key>`                 | returns one flag                                      |
+| `flargs set <key> <value>`         | sets the store value                                  |
+| `flargs unset <key>`               | deletes the store value                               |
+| `flargs link <url> <key=value...>` | returns a signed share link                           |
+| `flargs manifest <file>`           | writes the manifest of a definitions module           |
+| `flargs types`                     | writes a `.d.ts` file with the `Register` declaration |
+| `flargs dev`                       | serves the dev route for a manifest                   |
 
 ## Rust
 
