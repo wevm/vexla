@@ -205,6 +205,39 @@ declare module 'flargs' {
 - **Types:** `flags`, `runtime.get`, `runtime.evaluate`, and `useFlag` read `Register`. `Register` is an `interface`, since declaration merging requires it.
 - **Content mappers:** a TypeScript 7.1 content mapper can replace the generated module later. See [Out of Scope](#out-of-scope).
 
+### Store Definitions
+
+A project declares its flags in a flags file or in the store. With no `definitions`, `Runtime.create` reads the definitions from the store, so an admin UI creates flags with no deploy.
+
+```ts
+// No flags.json: the store holds the definitions and the values.
+const runtime = Runtime.create({
+  authorize,
+  secret: process.env.FLARGS_SECRET,
+  store: Store.from(database.flags),
+})
+```
+
+```http
+PUT /.flags/definitions/newCheckout
+
+{ "default": false, "public": true, "type": "boolean" }
+```
+
+- **One source:** with `definitions`, the flags file is the only source of definitions, and the definition routes return `409`. Without `definitions`, the store is the only source.
+- **Same schema:** a store definition follows the schema of a flag in `flags.json`, and the runtime validates it on write and on read.
+- **Cache:** the runtime reads the definitions once, and again after each definition write through its own admin API. `Store.http` reads them from the remote admin API.
+- **Store down:** if the store cannot return definitions, evaluation throws `Runtime.DefinitionsUnavailableError`. With no definitions, no default exists.
+- **Types:** `flargs generate --url` writes `flargs.gen.ts` from the manifest of a running server.
+- **Environment variables:** each store flag links to its `FEATURE_*` variable, as a file flag does.
+
+|               | Flags file                                      | Store                                                                       |
+| ------------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
+| Add a flag    | a reviewed change on `main`                     | an admin UI or `flargs define`, with no deploy                              |
+| Defaults      | always available                                | available while the store is                                                |
+| Types         | `flargs generate` from the file                 | `flargs generate --url` from a running server                               |
+| Remove a flag | delete the key, and type errors show every read | `flargs undefine`, and stale reads fail at the next `flargs generate --url` |
+
 ### Growth
 
 A project grows in three steps, with no change to the flags file or to reads of `flags`:
@@ -281,24 +314,30 @@ type Store = {
   delete: (key: string) => Promise<void>
   get: (keys: readonly string[]) => Promise<Record<string, unknown>>
   set: (key: string, value: unknown) => Promise<void>
+  // Required only for store definitions, when Runtime.create has no `definitions`.
+  definitions?: {
+    delete: (key: string) => Promise<void>
+    list: () => Promise<Record<string, Definitions.Definition>>
+    set: (key: string, definition: Definitions.Definition) => Promise<void>
+  }
 }
 ```
 
 `Runtime.create` options:
 
-| Option        | Purpose                                                                                   | Default                            |
-| ------------- | ----------------------------------------------------------------------------------------- | ---------------------------------- |
-| `authorize`   | returns the access of an admin request: `'read'`, `'write'`, `undefined`, or a `Response` | `undefined` outside dev mode       |
-| `decide`      | functions keyed by flag, which return a value from the `identify` context or `undefined`  | none                               |
-| `definitions` | `definitions` from `flargs.gen.ts`, or `Definitions.parse`                                | required                           |
-| `dev`         | enables unsigned overrides for every flag and an open dev route                           | `false`                            |
-| `identify`    | returns the `decide` context for a request                                                | `undefined` context                |
-| `onError`     | receives invalid overrides, store values, and `decide` errors                             | none                               |
-| `path`        | the dev route and admin API path                                                          | `'/.flags'`                        |
-| `secret`      | the HMAC secret for overrides and links                                                   | required outside dev mode          |
-| `store`       | the store for admin values                                                                | none, so the store step is skipped |
-| `cors`        | `{ origins }` that receive CORS headers on the values endpoint                            | none                               |
-| `envPrefix`   | the prefix of flag environment variables                                                  | `'FEATURE_'`                       |
+| Option        | Purpose                                                                                   | Default                                  |
+| ------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `authorize`   | returns the access of an admin request: `'read'`, `'write'`, `undefined`, or a `Response` | `undefined` outside dev mode             |
+| `decide`      | functions keyed by flag, which return a value from the `identify` context or `undefined`  | none                                     |
+| `definitions` | `definitions` from `flargs.gen.ts`, or `Definitions.parse`                                | none, so the store holds the definitions |
+| `dev`         | enables unsigned overrides for every flag and an open dev route                           | `false`                                  |
+| `identify`    | returns the `decide` context for a request                                                | `undefined` context                      |
+| `onError`     | receives invalid overrides, store values, and `decide` errors                             | none                                     |
+| `path`        | the dev route and admin API path                                                          | `'/.flags'`                              |
+| `secret`      | the HMAC secret for overrides and links                                                   | required outside dev mode                |
+| `store`       | the store for admin values                                                                | none, so the store step is skipped       |
+| `cors`        | `{ origins }` that receive CORS headers on the values endpoint                            | none                                     |
+| `envPrefix`   | the prefix of flag environment variables                                                  | `'FEATURE_'`                             |
 
 ### Integrations
 
@@ -359,16 +398,18 @@ The `flargs/node` names follow `Request.toNodeListener` in `wevm/mppx`. React Se
 
 All routes live under `path`. The access column names the minimum return value of `authorize`, as defined in [Authorization](#authorization).
 
-| Route                        | Access  | Response                                                                                             |
-| ---------------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
-| `GET /.flags`                | `read`  | the dev route page                                                                                   |
-| `GET /.flags/manifest`       | `read`  | the manifest, with the store value and override of each flag                                         |
-| `PUT /.flags/values/:key`    | `write` | sets the store value. Body: `{ "value": true }`                                                      |
-| `DELETE /.flags/values/:key` | `write` | deletes the store value                                                                              |
-| `PUT /.flags/overrides`      | `read`  | sets the `flargs` cookie. Body: `{ "values": { "newCheckout": true } }`                              |
-| `DELETE /.flags/overrides`   | `read`  | clears the `flargs` cookie                                                                           |
-| `POST /.flags/links`         | `write` | returns a signed share URL. Body: `{ "expiresAt": 1767225600000, "url": "/checkout", "values": {} }` |
-| `GET /.flags/values`         | none    | the public runtime values for the request                                                            |
+| Route                             | Access  | Response                                                                                             |
+| --------------------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `GET /.flags`                     | `read`  | the dev route page                                                                                   |
+| `GET /.flags/manifest`            | `read`  | the manifest, with the store value and override of each flag                                         |
+| `PUT /.flags/values/:key`         | `write` | sets the store value. Body: `{ "value": true }`                                                      |
+| `DELETE /.flags/values/:key`      | `write` | deletes the store value                                                                              |
+| `PUT /.flags/definitions/:key`    | `write` | creates or replaces a store definition. `409` with `definitions`                                     |
+| `DELETE /.flags/definitions/:key` | `write` | deletes a store definition and its store value                                                       |
+| `PUT /.flags/overrides`           | `read`  | sets the `flargs` cookie. Body: `{ "values": { "newCheckout": true } }`                              |
+| `DELETE /.flags/overrides`        | `read`  | clears the `flargs` cookie                                                                           |
+| `POST /.flags/links`              | `write` | returns a signed share URL. Body: `{ "expiresAt": 1767225600000, "url": "/checkout", "values": {} }` |
+| `GET /.flags/values`              | none    | the public runtime values for the request                                                            |
 
 Manifest response:
 
@@ -450,6 +491,7 @@ The dev route page lists every flag with its source (`override`, `store`, `decid
 
 - **Personal mode:** a control writes the `flargs` cookie through `PUT /.flags/overrides`. Only the current browser changes.
 - **Admin mode:** when `store` is set and `authorize` returns `write`, a second control writes the store through `PUT /.flags/values/:key`. Every request changes.
+- **Create:** with store definitions and `write` access, a form creates and deletes flags through the definition routes.
 - **Share:** with `write` access, a button copies a signed link from `POST /.flags/links`.
 
 The page is one HTML document with inline styles and script, no runtime dependency, and no external request. A host admin UI, such as Tempo API Admin, calls the same HTTP API.
@@ -564,17 +606,19 @@ The CLI uses incur, so `--llms`, `--mcp`, `--format`, and `skills add` are avail
 flargs list --url https://api-admin.example.com/.flags
 ```
 
-| Command                            | Purpose                                                                             |
-| ---------------------------------- | ----------------------------------------------------------------------------------- |
-| `flargs list`                      | lists every flag with its value and source                                          |
-| `flargs get <key>`                 | returns one flag                                                                    |
-| `flargs set <key> <value>`         | sets the store value                                                                |
-| `flargs unset <key>`               | deletes the store value                                                             |
-| `flargs link <url> <key=value...>` | returns a signed share URL. `--expires` sets the lifetime                           |
-| `flargs check`                     | validates the environment against the flags file, for CI                            |
-| `flargs env`                       | writes `.env.example` from the flags file                                           |
-| `flargs generate`                  | writes `flargs.gen.ts` from `flags.json`, or from `--url`                           |
-| `flargs dev`                       | serves the dev route for `flags.json`, for an application with no TypeScript server |
+| Command                            | Purpose                                                                                                                    |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `flargs list`                      | lists every flag with its value and source                                                                                 |
+| `flargs get <key>`                 | returns one flag                                                                                                           |
+| `flargs set <key> <value>`         | sets the store value                                                                                                       |
+| `flargs unset <key>`               | deletes the store value                                                                                                    |
+| `flargs define <key>`              | creates or replaces a store definition. `--type`, `--default`, `--options`, `--public`, and `--description` set its fields |
+| `flargs undefine <key>`            | deletes a store definition                                                                                                 |
+| `flargs link <url> <key=value...>` | returns a signed share URL. `--expires` sets the lifetime                                                                  |
+| `flargs check`                     | validates the environment against the flags file, for CI                                                                   |
+| `flargs env`                       | writes `.env.example` from the flags file                                                                                  |
+| `flargs generate`                  | writes `flargs.gen.ts` from `flags.json`, or from `--url`                                                                  |
+| `flargs dev`                       | serves the dev route for `flags.json`, for an application with no TypeScript server                                        |
 
 Options: `--url` (default `FLARGS_URL`), and the admin token from `FLARGS_TOKEN`. The CLI never accepts a token in argv.
 
@@ -683,13 +727,13 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 
 ### Phase 6: CLI
 
-- `list`, `get`, `set`, `unset`, `link`, `check`, `env`, `generate`, and `dev`.
+- `list`, `get`, `set`, `unset`, `define`, `undefine`, `link`, `check`, `env`, `generate`, and `dev`.
 - **Gate:** the built CLI runs against a local `runtime.fetch`. No output contains `FLARGS_TOKEN` or `FLARGS_SECRET`. A `.test-d.ts` fixture type-checks against the output of `flargs generate`.
 
 ### Phase 7: Stores
 
-- `Store.env`, `Store.http`, `Store.kv`, and `Store.from`.
-- **Gate:** one `Runtime.create` instance uses `Store.http` to write through a second instance, and a value set on the second applies to the first.
+- `Store.env`, `Store.http`, `Store.kv`, and `Store.from`, and store definitions.
+- **Gate:** one `Runtime.create` instance uses `Store.http` to write through a second instance, and a value set on the second applies to the first. A flag defined through the admin API resolves with no flags file, and a definition route returns `409` when `definitions` is set.
 
 ### Phase 8: Rust
 

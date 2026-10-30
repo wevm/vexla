@@ -105,6 +105,21 @@ FEATURE_PRICING=b
 
 A `FEATURE_*` variable that `flags.json` does not declare throws at startup, so a typo does not fail silently.
 
+### Store Definitions
+
+A project with no flags file declares its flags in the store. An admin UI or the CLI then creates flags with no deploy, and `flargs generate --url` writes the types from the running server.
+
+```ts
+// No flags.json: the store holds the definitions and the values.
+const runtime = Runtime.create({
+  authorize,
+  secret: process.env.FLARGS_SECRET,
+  store: Store.from(database.flags),
+})
+```
+
+A project uses one source: a flags file, reviewed with the code that reads it, or the store, changed at runtime.
+
 ### Types
 
 `flargs generate` reads `flags.json` and writes `flargs.gen.ts`, which holds the definitions and their types. `flargs/vite` runs the same step on each change of `flags.json`.
@@ -272,6 +287,9 @@ flargs list --url https://api.example.com/.flags
 # Sets and deletes a store value for every request.
 flargs set newCheckout true
 flargs unset newCheckout
+
+# Creates a flag in the store, for a project with no flags file.
+flargs define newCheckout --type boolean --default false --public
 
 # Returns a signed link that overrides a private flag for one week.
 flargs link https://app.example.com/checkout pricing=c --expires 7d
