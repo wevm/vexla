@@ -29,6 +29,7 @@
   "description": "Self-hosted feature flags for TypeScript and Rust.",
   "type": "module",
   "version": "0.0.0",
+  "private": true,
   "license": "MIT",
   "repository": {
     "type": "git",
