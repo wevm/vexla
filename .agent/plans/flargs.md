@@ -1,6 +1,6 @@
 # Flargs Plan
 
-Status: phase 0 done. Phase 1 is next.
+Status: phase 1 done. Phase 2 is next.
 
 Flargs is a self-hosted feature flag library for TypeScript and Rust. It declares flags in a committed `flags.json` or `flags.toml` file, evaluates them on the server, and serves a dev route and an admin API from the host application. This plan defines the public API, the phases, and the acceptance gate of each phase.
 

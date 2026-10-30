@@ -1,0 +1,131 @@
+{
+  "definitions": {
+    "banner": { "build": true, "default": false, "public": true, "type": "boolean" },
+    "limits": { "default": { "requests": 100 }, "type": "json" },
+    "newCheckout": { "default": false, "public": true, "type": "boolean" },
+    "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
+  },
+  "secret": "test-secret",
+  "now": 1767225000000,
+  "cases": [
+    {
+      "name": "unsigned public flag",
+      "query": "flag.newCheckout=true",
+      "values": { "newCheckout": true },
+      "errors": []
+    },
+    {
+      "name": "unsigned private flag",
+      "query": "flag.pricing=c",
+      "values": {},
+      "errors": ["Override.NotOverridableError"]
+    },
+    {
+      "name": "unsigned private flag in dev mode",
+      "dev": true,
+      "query": "flag.pricing=c",
+      "values": { "pricing": "c" },
+      "errors": []
+    },
+    {
+      "name": "build flag",
+      "query": "flag.banner=true",
+      "values": {},
+      "errors": ["Override.NotOverridableError"]
+    },
+    {
+      "name": "build flag in dev mode",
+      "dev": true,
+      "query": "flag.banner=true",
+      "values": { "banner": true },
+      "errors": []
+    },
+    {
+      "name": "unknown key",
+      "query": "flag.nope=true",
+      "values": {},
+      "errors": ["Override.UnknownFlagError"]
+    },
+    {
+      "name": "invalid value",
+      "query": "flag.newCheckout=yes",
+      "values": {},
+      "errors": ["Definitions.InvalidValueError"]
+    },
+    {
+      "name": "other parameters",
+      "query": "page=2&flag.newCheckout=false",
+      "values": { "newCheckout": false },
+      "errors": []
+    },
+    { "name": "reset", "query": "flag.reset", "reset": true, "values": {}, "errors": [] },
+    {
+      "name": "signed private flag",
+      "query": "flag.pricing=c&flag.exp=1767225600&flag.sig=1vzcgNEL6OEWX9iiMWQC6OUFkQZuoNFfBhfYRsHfCKk",
+      "signed": true,
+      "values": { "pricing": "c" },
+      "errors": []
+    },
+    {
+      "name": "signed flags in any order",
+      "query": "flag.sig=Hsef77TTHbwrbnpECvcFVj1Spf48pe9OUCUfNJhTiSQ&flag.pricing=c&flag.exp=1767225600&flag.newCheckout=true",
+      "signed": true,
+      "values": { "newCheckout": true, "pricing": "c" },
+      "errors": []
+    },
+    {
+      "name": "signed JSON flag",
+      "query": "flag.limits=%7B%22requests%22%3A5%7D&flag.exp=1767225600&flag.sig=smpVCkeIk6iYLpTdFE6oe7ppr8CbVBIKzgLCYU0J4M8",
+      "signed": true,
+      "values": { "limits": { "requests": 5 } },
+      "errors": []
+    },
+    {
+      "name": "changed value",
+      "query": "flag.pricing=b&flag.exp=1767225600&flag.sig=1vzcgNEL6OEWX9iiMWQC6OUFkQZuoNFfBhfYRsHfCKk",
+      "throws": "mismatch"
+    },
+    {
+      "name": "changed expiry",
+      "query": "flag.pricing=c&flag.exp=1767225601&flag.sig=1vzcgNEL6OEWX9iiMWQC6OUFkQZuoNFfBhfYRsHfCKk",
+      "throws": "mismatch"
+    },
+    {
+      "name": "expired signature",
+      "now": 1767225600000,
+      "query": "flag.pricing=c&flag.exp=1767225600&flag.sig=1vzcgNEL6OEWX9iiMWQC6OUFkQZuoNFfBhfYRsHfCKk",
+      "throws": "expired"
+    },
+    {
+      "name": "signed without a secret",
+      "secret": null,
+      "query": "flag.pricing=c&flag.exp=1767225600&flag.sig=1vzcgNEL6OEWX9iiMWQC6OUFkQZuoNFfBhfYRsHfCKk",
+      "throws": "missing secret"
+    },
+    {
+      "name": "signature without expiry",
+      "query": "flag.pricing=c&flag.sig=abc",
+      "throws": "missing expiry"
+    }
+  ],
+  "serialize": [
+    {
+      "name": "signed",
+      "values": { "pricing": "c" },
+      "expiresAt": 1767225600000,
+      "query": "flag.pricing=c&flag.exp=1767225600&flag.sig=1vzcgNEL6OEWX9iiMWQC6OUFkQZuoNFfBhfYRsHfCKk"
+    },
+    {
+      "name": "signed, two flags",
+      "values": { "pricing": "c", "newCheckout": true },
+      "expiresAt": 1767225600000,
+      "query": "flag.newCheckout=true&flag.pricing=c&flag.exp=1767225600&flag.sig=Hsef77TTHbwrbnpECvcFVj1Spf48pe9OUCUfNJhTiSQ"
+    },
+    {
+      "name": "unsigned",
+      "unsigned": true,
+      "values": { "newCheckout": true },
+      "query": "flag.newCheckout=true"
+    }
+  ]
+}

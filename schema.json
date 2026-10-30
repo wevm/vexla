@@ -1,0 +1,77 @@
+{
+  "$id": "https://unpkg.com/flargs/schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": { "$ref": "#/$defs/flag" },
+  "description": "Flargs flags file: flags.json or flags.toml. Each key declares one flag.",
+  "properties": {
+    "$schema": { "type": "string" }
+  },
+  "title": "Flargs flags",
+  "type": "object",
+  "$defs": {
+    "flag": {
+      "additionalProperties": false,
+      "properties": {
+        "build": {
+          "default": false,
+          "description": "`true` makes a build flag, which resolves when the bundle builds.",
+          "type": "boolean"
+        },
+        "default": {
+          "description": "The value when no other source has one. It must match `type`."
+        },
+        "description": {
+          "description": "The description, for the dev route, the admin API, and `.env.example`.",
+          "type": "string"
+        },
+        "env": {
+          "description": "The environment variable name. Default: `FEATURE_` and the key in SCREAMING_SNAKE_CASE.",
+          "pattern": "^[A-Z_][A-Z0-9_]*$",
+          "type": "string"
+        },
+        "expires": {
+          "description": "The date after which the flag is due for retirement.",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "type": "string"
+        },
+        "options": {
+          "description": "The values of a select flag.",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "public": {
+          "default": false,
+          "description": "`true` lets the value reach the browser.",
+          "type": "boolean"
+        },
+        "type": {
+          "description": "The type of the value.",
+          "enum": ["boolean", "json", "number", "select", "string"]
+        }
+      },
+      "required": ["default", "type"],
+      "type": "object",
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "boolean" } } },
+          "then": { "properties": { "default": { "type": "boolean" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "number" } } },
+          "then": { "properties": { "default": { "type": "number" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "string" } } },
+          "then": { "properties": { "default": { "type": "string" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "select" } } },
+          "then": { "properties": { "default": { "type": "string" } }, "required": ["options"] },
+          "else": { "not": { "required": ["options"] } }
+        }
+      ]
+    }
+  }
+}
