@@ -51,9 +51,9 @@ flowchart LR
 
 ## Motivation
 
-Long-lived feature branches drift from `main`, end in large and risky merges, and keep finished work out of production. The fix is to push small changes to `main` continuously, with unfinished work behind a feature flag.
+Feature branches drift from `main`, end in large and risky merges, and keep finished work out of production. The fix is to push small changes to `main` continuously, with unfinished work behind a feature flag.
 
-That extra work (flags, staged migrations, two configurations at once) was once tedious, but coding agents now write it at almost no cost. Flargs makes each flag one typed line that is easy to add, preview, release, and remove, on infrastructure that the application already owns.
+Extra work such as feature flags, staged migrations, and two configurations at once was once tedious, but coding agents now write it at almost no cost. Flargs makes each flag one typed line that is easy to add, preview, release, and remove, on infrastructure that the application already owns.
 
 ## Agent Prompt
 
