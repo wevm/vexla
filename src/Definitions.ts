@@ -1,8 +1,7 @@
 /**
  * @module Flag definitions: the `.env.flags` file, validation of definition objects (the store and
- * the admin API), zero-config inference from `FEATURE_*` variables, the mapping between keys and
- * environment variables, the decoding of variable values, the manifest of the admin API, and the
- * generated `flargs.gen.ts` module.
+ * the admin API), inference of a value from text, the decoding of variable values, the manifest of
+ * the admin API, and the generated `flargs.gen.ts` module.
  */
 import * as EnvFile from './internal/EnvFile.js'
 import * as Errors from './internal/Errors.js'

@@ -221,7 +221,7 @@ A library declares build flags only, and publishes from `main` with unfinished w
 import { flags } from 'flargs'
 
 // Becomes `if (false)` in the published files.
-if (flags.newEncoder) return encodeV2(value)
+if (flags.NEW_ENCODER) return encodeV2(value)
 ```
 
 ### Overrides
