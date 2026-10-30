@@ -1,0 +1,53 @@
+# prune [Lists store values of removed flags, and deletes them with --yes]
+
+`flargs prune` reads the `orphans` of the manifest: stored keys that no flag declares. With `--yes`, it deletes each through `DELETE /.flags/values/:key`, which needs `write` access. The store needs a `keys` operation.
+
+```sh
+# Lists orphan values
+npx flargs prune
+```
+
+## Signature
+
+```sh
+# Arguments first, then options
+flargs prune [options]
+```
+
+## Options
+
+### --url
+
+- **Type:** `string`
+- **Default:** `FLARGS_URL`
+
+The URL of the flags path of a running server.
+
+```sh
+# Reads the admin API of this server
+npx flargs prune --url https://api.example.com/.flags
+```
+
+### --yes
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+Deletes the orphan values.
+
+```sh
+# Deletes every orphan value
+npx flargs prune --yes
+```
+
+## Output
+
+- **`deleted`:** `true` with `--yes`.
+- **`orphans`:** the orphan keys.
+
+## Errors
+
+| Error code | Exit code | Condition                                                      |
+| ---------- | --------- | -------------------------------------------------------------- |
+| `NO_KEYS`  | 1         | The store has no `keys` operation, so it cannot list its keys. |
+| `API`      | 3         | The token has no access for the request.                       |

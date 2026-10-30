@@ -1,0 +1,37 @@
+# transform [Replaces each build flag read in emitted JavaScript with a literal]
+
+`flargs/zile` exports the transform as its default export. A library build calls it on each emitted file, so the published files hold literals and no `flargs` import. [Libraries](/guides/libraries) shows the setup.
+
+```ts [build.ts]
+import transform from 'flargs/zile'
+
+// Returns the code with each build flag read replaced.
+const code = transform(
+  `import { flags } from 'flargs';\nexport const a = flags.newEncoder;\n`,
+  'dist/a.js',
+)
+```
+
+## Signature
+
+```ts
+// Rewrites one emitted file
+transform(code: string, file: string): string
+```
+
+## Behavior
+
+- **Flags file:** it reads `flags.json` from the working directory of the build.
+- **Values:** each build flag resolves from its variable in `process.env`, then its default.
+- **Imports:** it removes the `flags` and `useFlag` imports once no read remains.
+- **Unchanged files:** a file that does not contain `flargs` returns unchanged.
+
+## Errors
+
+A read of a runtime flag, or a read with a computed key, throws. The error names the file and the line.
+
+```txt
+dist/pricing.js:2 reads pricing, which is not a build flag.
+
+To resolve: Set `build: true` on the flag in flags.json, since a library resolves build flags only.
+```

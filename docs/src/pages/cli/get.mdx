@@ -1,0 +1,60 @@
+# get [Returns one flag of a running server]
+
+`flargs get` reads the manifest of the server, and returns the entry of one flag: its definition, its value for the request of the CLI, and its source. It needs `read` access.
+
+```sh
+# Returns newCheckout
+npx flargs get newCheckout --format json
+```
+
+## Signature
+
+```sh
+# Arguments first, then options
+flargs get <key> [options]
+```
+
+## Arguments
+
+### key
+
+- **Type:** `string`
+
+Key of the flag, such as `newCheckout`.
+
+## Options
+
+### --url
+
+- **Type:** `string`
+- **Default:** `FLARGS_URL`
+
+The URL of the flags path of a running server.
+
+```sh
+# Reads the admin API of this server
+npx flargs get newCheckout --url https://api.example.com/.flags
+```
+
+## Output
+
+The output holds `key` and every field of the manifest entry: the definition, `override`, `source`, `stale`, `store`, and `value`.
+
+```json
+{
+  "key": "newCheckout",
+  "default": false,
+  "source": "store",
+  "store": true,
+  "type": "boolean",
+  "value": true
+}
+```
+
+## Errors
+
+| Error code     | Exit code | Condition                                |
+| -------------- | --------- | ---------------------------------------- |
+| `UNKNOWN_FLAG` | 1         | No flag of the server declares the key.  |
+| `API`          | 3         | The token has no `read` access.          |
+| `NO_URL`       | 1         | Neither `--url` nor `FLARGS_URL` is set. |

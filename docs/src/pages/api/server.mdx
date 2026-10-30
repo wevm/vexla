@@ -1,0 +1,39 @@
+import { Card, Cards } from 'vocs'
+
+# flargs/server [The Flargs instance, stores, the dev route, and the admin API]
+
+`flargs/server` evaluates runtime flags and serves the flags path. It has no dependencies and no Node built-ins, so it runs in Node, Bun, Deno, and edge runtimes.
+
+```ts [flags.ts]
+import { Flargs, Store } from 'flargs/server'
+import { definitions } from './flargs.gen.js'
+
+// One instance for each application instance. It listens on no port.
+export const flargs = Flargs.create({
+  definitions,
+  secret: process.env.FLARGS_SECRET,
+  store: Store.memory(),
+})
+```
+
+## Exports
+
+| Export   | Purpose                                                                      |
+| -------- | ---------------------------------------------------------------------------- |
+| `Flargs` | `Flargs.create`, the types of the instance, and the errors of evaluation     |
+| `Store`  | the store contract, and the stores `memory`, `env`, `http`, `kv`, and `from` |
+
+<Cards>
+  <Card
+    title="Flargs.create"
+    description="Returns the instance: evaluation and the fetch handler of the flags path."
+    icon="server"
+    to="/api/server/flargs/create"
+  />
+  <Card
+    title="Store"
+    description="The contract that a host implements on its own database."
+    icon="database"
+    to="/api/server/store"
+  />
+</Cards>

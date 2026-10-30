@@ -1,0 +1,72 @@
+# Override [Parses and signs the flag.* search parameters and the flargs cookie]
+
+An override sets a value for one browser. `Override.parse` verifies and validates overrides, and `Override.serialize` returns the search parameters of a link. The instance calls both. A host calls them directly to build a link or inspect a request.
+
+```ts [link.ts]
+import { Override } from 'flargs'
+
+// Signed search parameters that override a private flag for one week.
+const params = await Override.serialize(
+  { pricing: 'c' },
+  { expiresAt: Date.now() + 7 * 86_400_000, secret: process.env.FLARGS_SECRET },
+)
+const url = `https://app.example.com/checkout?${params}`
+```
+
+## Override.parse
+
+```ts
+// Returns the overrides of a URL, its search parameters, or a cookie value
+Override.parse(input: URL | URLSearchParams | string, options: Override.parse.Options): Promise<Override.Overrides>
+```
+
+### Options
+
+| Option        | Type          | Default      | Meaning                                           |
+| ------------- | ------------- | ------------ | ------------------------------------------------- |
+| `definitions` | `Definitions` | required     | the definitions of the project                    |
+| `dev`         | `boolean`     | `false`      | dev mode: every flag accepts an unsigned override |
+| `now`         | `number`      | `Date.now()` | the current time, in milliseconds since the epoch |
+| `secret`      | `string`      | none         | the HMAC secret. A signed input needs it          |
+
+### Return Value
+
+| Property    | Type                   | Meaning                                            |
+| ----------- | ---------------------- | -------------------------------------------------- |
+| `errors`    | `readonly BaseError[]` | dropped overrides, each with its reason            |
+| `expiresAt` | `number \| undefined`  | the expiry of a signed override, in milliseconds   |
+| `reset`     | `boolean`              | `true` when the input holds `flag.reset`           |
+| `signed`    | `boolean`              | `true` when a valid signature covers the overrides |
+| `values`    | `Record<string, Json>` | the accepted overrides, keyed by flag key          |
+
+In production, an unsigned override applies to a public runtime flag only. A signed override applies to any runtime flag. A build flag accepts an override only in dev mode. A dropped override reaches `errors` as `UnknownFlagError`, `NotOverridableError`, or `Definitions.InvalidValueError`.
+
+## Override.serialize
+
+```ts
+// Returns the search parameters of values, signed when secret is set
+Override.serialize(values: Record<string, Json>, options?: { expiresAt?: number; secret?: string }): Promise<URLSearchParams>
+```
+
+With `secret`, it adds `flag.exp` and `flag.sig`, and `expiresAt` is required. Without `expiresAt`, it throws a `TypeError`.
+
+## Signature
+
+`flag.sig` is the base64url HMAC-SHA256 of the canonical string. The string holds each `key=value` pair in key order, then `exp=<seconds>`, joined with `&`. The values are the text of the search parameters.
+
+```txt
+pricing=c&exp=1767225600
+```
+
+## Constants
+
+- **`Override.cookie`:** `'flargs'`, the name of the override cookie.
+- **`Override.prefix`:** `'flag.'`, the prefix of override search parameters.
+
+## Errors
+
+| Error                            | Condition                                                                                                              |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `Override.InvalidSignatureError` | thrown when `flag.sig` does not match, has expired, has no `flag.exp`, or no `secret` is set. `reason` holds the cause |
+| `Override.NotOverridableError`   | reported in `errors` for a build flag, or an unsigned private flag, outside dev mode                                   |
+| `Override.UnknownFlagError`      | reported in `errors` for a key that no flag declares                                                                   |

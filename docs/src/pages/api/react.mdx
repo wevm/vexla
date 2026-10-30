@@ -1,0 +1,27 @@
+# useFlag [Returns the value of one flag, and renders again when the values change]
+
+`flargs/react` exports `useFlag`. It uses `useSyncExternalStore` over the values of `flags` and `Values.subscribe`, so it needs no provider. [React](/guides/react) shows the setup.
+
+```tsx [checkout.tsx]
+import { useFlag } from 'flargs/react'
+
+export function Checkout() {
+  // 'a' | 'b' | 'c', from flargs.gen.ts
+  const pricing = useFlag('pricing')
+  return <Price plan={pricing} />
+}
+```
+
+## Signature
+
+```ts
+// The value of one registered flag
+useFlag<const key extends keyof Registered & string>(key: key): Definitions.Value<Registered[key]>
+```
+
+## Behavior
+
+- **Server:** inside `Values.run`, it returns the value of the current request.
+- **Browser:** it returns the value of the page, and renders again after each `Values.load`.
+- **Missing values:** a key with no value returns `undefined`. In a browser, a private flag has no value.
+- **Retirement:** [`flargs retire`](/cli/retire) replaces a `useFlag('<key>')` call with the final value.

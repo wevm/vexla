@@ -1,0 +1,106 @@
+# Vite [Generates the types, and replaces each read of a build flag with a literal]
+
+## Overview
+
+The `flargs/vite` plugin reads `flags.json`, writes `flargs.gen.ts`, and replaces each read of a build flag with a literal. A minifier then drops the dead branch. In browser code, a read of a private runtime flag fails the build.
+
+A bundler `define` cannot replace a member of an imported binding, such as `flags.maintenanceBanner`. The plugin therefore rewrites reads with the TypeScript compiler API, so `typescript` must be installed.
+
+## Walkthrough
+
+### Declare the Flag
+
+```json [flags.json]
+{
+  "$schema": "./node_modules/flargs/schema.json",
+  "maintenanceBanner": { "build": true, "default": false, "public": true, "type": "boolean" }
+}
+```
+
+### Add the Plugin
+
+```ts [vite.config.ts]
+import flargs from 'flargs/vite'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  // Reads flags.json, writes flargs.gen.ts, and replaces build flag reads with literals.
+  plugins: [flargs()],
+})
+```
+
+### Read the Flag
+
+```ts [main.ts]
+import { flags } from 'flargs'
+
+// Becomes `if (false)` in the bundle, so the branch drops.
+if (flags.maintenanceBanner) showBanner()
+```
+
+### Set the Value
+
+Each build flag value resolves from the store, then its variable, then its default. The plugin reads variables from the process environment and from the `.env` files of the Vite mode.
+
+```sh
+# Builds with the banner on
+FEATURE_MAINTENANCE_BANNER=true npx vite build
+```
+
+## Recipes
+
+### Store Values
+
+`store` takes any object with the `get` operation of a `Store`. `Store.http` reads the build flag values from a running admin API at build time.
+
+```ts [vite.config.ts]
+import { Store } from 'flargs/server'
+import flargs from 'flargs/vite'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  plugins: [
+    flargs({
+      // A store value takes precedence over the variable of the build.
+      store: Store.http({
+        token: process.env.FLARGS_TOKEN,
+        url: 'https://api.example.com/.flags',
+      }),
+    }),
+  ],
+})
+```
+
+### Private Flags
+
+In browser code, a read of a private runtime flag throws at build time. The error names the key, the file, and the line. Server code (`ssr`) may read any flag.
+
+```txt
+Browser code reads the private flag pricing in main.ts:3.
+
+To resolve: Read pricing on the server, or set `public: true` on the flag.
+```
+
+### Paths
+
+`path` sets the flags file, and `out` sets the generated module. Both resolve from the Vite root.
+
+```ts [vite.config.ts]
+import flargs from 'flargs/vite'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  // A flags file and a generated module outside the root of the app.
+  plugins: [flargs({ out: 'src/flargs.gen.ts', path: 'config/flags.json' })],
+})
+```
+
+### Dev Server
+
+The dev server watches the flags file. A change writes `flargs.gen.ts` again and triggers a full reload.
+
+## More
+
+- **Function:** [`flargs`](/api/vite) lists every option.
+- **Libraries:** [Libraries](/guides/libraries) replaces build flags in a published package.
+- **Other bundlers:** [`Definitions.defines`](/api/core/definitions) returns `define` replacements for a global `flags` object.

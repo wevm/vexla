@@ -1,0 +1,103 @@
+# retire [Replaces each read of a flag with its final value, and deletes the flag]
+
+`flargs retire` rewrites each read of the flag in the source files of the project, removes dead branches and unused imports, deletes the key from `flags.json`, and writes `flargs.gen.ts` again if it exists. [Retirement](/guides/retirement) describes the rewrite.
+
+```sh
+# Replaces each read of newCheckout with true
+npx flargs retire newCheckout --value true
+```
+
+## Signature
+
+```sh
+# Arguments first, then options
+flargs retire <key> [options]
+```
+
+## Arguments
+
+### key
+
+- **Type:** `string`
+
+Key of the flag, such as `newCheckout`.
+
+## Options
+
+### --path
+
+- **Type:** `string`
+- **Default:** `flags.json`
+
+The path of the flags file, relative to the root.
+
+```sh
+# Reads a flags file in another directory
+npx flargs retire newCheckout --path config/flags.json
+```
+
+### --root
+
+- **Type:** `string`
+- **Default:** the working directory
+
+The project root.
+
+```sh
+# Runs in the app package of a monorepo
+npx flargs retire newCheckout --root apps/web
+```
+
+### --url
+
+- **Type:** `string`
+- **Default:** `FLARGS_URL`
+
+The URL of the flags path of a running server.
+
+```sh
+# Reads the admin API of this server
+npx flargs retire newCheckout --url https://api.example.com/.flags
+```
+
+### --value
+
+- **Type:** `string`
+- **Default:** the store value with `--url`, else the default
+
+The final value, as the text of a variable.
+
+```sh
+# Keeps option b of the select flag
+npx flargs retire pricing --value b
+```
+
+### --dry-run
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+Writes nothing. The output lists the files that the command would change.
+
+```sh
+# Lists the files with a read of newCheckout
+npx flargs retire newCheckout --dry-run
+```
+
+## Output
+
+- **`changed`:** the files that changed, relative to the root.
+- **`dryRun`:** `true` with `--dry-run`.
+- **`key`:** the key of the flag.
+- **`unresolved`:** reads with a computed key, with `file` and `line`. These stay in the code.
+- **`value`:** the final value.
+
+With `--url`, the command also deletes the store value. A failure of this request does not fail the command.
+
+## Errors
+
+| Error code      | Exit code | Condition                                |
+| --------------- | --------- | ---------------------------------------- |
+| `UNKNOWN_FLAG`  | 1         | The flags file does not declare the key. |
+| `INVALIDVALUE`  | 1         | `--value` is not a value of the flag.    |
+| `NO_FLAGS_FILE` | 1         | The flags file does not exist.           |

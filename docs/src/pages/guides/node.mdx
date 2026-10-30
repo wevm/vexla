@@ -1,0 +1,94 @@
+# Node [Converts between node:http and the fetch API, and scopes flags to each request]
+
+## Overview
+
+`flargs/node` exports `Request`, with two functions. `Request.toNodeListener` converts a fetch handler to a `node:http` request listener. `Request.fromNodeListener` converts a `node:http` request to a fetch `Request`, for an Express route.
+
+With the `flargs` option, `toNodeListener` serves the flags path, runs every other request in `Values.run`, and sets the `flargs` cookie for search parameter overrides.
+
+## Walkthrough
+
+### Create the Instance
+
+```ts [flags.ts]
+import { Flargs } from 'flargs/server'
+import { definitions } from './flargs.gen.js'
+
+// One instance for each process.
+export const flargs = Flargs.create({
+  definitions,
+  dev: process.env.NODE_ENV === 'development',
+  secret: process.env.FLARGS_SECRET,
+})
+```
+
+### Start the Server
+
+```ts [server.ts]
+import * as Http from 'node:http'
+import { flags } from 'flargs'
+import { Request } from 'flargs/node'
+import { flargs } from './flags.js'
+
+// A fetch handler. flags holds the values of the request.
+const handler = () => new Response(flags.newCheckout ? 'New checkout' : 'Checkout')
+
+Http.createServer(
+  Request.toNodeListener(handler, {
+    flargs,
+    // A handler error returns 500 and reaches onError.
+    onError: (error) => console.error(error),
+  }),
+).listen(3000)
+```
+
+```sh
+# Lists the public values of the request
+curl http://localhost:3000/.flags/values
+```
+
+```json
+{ "newCheckout": false }
+```
+
+## Recipes
+
+### Express
+
+An Express app keeps its own server. A route converts the request, then reads one flag with `flargs.get`.
+
+```ts [app.ts]
+import express from 'express'
+import { Request } from 'flargs/node'
+import { flargs } from './flags.js'
+
+const app = express()
+
+app.get('/checkout', async (req, res) => {
+  // The fetch Request holds the URL and the cookie header of the node:http request.
+  const newCheckout = await flargs.get(Request.fromNodeListener(req), 'newCheckout')
+  res.send(newCheckout ? 'New checkout' : 'Checkout')
+})
+```
+
+### Flags Path Only
+
+Without `flargs`, `toNodeListener` only converts. This form serves the dev route and the admin API on a separate port.
+
+```ts [admin.ts]
+import * as Http from 'node:http'
+import { Request } from 'flargs/node'
+import { flargs } from './flags.js'
+
+// Serves /.flags on port 4000, and returns 404 for other paths.
+Http.createServer(Request.toNodeListener(flargs.fetch)).listen(4000)
+```
+
+### Bun and Deno
+
+Bun and Deno serve fetch handlers directly. They route the flags path to `flargs.fetch` as in [Cloudflare Workers](/guides/cloudflare-workers), and call `Values.run` for other requests.
+
+## More
+
+- **Function:** [`Request`](/api/node) lists both functions.
+- **Runtime:** [`Flargs.create`](/api/server/flargs/create) lists every option.

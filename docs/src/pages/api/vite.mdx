@@ -1,0 +1,38 @@
+# flargs [Returns the Vite plugin that generates types and replaces build flag reads]
+
+`flargs/vite` exports the plugin as its default export. [Vite](/guides/vite) shows the setup.
+
+```ts [vite.config.ts]
+import flargs from 'flargs/vite'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  // Reads flags.json and writes flargs.gen.ts at the Vite root.
+  plugins: [flargs()],
+})
+```
+
+## Signature
+
+```ts
+// The Vite plugin
+flargs(options?: flargs.Options): Plugin
+```
+
+## Options
+
+| Option      | Type                 | Default           | Meaning                                                      |
+| ----------- | -------------------- | ----------------- | ------------------------------------------------------------ |
+| `envPrefix` | `string`             | `'FEATURE_'`      | the prefix of flag environment variables                     |
+| `out`       | `string`             | `'flargs.gen.ts'` | the generated module, relative to the Vite root              |
+| `path`      | `string`             | `'flags.json'`    | the flags file, relative to the Vite root                    |
+| `store`     | `Pick<Store, 'get'>` | none              | a store whose values precede the environment for build flags |
+
+## Behavior
+
+- **Generation:** at the start of a build, the plugin parses the flags file and writes the generated module when its content changes.
+- **Values:** each build flag resolves from `store`, then its variable, then its default. Variables come from `process.env` and the `.env` files of the Vite mode.
+- **Rewrite:** in each JavaScript or TypeScript module outside `node_modules`, a read of a build flag through the `flags` import of `flargs`, or `useFlag` of `flargs/react`, becomes a literal.
+- **Private flags:** in browser code, a read of a private runtime flag fails the build. Server code (`ssr`) may read any flag.
+- **Dev server:** a change of the flags file writes the module again and triggers a full reload.
+- **Dependency:** the rewrite uses the TypeScript compiler API, so `typescript` must be installed.

@@ -1,0 +1,92 @@
+# CLI [Generates types, checks the environment, and changes store values]
+
+The `flargs` binary reads the flags file of a project, and calls the admin API of a running server. The commands fall into two groups.
+
+| Group     | Commands                                                             | Input                      |
+| --------- | -------------------------------------------------------------------- | -------------------------- |
+| Local     | `check`, `dev`, `env`, `generate`, `retire`, `stale`                 | the flags file             |
+| Admin API | `define`, `get`, `link`, `list`, `prune`, `set`, `undefine`, `unset` | `--url`, else `FLARGS_URL` |
+
+`generate` and `retire` also accept `--url`.
+
+```sh
+# Writes flargs.gen.ts from flags.json
+npx flargs generate
+
+# Lists every flag of a running server. FLARGS_TOKEN holds the admin token.
+npx flargs list --url https://api.example.com/.flags
+```
+
+## Commands
+
+| Command                     | Description                                                                            |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| [`check`](/cli/check)       | Fails when the environment sets an undeclared or invalid `FEATURE_*` variable.         |
+| [`define`](/cli/define)     | Creates or replaces a flag in the store, for a project with no flags file.             |
+| [`dev`](/cli/dev)           | Serves the dev route for `flags.json`, for an application with no TypeScript server.   |
+| [`env`](/cli/env)           | Writes `.env.example`: each flag variable, its default, and its description.           |
+| [`generate`](/cli/generate) | Writes `flargs.gen.ts` from `flags.json`, or from the manifest of a running server.    |
+| [`get`](/cli/get)           | Returns one flag of a running server, with its definition, value, and source.          |
+| [`link`](/cli/link)         | Returns a signed link that overrides flags, including private flags, until it expires. |
+| [`list`](/cli/list)         | Lists every flag of a running server, with its value and source.                       |
+| [`prune`](/cli/prune)       | Lists store values of removed flags. `--yes` deletes them.                             |
+| [`retire`](/cli/retire)     | Replaces each read of a flag with its final value, and deletes the declaration.        |
+| [`set`](/cli/set)           | Sets the store value of a flag for every request.                                      |
+| [`stale`](/cli/stale)       | Lists flags past their `expires` date.                                                 |
+| [`undefine`](/cli/undefine) | Deletes a flag from the store, with its value.                                         |
+| [`unset`](/cli/unset)       | Deletes the store value of a flag.                                                     |
+
+## Credentials
+
+The CLI reads the admin token from `FLARGS_TOKEN`, and sends it as `Authorization: Bearer`. It never accepts a token in argv, and no output holds the token. `authorize` on the server decides the access of the token.
+
+| Variable       | Purpose                                                             |
+| -------------- | ------------------------------------------------------------------- |
+| `FLARGS_TOKEN` | the bearer token of the admin API                                   |
+| `FLARGS_URL`   | the URL of the flags path, such as `https://api.example.com/.flags` |
+
+## Shared Options
+
+| Option   | Commands                                             | Default               |
+| -------- | ---------------------------------------------------- | --------------------- |
+| `--path` | `check`, `dev`, `env`, `generate`, `retire`, `stale` | `flags.json`          |
+| `--root` | `check`, `dev`, `env`, `generate`, `retire`, `stale` | the working directory |
+| `--url`  | the admin API commands, `generate`, and `retire`     | `FLARGS_URL`          |
+
+## Output
+
+The CLI uses [incur](https://github.com/wevm/incur). Without `--format`, it prints TOON, a compact text format. `--format json` prints JSON.
+
+An error holds a `code` and a `message` that ends with the steps that resolve it.
+
+```txt
+code: NO_URL
+message: "No URL names the admin API. To resolve: Pass `--url`, or set FLARGS_URL."
+```
+
+## Exit Codes
+
+| Code | Condition                                                           |
+| ---- | ------------------------------------------------------------------- |
+| 0    | The command succeeds.                                               |
+| 1    | Another error, such as an invalid flags file or an admin API error. |
+| 3    | The admin API returns `401` or `403`, so the token has no access.   |
+
+## Global Options
+
+Incur adds these options to every command.
+
+| Option                                   | Description                                             |
+| ---------------------------------------- | ------------------------------------------------------- |
+| `--filter-output <keys>`                 | Filters the output by key paths, such as `flags`.       |
+| `--format <toon\|json\|yaml\|md\|jsonl>` | Prints the output in this format.                       |
+| `--full-output`                          | Prints the full envelope of the output.                 |
+| `--help`                                 | Prints the help of the command.                         |
+| `--llms`, `--llms-full`                  | Prints a manifest of the commands for a language model. |
+| `--mcp`                                  | Starts the CLI as an MCP server on stdio.               |
+| `--schema`                               | Prints the JSON Schema of a command.                    |
+| `--token-count`                          | Prints the token count of the output, not the output.   |
+| `--token-limit <n>`                      | Limits the output to `n` tokens of a language model.    |
+| `--token-offset <n>`                     | Skips the first `n` tokens of the output.               |
+
+The root help also lists `--update` and `--version`. Incur also adds the `completions`, `mcp`, and `skills` commands. As an MCP server, each command is a tool, so an agent runs `retire`, then the type check and the tests.

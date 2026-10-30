@@ -1,0 +1,75 @@
+---
+description: Feature flags for trunk-based development.
+layout: minimal
+outline: false
+title: Flargs
+---
+
+import { Card, Cards, HomePage } from 'vocs'
+
+<HomePage.Root>
+  <HomePage.Logo />
+  <HomePage.Tagline>{'Feature flags for trunk-based development'}</HomePage.Tagline>
+  <HomePage.Description>
+    {
+      'Flargs declares each flag once in a committed flags file, evaluates it on the server of the application, and serves a dev route and an admin API from that server. No third-party service is necessary.'
+    }
+  </HomePage.Description>
+  <HomePage.Buttons>
+    <HomePage.Button href="/introduction/getting-started" variant="accent">
+      {'Get Started'}
+    </HomePage.Button>
+    <HomePage.Button href="https://github.com/wevm/flargs">GitHub</HomePage.Button>
+  </HomePage.Buttons>
+  <HomePage.InstallPackage name="flargs" />
+</HomePage.Root>
+
+## Overview
+
+The flags file declares each flag with its type and its default. A flag is private unless `public` is `true`.
+
+```json [flags.json]
+{
+  "$schema": "./node_modules/flargs/schema.json",
+  "newCheckout": { "default": false, "public": true, "type": "boolean" },
+  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
+}
+```
+
+Each flag links to one environment variable. The server reads the value for each request.
+
+```ts [app.ts]
+import { flags } from 'flargs'
+
+// Typed from flargs.gen.ts. The read is synchronous and takes no request argument.
+if (flags.newCheckout) renderNewCheckout()
+```
+
+## Documentation
+
+<Cards>
+  <Card
+    title="Introduction"
+    description="The motivation, the terms, and the order in which the server resolves a value."
+    icon="book-open"
+    to="/introduction/getting-started"
+  />
+  <Card
+    title="Guides"
+    description="The flags file, each framework, the admin API, stores, and retirement."
+    icon="map"
+    to="/guides/flags-file"
+  />
+  <Card
+    title="API Reference"
+    description="Every export of `flargs`, `flargs/server`, and the integration entries."
+    icon="braces"
+    to="/api/core"
+  />
+  <Card
+    title="CLI Reference"
+    description="Commands that generate types, check the environment, and change store values."
+    icon="terminal"
+    to="/cli"
+  />
+</Cards>

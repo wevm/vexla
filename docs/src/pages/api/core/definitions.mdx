@@ -1,0 +1,128 @@
+# Definitions [Validates the flags file, maps keys to variables, and returns the manifest and the generated module]
+
+`Definitions` holds the pure functions over flag definitions. The Flargs instance, the build plugins, and the CLI use the same functions.
+
+```ts [definitions.ts]
+import { Definitions } from 'flargs'
+
+// Validates a parsed flags file. Throws Definitions.InvalidDeclarationError on a bad declaration.
+export const definitions = Definitions.parse({
+  newCheckout: { default: false, public: true, type: 'boolean' },
+  pricing: { default: 'a', options: ['a', 'b', 'c'], type: 'select' },
+})
+```
+
+## Types
+
+### Definition
+
+One validated flag. `parse` fills `build`, `env`, and `public`.
+
+| Property      | Type                                                      | Meaning                                               |
+| ------------- | --------------------------------------------------------- | ----------------------------------------------------- |
+| `build`       | `boolean`                                                 | `true` for a build flag                               |
+| `default`     | `Json`                                                    | the value when no other source has one                |
+| `description` | `string \| undefined`                                     | text for the dev route and `.env.example`             |
+| `env`         | `string`                                                  | the environment variable of the flag                  |
+| `expires`     | `string \| undefined`                                     | the date (`YYYY-MM-DD`) after which the flag is stale |
+| `options`     | `readonly string[] \| undefined`                          | the values of a select flag                           |
+| `public`      | `boolean`                                                 | `true` when the value may reach a browser             |
+| `type`        | `'boolean' \| 'json' \| 'number' \| 'select' \| 'string'` | the type of the value                                 |
+
+### Other Types
+
+- **`Definitions`:** every flag of a project, keyed by flag key.
+- **`Json`:** a JSON value.
+- **`Type`:** the union of the five flag types.
+- **`Value<definition>`:** the value type of a definition: the options of a select flag, or the widened default of a JSON flag.
+- **`Values<definitions>`:** the value types of definitions, keyed by flag key.
+- **`Manifest`:** `{ flags: Definitions, version: 1 }`.
+- **`Issue`:** a problem that `check` returns: `env`, `key`, and `reason`.
+
+## Functions
+
+### Definitions.parse
+
+```ts
+// Returns the definitions of a parsed flags.json or flags.toml
+Definitions.parse(input: unknown, options?: { envPrefix?: string }): Definitions
+```
+
+Keys in `snake_case` map to `camelCase`. `$schema` is skipped. `envPrefix` defaults to `'FEATURE_'`. Throws `InvalidDeclarationError` for an unknown field, a missing `type` or `default`, a default of the wrong type, invalid `options`, an invalid `env` or `expires`, a key declared twice, or two flags with the same variable.
+
+### Definitions.fromEnv
+
+```ts
+// Returns a private flag for each FEATURE_* variable, for zero config
+Definitions.fromEnv(env: Record<string, string | undefined>, options?: { envPrefix?: string }): Definitions
+```
+
+`true` and `false` make a boolean, a number makes a number, a JSON object or array makes a JSON flag, and other text makes a string. The value is also the default.
+
+### Definitions.check
+
+```ts
+// Returns the problems of an environment against the definitions
+Definitions.check(definitions, env, options?: { envPrefix?: string; now?: number }): readonly Issue[]
+```
+
+| `reason`  | Condition                                        |
+| --------- | ------------------------------------------------ |
+| `unknown` | a variable with the prefix that no flag declares |
+| `invalid` | a value that is not a value of its flag          |
+| `stale`   | a flag past its `expires` date                   |
+
+### Definitions.decode
+
+```ts
+// Returns the value that the text of a variable or a search parameter holds
+Definitions.decode(definition: Definition, raw: string, key: string): Json
+```
+
+Throws `InvalidValueError` when the text is not a value of the flag. The error names the key and the variable, and never holds the text.
+
+### Definitions.defines
+
+```ts
+// Returns define replacements for build flags, such as { 'flags.banner': 'false' }
+Definitions.defines(definitions, options?: { env?: Record<string, string | undefined>; identifier?: string; values?: Record<string, Json> }): Record<string, string>
+```
+
+Each value resolves from `values`, then the variable in `env`, then the default. `identifier` defaults to `'flags'`. A bundler `define` replaces a global `flags` object only, not a member of an imported binding. Code that imports `flags` uses `flargs/vite` or `flargs/zile`.
+
+### Definitions.generate
+
+```ts
+// Returns the source of flargs.gen.ts
+Definitions.generate(definitions, options?: { visibility?: 'all' | 'public' }): string
+```
+
+The module exports `definitions` as a constant and augments `Register`. `visibility: 'public'` declares public flags only.
+
+### Definitions.manifest
+
+```ts
+// Returns { flags: definitions, version: 1 }
+Definitions.manifest(definitions): Manifest
+```
+
+### Other Functions
+
+| Function                      | Returns                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| `envOf(key, prefix?)`         | the variable of a key: `newCheckout` reads `FEATURE_NEW_CHECKOUT`         |
+| `keyOf(name, prefix?)`        | the key of a variable: `FEATURE_NEW_CHECKOUT` is `newCheckout`            |
+| `encode(value)`               | the text of a value in a variable or a search parameter                   |
+| `validate(definition, value)` | `true` when the value is a value of the flag                              |
+| `isStale(definition, now?)`   | `true` from the day after `expires`, in UTC                               |
+| `values(definitions, env)`    | the values that `env` sets for declared flags. Throws `InvalidValueError` |
+| `publicOf(definitions)`       | the definitions of public flags only                                      |
+
+`envPrefix` is the constant `'FEATURE_'`.
+
+## Errors
+
+| Error                                 | Thrown when                                                                     |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| `Definitions.InvalidDeclarationError` | a declaration does not follow the schema. `key` names the flag                  |
+| `Definitions.InvalidValueError`       | a variable or an override holds an invalid value. `env` and `key` name the flag |

@@ -1,0 +1,147 @@
+import { Card, Cards } from 'vocs'
+
+# Getting Started [Declare a flag, read it on the server, and change it without a deploy]
+
+## Overview
+
+Flargs is a self-hosted feature flag library. A committed flags file declares each flag with its type and its default. The server of the application evaluates each flag for each request, and serves a dev route and an admin API under one path.
+
+A project starts with environment variables, and adds a Flargs instance and a store later. Reads of `flags` stay the same at each step. [Concepts](/introduction/concepts) defines each term.
+
+## Agent Prompt
+
+Paste this prompt into a coding agent:
+
+```txt
+Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished work behind flags so it merges to main.
+```
+
+## Install
+
+Install the package with a package manager. The `flargs` and `flargs/server` entries have no dependencies.
+
+:::note
+No release of the `flargs` package is published yet. The commands below apply after the first release.
+:::
+
+:::code-group
+
+```sh [pnpm]
+# Adds flargs to the project
+pnpm add flargs
+```
+
+```sh [npm]
+# Adds flargs to the project
+npm install flargs
+```
+
+```sh [bun]
+# Adds flargs to the project
+bun add flargs
+```
+
+:::
+
+## Setup
+
+:::steps
+
+### Declare the Flags
+
+`flags.json` declares every flag. Each flag needs a `type` and a `default`. The JSON Schema validates the file and completes keys in editors.
+
+```json [flags.json]
+{
+  "$schema": "./node_modules/flargs/schema.json",
+  "newCheckout": {
+    "default": false,
+    "description": "Use the new checkout flow.",
+    "public": true,
+    "type": "boolean"
+  },
+  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
+}
+```
+
+### Generate the Types
+
+`flargs generate` writes `flargs.gen.ts`. The module holds the definitions, and registers their types for `flags`, `flargs.get`, and `useFlag`.
+
+```sh
+# Writes flargs.gen.ts from flags.json
+npx flargs generate
+```
+
+The [Vite plugin](/guides/vite) writes the same module at startup and on each change of `flags.json`.
+
+### Create the Instance
+
+`Flargs.create` returns the Flargs instance. It listens on no port. `flargs.fetch` is a fetch handler for the dev route and the admin API.
+
+```ts [flags.ts]
+import { Flargs } from 'flargs/server'
+import { definitions } from './flargs.gen.js'
+
+export const flargs = Flargs.create({
+  definitions,
+  // Dev mode accepts unsigned overrides for every flag, and opens the dev route.
+  dev: process.env.NODE_ENV === 'development',
+  // Signs overrides and share links. Required outside dev mode.
+  secret: process.env.FLARGS_SECRET,
+})
+```
+
+### Read a Flag
+
+An integration runs each request in `Values.run`, so `flags` holds the values of that request. [Hono](/guides/hono), [Node](/guides/node), [Next.js](/guides/nextjs), and [Cloudflare Workers](/guides/cloudflare-workers) each have a guide.
+
+```ts [app.ts]
+import { flags } from 'flargs'
+
+// Reads the value of the current request: an override, the store value, decide, or the default.
+export function checkout() {
+  return flags.newCheckout ? renderNewCheckout() : renderCheckout()
+}
+```
+
+:::
+
+## Environment Variables
+
+Each flag links to an environment variable. `newCheckout` reads `FEATURE_NEW_CHECKOUT`. A `.env` file or the deploy environment sets the values that differ from the defaults.
+
+```sh [.env]
+# Values for this environment only. The file is not committed.
+FEATURE_NEW_CHECKOUT=true
+FEATURE_PRICING=b
+```
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="Flags File"
+    description="Every field of a declaration, and the link to environment variables."
+    icon="file-json"
+    to="/guides/flags-file"
+  />
+  <Card
+    title="Admin API"
+    description="Change a value for every request, and authorize the CLI and an admin UI."
+    icon="shield-check"
+    to="/guides/admin-api"
+  />
+  <Card
+    title="Vite"
+    description="Generate types, and replace build flags with literals in the bundle."
+    icon="zap"
+    to="/guides/vite"
+  />
+  <Card
+    title="Retirement"
+    description="Replace every read of a flag with its final value, then delete it."
+    icon="archive"
+    to="/guides/retirement"
+  />
+</Cards>

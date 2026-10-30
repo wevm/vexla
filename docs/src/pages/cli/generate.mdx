@@ -1,0 +1,93 @@
+# generate [Writes flargs.gen.ts from the flags file, or from a running server]
+
+`flargs generate` writes the module that holds the definitions and registers their types. With `--url`, it reads `GET /.flags/manifest`, which needs `read` access, so a client in another repository types its reads.
+
+```sh
+# Writes flargs.gen.ts from flags.json
+npx flargs generate
+```
+
+## Signature
+
+```sh
+# Arguments first, then options
+flargs generate [options]
+```
+
+## Options
+
+### --path
+
+- **Type:** `string`
+- **Default:** `flags.json`
+
+The path of the flags file, relative to the root.
+
+```sh
+# Reads a flags file in another directory
+npx flargs generate --path config/flags.json
+```
+
+### --root
+
+- **Type:** `string`
+- **Default:** the working directory
+
+The project root.
+
+```sh
+# Runs in the app package of a monorepo
+npx flargs generate --root apps/web
+```
+
+### --url
+
+- **Type:** `string`
+- **Default:** `FLARGS_URL`
+
+The URL of the flags path of a running server.
+
+```sh
+# Reads the admin API of this server
+npx flargs generate --url https://api.example.com/.flags
+```
+
+### --out
+
+- **Type:** `string`
+- **Default:** `flargs.gen.ts`
+
+The path of the generated module, relative to the root.
+
+```sh
+# Writes the module into src
+npx flargs generate --out src/flargs.gen.ts
+```
+
+### --visibility
+
+- **Type:** `all | public`
+- **Default:** `all`, or `public` with `--url`
+
+The flags that the module declares. A client declares public flags only.
+
+```sh
+# Declares every flag of the server, for server code
+npx flargs generate --url https://api.example.com/.flags --visibility all
+```
+
+## Output
+
+- **`flags`:** the number of declared flags.
+- **`out`:** the absolute path of the module.
+- **`written`:** `false` when the content did not change.
+
+The module holds keys, types, options, and defaults. It holds no store value and no override.
+
+## Errors
+
+| Error code           | Exit code | Condition                                     |
+| -------------------- | --------- | --------------------------------------------- |
+| `INVALIDDECLARATION` | 1         | A declaration does not follow the schema.     |
+| `API`                | 3         | With `--url`, the token has no `read` access. |
+| `NO_FLAGS_FILE`      | 1         | The flags file does not exist.                |

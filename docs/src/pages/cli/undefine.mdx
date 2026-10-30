@@ -1,0 +1,48 @@
+# undefine [Deletes a flag from the store, with its value]
+
+`flargs undefine` calls `DELETE /.flags/definitions/:key`, which needs `write` access. The store deletes the definition and the value. Reads of the key remain in the code until the next `flargs generate --url` shows them as type errors.
+
+```sh
+# Deletes the store definition of beta
+npx flargs undefine beta
+```
+
+## Signature
+
+```sh
+# Arguments first, then options
+flargs undefine <key> [options]
+```
+
+## Arguments
+
+### key
+
+- **Type:** `string`
+
+Key of the flag, such as `newCheckout`.
+
+## Options
+
+### --url
+
+- **Type:** `string`
+- **Default:** `FLARGS_URL`
+
+The URL of the flags path of a running server.
+
+```sh
+# Reads the admin API of this server
+npx flargs undefine newCheckout --url https://api.example.com/.flags
+```
+
+## Output
+
+- **`key`:** the key of the flag.
+
+## Errors
+
+| Error code | Exit code | Condition                                                                             |
+| ---------- | --------- | ------------------------------------------------------------------------------------- |
+| `API`      | 1         | The server declares its flags in a file (`409`), or has no store definitions (`501`). |
+| `API`      | 3         | The token has no `write` access.                                                      |

@@ -1,0 +1,105 @@
+# Rust [Reads the flags file at compile time, and parses the same overrides and signatures]
+
+## Overview
+
+The `flargs` crate reads the same flags file, override format, and signatures as the TypeScript packages. `flargs::flags!` parses `flags.toml` or `flags.json` at compile time and generates typed flags, so Rust needs no generated file. A bad declaration fails the build.
+
+:::note
+The Rust support is partial. The crate has `flargs::flags!`, `flargs::definitions`, and `flargs::overrides`. `Runtime`, `Store`, and the `axum`, `build`, `client`, and `server` features are not merged yet. A Rust service reads its runtime flag values from the environment, or from the admin API of a TypeScript server.
+:::
+
+| Crate                | Contents                                                                           |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| `flargs`             | `Key`, `flargs::definitions`, `flargs::overrides`, and `flargs::flags!`            |
+| `flargs-definitions` | the flags file parser, shared by `flargs` (as `flargs::definitions`) and the macro |
+| `flargs-macros`      | `flargs::flags!`, re-exported by the `macros` feature (on by default)              |
+
+## Walkthrough
+
+### Declare the Flags
+
+Keys in `snake_case` map to `camelCase` keys, so `new_checkout` serves `newCheckout` and reads `FEATURE_NEW_CHECKOUT`.
+
+```toml [flags.toml]
+#:schema https://unpkg.com/flargs/schema.json
+# One table for each flag. The JSON Schema validates the file through Taplo.
+[maintenance_banner]
+build = true
+default = false
+public = true
+type = "boolean"
+
+[new_checkout]
+default = false
+public = true
+type = "boolean"
+
+[pricing]
+default = "a"
+options = ["a", "b", "c"]
+type = "select"
+```
+
+### Generate the Flags
+
+The path is relative to `CARGO_MANIFEST_DIR`, and ends in `.toml` or `.json`.
+
+```rust [src/flags.rs]
+// Generates Flags, one Key for each runtime flag, one const for each build flag, and Pricing.
+flargs::flags!("flags.toml");
+```
+
+| Generated item                | Example                                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------------ |
+| `Flags`                       | a struct with one typed field for each runtime flag, and `Default` from the defaults |
+| a `Key` for each runtime flag | `Flags::NEW_CHECKOUT`, with `key()` and `env()`                                      |
+| a const for each build flag   | `Flags::MAINTENANCE_BANNER`, from its variable at compile time, then its default     |
+| an enum for each select flag  | `Pricing::A`, with `as_str()`                                                        |
+
+### Build Constants
+
+A build flag is a constant. A change of its variable rebuilds the crate. A JSON build flag is a `&str` that holds the JSON text.
+
+```rust [src/main.rs]
+// The compiler drops the branch when the constant is false.
+if Flags::MAINTENANCE_BANNER {
+    show_banner();
+}
+```
+
+## Recipes
+
+### Parse Overrides
+
+`flargs::overrides::parse` applies the same rules as `Override.parse` in TypeScript. It verifies the signature before it parses values.
+
+```rust [src/overrides.rs]
+use flargs::definitions::{self, ENV_PREFIX};
+use flargs::overrides::{self, ParseOptions};
+
+// Parses the query string of a request against the flags file.
+let definitions = definitions::parse_toml(include_str!("../flags.toml"), ENV_PREFIX)?;
+let overrides = overrides::parse(
+    "flag.pricing=c&flag.exp=1767225600&flag.sig=3q2-7w",
+    &ParseOptions { definitions: &definitions, dev: false, now, secret: Some(&secret) },
+)?;
+```
+
+### Environment Prefix
+
+`env_prefix` replaces `FEATURE_` for every flag of the file.
+
+```rust [src/flags.rs]
+// new_checkout reads APP_NEW_CHECKOUT.
+flargs::flags!("flags.toml", env_prefix = "APP_");
+```
+
+### Retirement
+
+After a key is removed from the flags file, `flargs::flags!` no longer generates its items. `flargs retire` removes keys from `flags.json` only, so a `flags.toml` key is removed by hand. Each read of the removed key fails to compile, so the compiler lists the reads to replace.
+
+## More
+
+- **Flags file:** [Flags File](/guides/flags-file) lists every field.
+- **Overrides:** [Concepts](/introduction/concepts) describes the signature format.
+- **Vectors:** the TypeScript and Rust implementations run the same vectors in `test/vectors/`.

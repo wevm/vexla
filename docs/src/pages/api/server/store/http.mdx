@@ -1,0 +1,43 @@
+# Store.http [Returns a store over the admin API of another Flargs instance]
+
+The store reads and writes the admin API of a remote instance, such as a central admin service. A value set on the remote instance applies to every instance that uses this store.
+
+```ts [flags.ts]
+import { Flargs, Store } from 'flargs/server'
+import { definitions } from './flargs.gen.js'
+
+export const flargs = Flargs.create({
+  definitions,
+  secret: process.env.FLARGS_SECRET,
+  // Reads the manifest of the admin service, at most once every 5 seconds.
+  store: Store.http({ token: process.env.FLARGS_TOKEN, url: 'https://admin.example.com/.flags' }),
+})
+```
+
+## Signature
+
+```ts
+// A store over a remote admin API
+Store.http(options: { fetch?: typeof fetch; token?: string; ttl?: number; url: string }): Store
+```
+
+## Options
+
+| Option  | Default            | Meaning                                            |
+| ------- | ------------------ | -------------------------------------------------- |
+| `fetch` | `globalThis.fetch` | the fetch function                                 |
+| `token` | none               | a bearer token that the remote `authorize` accepts |
+| `ttl`   | `5000`             | the lifetime of a cached manifest, in milliseconds |
+| `url`   | required           | the URL of the remote flags path                   |
+
+## Behavior
+
+- **Reads:** `get`, `keys`, and `definitions.list` read `GET <url>/manifest`, which needs `read` access. The manifest stays cached for `ttl`.
+- **Writes:** `set`, `delete`, and the definition operations call the value and definition routes, which need `write` access. A write clears the cache.
+- **Build:** the Vite plugin takes this store to read build flag values at build time.
+
+## Errors
+
+| Error             | Thrown when                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| `Store.HttpError` | the remote admin API returns an error status. `status` holds it. The error never holds the token |

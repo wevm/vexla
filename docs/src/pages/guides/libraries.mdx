@@ -1,0 +1,99 @@
+# Libraries [Publishes from main with unfinished work off, and with no runtime dependency on Flargs]
+
+## Overview
+
+A library merges unfinished work to `main` behind a build flag, and publishes from `main` with the flag off. A library has no request, so it declares build flags only.
+
+Zile transpiles the library with `tsc`. Its `transform` option names a module that rewrites each emitted `.js` file. `flargs/zile` replaces each read of a build flag with a literal and removes the `flargs` import, so `flargs` stays a dev dependency.
+
+## Walkthrough
+
+### Declare the Flag
+
+```json [flags.json]
+{
+  "$schema": "./node_modules/flargs/schema.json",
+  "newEncoder": { "build": true, "default": false, "type": "boolean" }
+}
+```
+
+### Read the Flag
+
+```ts [src/encode.ts]
+import { flags } from 'flargs'
+
+export function encode(value: string) {
+  // Becomes `if (false)` in the published files. The bundler of the consumer drops the branch.
+  if (flags.newEncoder) return encodeV2(value)
+  return encodeV1(value)
+}
+```
+
+### Configure Zile
+
+:::note
+The `transform` option of zile is not released yet ([wevm/zile#52](https://github.com/wevm/zile/issues/52)). zile `0.0.30` ignores it. Until the release, a builder calls `flargs/zile` from its own transform hook, as in [Other Builders](#other-builders).
+:::
+
+```jsonc [package.json]
+{
+  // zile runs flargs/zile on each emitted file, after tsc.
+  "zile": { "transform": "flargs/zile" },
+}
+```
+
+The emitted file holds the literal and no import:
+
+```js [dist/encode.js]
+// The flargs import is removed, since no read remains.
+export function encode(value) {
+  if (false) return encodeV2(value)
+  return encodeV1(value)
+}
+```
+
+## Recipes
+
+### Prereleases
+
+Each value resolves from its variable in the environment of the build, then its default. A CI job publishes a prerelease with the flag on.
+
+```sh
+# Publishes a build with the new encoder on
+FEATURE_NEW_ENCODER=true pnpm build
+```
+
+### Runtime Flags
+
+A read of a runtime flag, or a read with a computed key, fails the build. The error names the file and the line.
+
+```txt
+dist/pricing.js:2 reads pricing, which is not a build flag.
+
+To resolve: Set `build: true` on the flag in flags.json, since a library resolves build flags only.
+```
+
+### Types
+
+`tsc` still emits the types of an unfinished export. Mark the export `@internal`, or keep it in an entry that the package does not publish.
+
+### Other Builders
+
+The transform is a function `(code, file) => string`. tsup, tsdown, and Rollup call it from their own transform hook. It reads `flags.json` from the working directory of the build.
+
+```ts [rollup.config.ts]
+import transform from 'flargs/zile'
+
+export default {
+  input: 'src/index.ts',
+  output: { dir: 'dist' },
+  // Rewrites each module after the TypeScript plugin emits JavaScript.
+  plugins: [{ name: 'flargs', transform: (code: string, id: string) => transform(code, id) }],
+}
+```
+
+## More
+
+- **Function:** [`transform`](/api/zile) lists the signature and the errors.
+- **Apps:** [Vite](/guides/vite) replaces build flags in an application bundle.
+- **Retirement:** [`flargs retire`](/cli/retire) removes the flag after the release.

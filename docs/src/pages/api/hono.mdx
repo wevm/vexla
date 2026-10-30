@@ -1,0 +1,42 @@
+# middleware [Returns Hono middleware that serves the flags path and scopes flags to each request]
+
+`flargs/hono` exports `middleware` and its types. [Hono](/guides/hono) shows the full setup.
+
+```ts [app.ts]
+import { type Env, middleware } from 'flargs/hono'
+import { Hono } from 'hono'
+import { flargs } from './flags.js'
+
+const app = new Hono<Env<typeof flargs>>()
+
+// Serves /.flags, and sets flags and c.var.flags for every other request.
+app.use(middleware(flargs))
+
+app.get('/pricing', async (c) => c.json({ pricing: await c.var.flags.get('pricing') }))
+```
+
+## Signature
+
+```ts
+// Hono middleware for one instance
+middleware(flargs: Flargs.Flargs): MiddlewareHandler<Env<typeof flargs>>
+```
+
+## Behavior
+
+1. A request under `flargs.path` returns the response of `flargs.fetch`. The next handler does not run.
+2. Other requests set `c.var.flags`, then run the next handler in `Values.run`, so `flags` holds the values of the request.
+3. If the request has `flag.*` search parameters, the response receives the `flargs` cookie.
+
+## c.var.flags
+
+| Property   | Type                      | Behavior                          |
+| ---------- | ------------------------- | --------------------------------- |
+| `evaluate` | `() => Promise<Values>`   | `flargs.evaluate` for the request |
+| `get`      | `(key) => Promise<Value>` | `flargs.get` for the request      |
+| `script`   | `() => Promise<string>`   | `flargs.script` for the request   |
+
+## Types
+
+- **`Env<flargs>`:** the Hono environment that the middleware sets, `{ Variables: { flags: Flags<flargs> } }`.
+- **`Flags<flargs>`:** the type of `c.var.flags`.

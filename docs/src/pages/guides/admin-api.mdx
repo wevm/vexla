@@ -1,0 +1,180 @@
+# Admin API [Reads and writes store values over HTTP, behind one authorize function of the host]
+
+## Overview
+
+`flargs.fetch` serves the admin API under the flags path, `/.flags` by default. An admin UI, the CLI, CI, and `Store.http` call the same routes. A store value that the admin API writes applies to every request.
+
+`authorize` is the only check on the admin API. It receives the request and returns its access. Flargs defines no credential format, and `FLARGS_SECRET` never authenticates a request.
+
+| Return value | Access                                               | Status of a rejected route |
+| ------------ | ---------------------------------------------------- | -------------------------- |
+| `'write'`    | every route                                          | none                       |
+| `'read'`     | the dev route, the manifest, and the override routes | `403` on a `write` route   |
+| `undefined`  | the values endpoint only                             | `401` on an admin route    |
+| a `Response` | the values endpoint only                             | this `Response`            |
+
+- **Dev mode:** `dev: true` grants `write` to every request, and `authorize` does not run.
+- **Default:** without `authorize`, every request outside dev mode has no access.
+- **Errors:** if `authorize` throws, the request has no access, and `onError` receives the error.
+
+## Walkthrough
+
+### Add a Store
+
+The value routes need a store. Without one, they return `501`.
+
+```ts [flags.ts]
+import { Flargs, Store } from 'flargs/server'
+import { definitions } from './flargs.gen.js'
+import * as Admin from './admin.js'
+
+export const flargs = Flargs.create({
+  // The session of the admin UI has full access. Other requests have none.
+  authorize: async (request) => ((await Admin.verify(request)) ? 'write' : undefined),
+  definitions,
+  secret: process.env.FLARGS_SECRET,
+  store: Store.from(Admin.flagsTable),
+})
+```
+
+### Write a Value
+
+```http
+PUT /.flags/values/newCheckout
+Content-Type: application/json
+
+{ "value": true }
+```
+
+```json
+{ "key": "newCheckout", "value": true }
+```
+
+The instance validates the value against the definition. A value of the wrong type, or outside `options`, returns `400` with `invalid_value`. An unknown key returns `404` with `unknown_flag`.
+
+### Read the Manifest
+
+The manifest holds each definition, with its value for the request and the step that selected it.
+
+```http
+GET /.flags/manifest
+```
+
+```json
+{
+  "flags": {
+    "newCheckout": {
+      "build": false,
+      "default": false,
+      "description": "Use the new checkout flow.",
+      "env": "FEATURE_NEW_CHECKOUT",
+      "override": null,
+      "public": true,
+      "source": "store",
+      "stale": false,
+      "store": true,
+      "type": "boolean",
+      "value": true
+    }
+  },
+  "orphans": [],
+  "store": true,
+  "storeDefinitions": false,
+  "version": 1
+}
+```
+
+- **`orphans`:** stored keys that no flag declares, or `null` when the store has no `keys` operation.
+- **`store`:** `true` when the instance has a store.
+- **`storeDefinitions`:** `true` when the store holds the definitions.
+
+## Recipes
+
+### Handshakes
+
+[Handshakes](https://github.com/wevm/handshakes) issues short-lived access tokens to the CLI on a device and to CI jobs. `Resource.create` verifies them, and the scopes of the token select the access.
+
+```ts [flags.ts]
+import { Flargs, Store } from 'flargs/server'
+import { Resource } from 'handshakes/server'
+import { definitions } from './flargs.gen.js'
+import * as Admin from './admin.js'
+
+// Verifies the bearer tokens of the CLI, CI, and other services.
+const resource = Resource.create({
+  authorizationServers: ['https://auth.example.com'],
+  resource: 'https://api.example.com',
+})
+
+export const flargs = Flargs.create({
+  async authorize(request) {
+    // The admin UI session has full access.
+    if (await Admin.verify(request)) return 'write'
+
+    // The 401 challenge lets the Handshakes CLI discover the authorization server.
+    const result = await resource.verify(request)
+    if (result.status === 'invalid') return resource.challenge(result)
+
+    if (result.principal.scopes.includes('flags:write')) return 'write'
+    if (result.principal.scopes.includes('flags:read')) return 'read'
+    return undefined
+  },
+  definitions,
+  secret: process.env.FLARGS_SECRET,
+  store: Store.from(Admin.flagsTable),
+})
+```
+
+| Caller                      | Credential                                                | Access            |
+| --------------------------- | --------------------------------------------------------- | ----------------- |
+| Admin UI of the host        | the session cookie of the admin UI                        | `write`           |
+| CLI on a device             | a Handshakes token from a device grant, in `FLARGS_TOKEN` | `write`           |
+| CI job                      | a Handshakes token from a token exchange                  | `read`            |
+| `Store.http` in another app | a Handshakes token for that service                       | `read` or `write` |
+
+```sh
+# Runs the CLI with a token that the Handshakes CLI resolves
+FLARGS_TOKEN=$(handshakes token example) npx flargs list --url https://api.example.com/.flags
+```
+
+### Signed Links
+
+`POST /.flags/links` returns a link that overrides flags, including private flags, until `expiresAt`. It needs `write` access and `secret`.
+
+```http
+POST /.flags/links
+Content-Type: application/json
+
+{ "expiresAt": 1767225600000, "url": "/checkout", "values": { "pricing": "c" } }
+```
+
+```json
+{ "url": "https://app.example.com/checkout?flag.pricing=c&flag.exp=1767225600&flag.sig=3q2-7w" }
+```
+
+### CORS
+
+Admin routes return no CORS headers. An admin UI on another origin calls the admin API from its own backend, or the host adds the headers. The `cors` option applies to the values endpoint only.
+
+### Routes
+
+| Route                             | Access  | Response                                                     |
+| --------------------------------- | ------- | ------------------------------------------------------------ |
+| `GET /.flags`                     | `read`  | the dev route page                                           |
+| `GET /.flags/manifest`            | `read`  | the manifest                                                 |
+| `PUT /.flags/overrides`           | `read`  | sets the `flargs` cookie. Body: `{ "values": {} }`           |
+| `DELETE /.flags/overrides`        | `read`  | clears the `flargs` cookie                                   |
+| `PUT /.flags/values/:key`         | `write` | sets the store value. Body: `{ "value": true }`              |
+| `DELETE /.flags/values/:key`      | `write` | deletes the store value, also of a key that no flag declares |
+| `PUT /.flags/definitions/:key`    | `write` | creates or replaces a store definition                       |
+| `DELETE /.flags/definitions/:key` | `write` | deletes a store definition and its store value               |
+| `POST /.flags/links`              | `write` | returns a signed link                                        |
+| `GET /.flags/values`              | none    | the public values of the request                             |
+
+`PUT /.flags/overrides` accepts private runtime flags, since the request has admin access. Outside dev mode, it rejects a build flag with `400` and `build_flag`.
+
+## More
+
+- **Function:** [`Flargs.create`](/api/server/flargs/create) lists every status code.
+- **CLI:** [`list`](/cli/list), [`set`](/cli/set), and [`link`](/cli/link) call these routes.
+- **Remote store:** [`Store.http`](/api/server/store/http) reads the manifest of another instance.

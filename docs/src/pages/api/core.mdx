@@ -1,0 +1,66 @@
+import { Card, Cards } from 'vocs'
+
+# flargs [Flag values, definitions, and overrides, with no dependencies]
+
+`flargs` is the core entry. It has no dependencies and no static import of a Node built-in, so it runs in Node, Bun, Deno, edge runtimes, and browsers. Signatures use WebCrypto.
+
+```ts [app.ts]
+import { flags } from 'flargs'
+
+// The values of the current request on the server, or of the page in a browser.
+if (flags.newCheckout) renderNewCheckout()
+```
+
+## Exports
+
+| Export        | Kind      | Purpose                                                                 |
+| ------------- | --------- | ----------------------------------------------------------------------- |
+| `flags`       | value     | the typed values of the current request or page                         |
+| `Definitions` | namespace | validation of the flags file, variables, the manifest, and types        |
+| `Override`    | namespace | the `flag.*` search parameters and the `flargs` cookie, with signatures |
+| `Values`      | namespace | the request scope on the server, and the page values in a browser       |
+| `Register`    | interface | the registered definitions, which `flargs.gen.ts` augments              |
+| `Registered`  | type      | the registered definitions, or any definitions                          |
+
+<Cards>
+  <Card
+    title="flags"
+    description="The typed values of the current request or page."
+    icon="flag"
+    to="/api/core/flags"
+  />
+  <Card
+    title="Definitions"
+    description="Parses the flags file, decodes variables, and generates types."
+    icon="file-json"
+    to="/api/core/definitions"
+  />
+  <Card
+    title="Override"
+    description="Parses and signs the overrides of a browser."
+    icon="key-round"
+    to="/api/core/override"
+  />
+  <Card
+    title="Values"
+    description="Scopes values to a request, and loads values in a browser."
+    icon="layers"
+    to="/api/core/values"
+  />
+  <Card
+    title="Register"
+    description="Types every read from the generated module."
+    icon="braces"
+    to="/api/core/register"
+  />
+</Cards>
+
+## Errors
+
+Every error of Flargs extends one base class. `details` holds what failed, and `steps` holds the sentences that resolve it. The message lists the steps under `To resolve:`.
+
+```txt
+The default of pricing is not one of its options.
+
+To resolve: Fix the declaration of pricing in the flags file, as the JSON Schema describes.
+```

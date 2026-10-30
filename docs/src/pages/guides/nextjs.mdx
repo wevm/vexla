@@ -1,0 +1,126 @@
+# Next.js [Serves the admin API from a route handler, and reads flags on the server and in the browser]
+
+## Overview
+
+A Next.js app serves `flargs.fetch` from one catch-all route handler. Route handlers receive a `Request`, so they read flags with `flargs.get` or `Values.run`. Client components load the public values from the values endpoint with `Values.load`.
+
+| Code             | Read                                                       |
+| ---------------- | ---------------------------------------------------------- |
+| Route handler    | `flargs.get(request, key)`, or `flags` inside `Values.run` |
+| Server Component | `flargs.get` with a `Request` built from `headers()`       |
+| Client component | `useFlag(key)` after `Values.load`                         |
+
+## Walkthrough
+
+### Create the Instance
+
+The flags path is `/api/flags`, so the route handler lives under `app/api`.
+
+```ts [lib/flags.ts]
+import { Flargs } from 'flargs/server'
+import { definitions } from '../flargs.gen.js'
+
+// One instance for each server instance.
+export const flargs = Flargs.create({
+  definitions,
+  dev: process.env.NODE_ENV === 'development',
+  path: '/api/flags',
+  secret: process.env.FLARGS_SECRET,
+})
+```
+
+### Serve the Path
+
+An optional catch-all segment matches `/api/flags` and every route below it. Each method export is `flargs.fetch`.
+
+```ts [app/api/flags/[[...path]]/route.ts]
+import { flargs } from '@/lib/flags'
+
+// The dev route, the admin API, and the values endpoint.
+export const DELETE = flargs.fetch
+export const GET = flargs.fetch
+export const OPTIONS = flargs.fetch
+export const POST = flargs.fetch
+export const PUT = flargs.fetch
+```
+
+### Route Handlers
+
+`flargs.get` returns one typed value, and runs `decide` for that flag only.
+
+```ts [app/api/checkout/route.ts]
+import { flargs } from '@/lib/flags'
+
+export async function GET(request: Request) {
+  // Resolves the override, the store value, decide, the variable, then the default.
+  const newCheckout = await flargs.get(request, 'newCheckout')
+  return Response.json({ checkout: newCheckout ? 'new' : 'old' })
+}
+```
+
+### Browser Reads
+
+`Values.load` requests `GET /api/flags/values`, and `useFlag` renders again when the response arrives. Reads before the response return `undefined`.
+
+```tsx [app/checkout-button.tsx]
+'use client'
+
+import { Values } from 'flargs'
+import { useFlag } from 'flargs/react'
+import { useEffect } from 'react'
+
+export function CheckoutButton() {
+  // Public values only. A private flag reads as undefined in a browser.
+  useEffect(() => void Values.load({ url: '/api/flags' }), [])
+  const newCheckout = useFlag('newCheckout')
+  return <button>{newCheckout ? 'New checkout' : 'Checkout'}</button>
+}
+```
+
+## Recipes
+
+### Server Components
+
+A Server Component receives no `Request`. The instance reads only the URL and the `cookie` header, so a `Request` built from `headers()` evaluates the cookie overrides.
+
+```tsx [app/checkout/page.tsx]
+import { headers } from 'next/headers'
+import { flargs } from '@/lib/flags'
+
+export default async function Page() {
+  // The URL has no search parameters, so only cookie overrides apply.
+  const list = await headers()
+  const request = new Request(`https://${list.get('host')}/checkout`, { headers: list })
+
+  const newCheckout = await flargs.get(request, 'newCheckout')
+  return newCheckout ? <NewCheckout /> : <Checkout />
+}
+```
+
+:::note
+Flargs has no direct input for Server Components. The `Request` above is a workaround. Search parameter overrides reach a Server Component only after the dev route writes them to the `flargs` cookie.
+:::
+
+### Scoped Values
+
+`Values.run` evaluates every runtime flag for the request, so `flags` holds those values inside the callback.
+
+```ts [app/api/summary/route.ts]
+import { flags, Values } from 'flargs'
+import { flargs } from '@/lib/flags'
+
+export async function GET(request: Request) {
+  // Every read of flags inside the callback uses this request.
+  return Values.run(flargs, request, () => Response.json({ pricing: flags.pricing }))
+}
+```
+
+### Search Parameter Overrides
+
+`Values.load` copies `flag.*` search parameters of the page to `sessionStorage`, and sends them with each request to the values endpoint. An override in the page URL therefore applies to the browser values with no cookie.
+
+## More
+
+- **Runtime:** [`Flargs.create`](/api/server/flargs/create) lists `path` and every other option.
+- **Browser:** [`Values`](/api/core/values) and [`useFlag`](/api/react).
+- **Admin:** [Admin API](/guides/admin-api) authorizes the routes outside dev mode.

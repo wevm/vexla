@@ -1,0 +1,63 @@
+# dev [Serves the dev route for a flags file]
+
+`flargs dev` serves the dev route and the admin API for `flags.json` on `127.0.0.1`, in dev mode, with a store in memory. It suits an application with no TypeScript server, such as a Rust service in development. The command runs until it is stopped.
+
+```sh
+# Serves http://127.0.0.1:4000/.flags
+npx flargs dev
+```
+
+## Signature
+
+```sh
+# Arguments first, then options
+flargs dev [options]
+```
+
+## Options
+
+### --path
+
+- **Type:** `string`
+- **Default:** `flags.json`
+
+The path of the flags file, relative to the root.
+
+```sh
+# Reads a flags file in another directory
+npx flargs dev --path config/flags.json
+```
+
+### --root
+
+- **Type:** `string`
+- **Default:** the working directory
+
+The project root.
+
+```sh
+# Runs in the app package of a monorepo
+npx flargs dev --root apps/web
+```
+
+### --port
+
+- **Type:** `number`
+- **Default:** `4000`
+
+The port of the server.
+
+```sh
+# Serves http://127.0.0.1:5000/.flags
+npx flargs dev --port 5000
+```
+
+## Output
+
+The command prints the URL of the dev route. Store values live in memory and reset on each start.
+
+## Errors
+
+| Error code      | Exit code | Condition                      |
+| --------------- | --------- | ------------------------------ |
+| `NO_FLAGS_FILE` | 1         | The flags file does not exist. |

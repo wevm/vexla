@@ -1,0 +1,149 @@
+# Flags File [Declares every flag with its type and its default, and links it to an environment variable]
+
+## Overview
+
+The flags file is the committed list of every flag. TypeScript reads `flags.json`, and Rust reads `flags.toml` or `flags.json`. One JSON Schema, `flargs/schema.json`, validates both formats and completes keys in editors.
+
+Each flag links to one environment variable. A `.env` file or the deploy environment sets the values that differ from the defaults. A project with no Flargs instance and no store uses environment variables only.
+
+## Walkthrough
+
+### Declare a Flag
+
+Every flag is an object with an explicit `type` and `default`. Flargs infers no type and no default.
+
+```json [flags.json]
+{
+  "$schema": "./node_modules/flargs/schema.json",
+  "limits": { "default": { "requests": 100 }, "type": "json" },
+  "maintenanceBanner": { "build": true, "default": false, "public": true, "type": "boolean" },
+  "newCheckout": {
+    "default": false,
+    "description": "Use the new checkout flow.",
+    "expires": "2027-01-31",
+    "public": true,
+    "type": "boolean"
+  },
+  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
+}
+```
+
+| Field         | Meaning                                                                    | Default                                          |
+| ------------- | -------------------------------------------------------------------------- | ------------------------------------------------ |
+| `build`       | `true` makes a build flag, which resolves when the bundle builds           | `false`                                          |
+| `default`     | the value when no other source has one. It must match `type` and `options` | required                                         |
+| `description` | text for the dev route, the admin API, and `.env.example`                  | none                                             |
+| `env`         | the environment variable name, in `SCREAMING_SNAKE_CASE`                   | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
+| `expires`     | a date (`YYYY-MM-DD`) after which the flag is due for retirement           | none                                             |
+| `options`     | the distinct string values of a select flag                                | required for `select`                            |
+| `public`      | `true` lets the value reach the browser                                    | `false`                                          |
+| `type`        | `boolean`, `json`, `number`, `select`, or `string`                         | required                                         |
+
+An unknown field, a missing `type` or `default`, a default outside `options`, or two flags with the same variable throws `Definitions.InvalidDeclarationError`. The error names the key.
+
+### Generate the Types
+
+A JSON import widens strings, so `'a' | 'b' | 'c'` needs a generated module. `flargs generate` writes `flargs.gen.ts`, which exports `definitions` and registers their types.
+
+```sh
+# Writes flargs.gen.ts next to flags.json
+npx flargs generate
+```
+
+| `type`    | Value type                                                    |
+| --------- | ------------------------------------------------------------- |
+| `boolean` | `boolean`                                                     |
+| `json`    | the widened type of `default`, such as `{ requests: number }` |
+| `number`  | `number`                                                      |
+| `select`  | the union of `options`, such as `'a' \| 'b' \| 'c'`           |
+| `string`  | `string`                                                      |
+
+### Set Variables
+
+`newCheckout` reads `FEATURE_NEW_CHECKOUT`. The `env` field sets another name, and the `envPrefix` option replaces `FEATURE_`.
+
+```sh [.env]
+# Values for this environment. The file is not committed.
+FEATURE_LIMITS={"requests":5}
+FEATURE_NEW_CHECKOUT=true
+FEATURE_PRICING=b
+```
+
+| `type`    | Variable text                         |
+| --------- | ------------------------------------- |
+| `boolean` | `true` or `false`                     |
+| `json`    | JSON text                             |
+| `number`  | a finite number, such as `3` or `2.5` |
+| `select`  | one of `options`                      |
+| `string`  | any text                              |
+
+The instance reads the variable after the override, the store value, and `decide`. An invalid value never selects a value. The instance passes `Definitions.InvalidValueError` to `onError`, and the error names the variable but never holds the value.
+
+### Check the Environment
+
+`flargs check` fails when the environment sets a `FEATURE_*` variable that no flag declares, or a value that is not a value of its flag. A typo such as `FEATURE_NEW_CHEKOUT` therefore fails CI.
+
+```sh
+# Checks the process environment and the .env file
+npx flargs check --env-file .env
+```
+
+## Recipes
+
+### Example File
+
+`flargs env` writes `.env.example` with every variable, its default, and its description as a comment.
+
+```sh
+# Writes .env.example from flags.json
+npx flargs env
+```
+
+```txt
+# Use the new checkout flow.
+# Type: boolean.
+FEATURE_NEW_CHECKOUT=false
+
+# One of: a, b, c.
+FEATURE_PRICING=a
+```
+
+### TOML
+
+`flags.toml` follows the same schema. Keys in `snake_case` map to `camelCase`, so `new_checkout` reads `FEATURE_NEW_CHECKOUT` and serves the key `newCheckout`.
+
+```toml [flags.toml]
+#:schema https://unpkg.com/flargs/schema.json
+# The same flags for Rust. Taplo validates the file against the schema.
+[new_checkout]
+default = false
+public = true
+type = "boolean"
+
+[pricing]
+default = "a"
+options = ["a", "b", "c"]
+type = "select"
+```
+
+The CLI, `flargs/vite`, and `flargs/zile` read `flags.json` only. A project with a TypeScript app and a Rust service keeps one `flags.json`, which the Rust macro also reads.
+
+### Zero Config
+
+With no definitions, `Flargs.create` declares a private flag for each `FEATURE_*` variable. The type comes from the value: `true` and `false` make a boolean, a number makes a number, a JSON object or array makes a JSON flag, and other text makes a string. The value is also the default.
+
+```ts [flags.ts]
+import { Flargs } from 'flargs/server'
+
+// No flags file: FEATURE_BETA=true declares the private boolean flag beta.
+export const flargs = Flargs.create({ dev: true })
+```
+
+Zero config has no options, no public flags, and no typo check. A flags file adds them later, with no change to reads of `flags`.
+
+## More
+
+- **Function:** [`Definitions`](/api/core/definitions) lists `parse`, `fromEnv`, `check`, and the other helpers.
+- **Commands:** [`generate`](/cli/generate), [`env`](/cli/env), and [`check`](/cli/check).
+- **Build flags:** [Vite](/guides/vite) and [Libraries](/guides/libraries).
+- **Concepts:** [Resolution Order](/introduction/concepts#resolution-order).

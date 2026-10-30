@@ -1,0 +1,97 @@
+# Cloudflare Workers [Routes the flags path to the instance, and keeps store values in KV]
+
+## Overview
+
+A Worker routes the flags path to `flargs.fetch`, and runs every other request in `Values.run`. `Store.kv` keeps store values, and optionally definitions, in a KV namespace.
+
+`Values.run` needs `AsyncLocalStorage`, so the Worker needs the `nodejs_compat` compatibility flag. With a compatibility date of `2025-04-01` or later, `process.env` also holds the variables and secrets of the Worker.
+
+## Walkthrough
+
+### Configure the Worker
+
+```jsonc [wrangler.jsonc]
+{
+  // nodejs_compat provides AsyncLocalStorage and process.env.
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "kv_namespaces": [{ "binding": "FLAGS", "id": "<namespace id>" }],
+  "main": "src/index.ts",
+  "name": "app",
+}
+```
+
+```sh
+# Stores the signing secret of overrides and links
+npx wrangler secret put FLARGS_SECRET
+```
+
+### Route the Requests
+
+The KV binding exists only inside `fetch`, so the Worker creates the instance there. `Flargs.create` sends no request, and the definitions come from the generated module.
+
+```ts [src/index.ts]
+import { Values } from 'flargs'
+import { Flargs, Store } from 'flargs/server'
+import { definitions } from '../flargs.gen.js'
+import { app } from './app.js'
+
+type Env = { FLAGS: KVNamespace }
+
+export default {
+  async fetch(request: Request, env: Env) {
+    const flargs = Flargs.create({
+      definitions,
+      // The default env is process.env, which holds the Worker variables and FLARGS_SECRET.
+      secret: process.env.FLARGS_SECRET,
+      store: Store.kv(env.FLAGS),
+    })
+
+    // The dev route, the admin API, and the values endpoint.
+    const pathname = new URL(request.url).pathname
+    if (pathname === flargs.path || pathname.startsWith(`${flargs.path}/`))
+      return flargs.fetch(request)
+
+    // Every read of flags inside app.fetch uses this request.
+    const response = await Values.run(flargs, request, () => app.fetch(request))
+
+    // Persists search parameter overrides in the flargs cookie.
+    const cookie = await flargs.setCookie(request)
+    if (!cookie) return response
+    const headers = new Headers(response.headers)
+    headers.append('set-cookie', cookie)
+    return new Response(response.body, { headers, status: response.status })
+  },
+}
+```
+
+### Read a Flag
+
+```ts [src/app.ts]
+import { flags } from 'flargs'
+
+export const app = {
+  // The values of the current request, from Values.run.
+  fetch: (request: Request) => new Response(flags.newCheckout ? 'New checkout' : 'Checkout'),
+}
+```
+
+## Recipes
+
+### Hono on Workers
+
+A Hono app on Workers uses `flargs/hono`, which does the routing above. [Hono](/guides/hono) describes it.
+
+### Consistency
+
+KV is eventually consistent, so a store value can take up to a minute to reach every location. A flag that must change at once in every location uses a store with strong consistency, such as `Store.from` on D1.
+
+### Store Definitions
+
+`Store.kv` also holds definitions under `definition:<key>`. Without `definitions`, the instance reads the flags from KV. [Store Definitions](/guides/store-definitions) describes the setup.
+
+## More
+
+- **Store:** [`Store.kv`](/api/server/store/kv) lists the key layout.
+- **Values:** [`Values.run`](/api/core/values) describes the request scope.
+- **Admin:** [Admin API](/guides/admin-api) authorizes the routes outside dev mode.

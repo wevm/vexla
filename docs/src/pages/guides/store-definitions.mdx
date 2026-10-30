@@ -1,0 +1,128 @@
+# Store Definitions [Declares flags in the store, so an admin creates a flag with no deploy]
+
+## Overview
+
+A project declares its flags in a flags file or in the store, never in both. Without `definitions`, `Flargs.create` reads the definitions from the `definitions` operations of the store. An admin UI or `flargs define` then creates a flag with no deploy.
+
+|               | Flags file                                     | Store                                          |
+| ------------- | ---------------------------------------------- | ---------------------------------------------- |
+| Add a flag    | a reviewed change on `main`                    | `flargs define` or an admin UI, with no deploy |
+| Defaults      | always available                               | available while the store is                   |
+| Types         | `flargs generate` from the file                | `flargs generate --url` from a running server  |
+| Remove a flag | delete the key, and type errors show each read | `flargs undefine`                              |
+
+## Walkthrough
+
+### Create the Instance
+
+`Store.memory`, `Store.http`, and `Store.kv` hold definitions. A `Store.from` store holds them when it implements `definitions`.
+
+```ts [flags.ts]
+import { Flargs, Store } from 'flargs/server'
+import * as Admin from './admin.js'
+
+// No definitions option: the store holds the definitions and the values.
+export const flargs = Flargs.create({
+  authorize: async (request) => ((await Admin.verify(request)) ? 'write' : undefined),
+  secret: process.env.FLARGS_SECRET,
+  store: Store.from(Admin.flagsTable),
+})
+```
+
+### Define a Flag
+
+A store definition follows the schema of one flag in `flags.json`. The instance validates it on each write and each read.
+
+```http
+PUT /.flags/definitions/newCheckout
+Content-Type: application/json
+
+{ "default": false, "public": true, "type": "boolean" }
+```
+
+```sh
+# The same write from the CLI. FLARGS_TOKEN holds a token with write access.
+npx flargs define newCheckout --type boolean --default false --public --url https://api.example.com/.flags
+```
+
+### Generate the Types
+
+`flargs generate --url` writes `flargs.gen.ts` from the manifest of the running server. With `--url`, the module declares public flags only, unless `--visibility all` is set.
+
+```sh
+# Declares every flag, for server code
+npx flargs generate --url https://api.example.com/.flags --visibility all
+```
+
+## Recipes
+
+### Database Table
+
+Flargs runs no migrations. The host owns the table, and `Store.from` maps the store operations to its queries. This reference schema holds one row for each flag.
+
+```sql
+-- Postgres. definition is null when a flags file declares the flags.
+create table flags (
+  key        text primary key,
+  definition jsonb,
+  value      jsonb,
+  updated_at timestamptz not null default now()
+);
+```
+
+```ts [admin.ts]
+import { Store } from 'flargs/server'
+import { db, flags } from './db.js'
+
+// Maps each store operation to a Drizzle query on the reference table.
+export const flagsTable = Store.from({
+  definitions: {
+    delete: async (key) => void (await db.delete(flags).where(eq(flags.key, key))),
+    list: async () =>
+      Object.fromEntries(
+        (await db.select().from(flags).where(isNotNull(flags.definition))).map((row) => [
+          row.key,
+          row.definition,
+        ]),
+      ),
+    set: async (key, definition) =>
+      void (await db
+        .insert(flags)
+        .values({ definition, key })
+        .onConflictDoUpdate({ set: { definition }, target: flags.key })),
+  },
+  delete: async (key) =>
+    void (await db.update(flags).set({ value: null }).where(eq(flags.key, key))),
+  get: async (keys) =>
+    Object.fromEntries(
+      (await db.select().from(flags).where(inArray(flags.key, keys)))
+        .filter((row) => row.value !== null)
+        .map((row) => [row.key, row.value]),
+    ),
+  keys: async () =>
+    (await db.select().from(flags).where(isNotNull(flags.value))).map((row) => row.key),
+  set: async (key, value) =>
+    void (await db
+      .insert(flags)
+      .values({ key, value })
+      .onConflictDoUpdate({ set: { value }, target: flags.key })),
+})
+```
+
+### Cache
+
+The instance reads the definitions once, and again after each definition write through its own admin API. A failed read is not cached. Another instance that shares the store reads the new definitions after it restarts.
+
+### Store Down
+
+If the store cannot return the definitions, evaluation throws `Flargs.DefinitionsUnavailableError`, and the admin API returns `503` with `definitions_unavailable`. With no definitions, no default exists.
+
+### Conflict
+
+With `definitions`, the flags file is the only source. The definition routes then return `409` with `definitions_in_file`.
+
+## More
+
+- **Store:** [`Store`](/api/server/store) lists the contract.
+- **Commands:** [`define`](/cli/define), [`undefine`](/cli/undefine), and [`generate`](/cli/generate).
+- **Admin:** [Admin API](/guides/admin-api) authorizes the definition routes.

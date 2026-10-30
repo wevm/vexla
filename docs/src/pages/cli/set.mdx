@@ -1,0 +1,55 @@
+# set [Sets the store value of a flag for every request]
+
+`flargs set` calls `PUT /.flags/values/:key`, which needs `write` access. The value applies to every request until `flargs unset`, unless an override applies first.
+
+```sh
+# Sets pricing to b for every request
+npx flargs set pricing b
+```
+
+## Signature
+
+```sh
+# Arguments first, then options
+flargs set <key> <value> [options]
+```
+
+## Arguments
+
+### key
+
+- **Type:** `string`
+
+Key of the flag, such as `newCheckout`.
+
+### value
+
+- **Type:** `string`
+
+The value. For a string or select flag, the text itself. Otherwise, JSON text, such as `true`, `3`, or `{"requests":5}`.
+
+## Options
+
+### --url
+
+- **Type:** `string`
+- **Default:** `FLARGS_URL`
+
+The URL of the flags path of a running server.
+
+```sh
+# Reads the admin API of this server
+npx flargs set newCheckout true --url https://api.example.com/.flags
+```
+
+## Output
+
+- **`key`:** the key of the flag.
+- **`value`:** the value that the server stored.
+
+## Errors
+
+| Error code | Exit code | Condition                                                                                     |
+| ---------- | --------- | --------------------------------------------------------------------------------------------- |
+| `API`      | 1         | The value is invalid (`400`), the key is unknown (`404`), or the server has no store (`501`). |
+| `API`      | 3         | The token has no `write` access.                                                              |

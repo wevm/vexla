@@ -1,0 +1,55 @@
+# Store [The contract of the store that holds admin values, and optionally definitions]
+
+A store holds the values that the admin API writes. A store value applies to every request. A host implements the contract on its own database, so Flargs runs no migrations.
+
+```ts
+// The Store type of flargs/server
+type Store = {
+  delete: (key: string) => Promise<void>
+  get: (keys: readonly string[]) => Promise<Record<string, unknown>>
+  // Optional: lists every key with a value, so flargs prune finds orphan values.
+  keys?: () => Promise<readonly string[]>
+  set: (key: string, value: Json) => Promise<void>
+  // Required only when Flargs.create has no definitions.
+  definitions?: {
+    delete: (key: string) => Promise<void>
+    list: () => Promise<Record<string, unknown>>
+    set: (key: string, definition: Definition) => Promise<void>
+  }
+}
+```
+
+## Operations
+
+| Operation            | Contract                                                                         |
+| -------------------- | -------------------------------------------------------------------------------- |
+| `get`                | returns the values of `keys` that the store holds. A key with no value is absent |
+| `set`                | sets a value. The instance validates the value before the call                   |
+| `delete`             | deletes a value                                                                  |
+| `keys`               | returns every key with a value                                                   |
+| `definitions.list`   | returns every definition, in the format of a flags file                          |
+| `definitions.set`    | creates or replaces a definition                                                 |
+| `definitions.delete` | deletes a definition                                                             |
+
+- **Validation:** the instance validates each stored value on read. An invalid value reaches `onError`, and resolution continues with `decide`.
+- **Text:** a stored string decodes for a non-string flag, so a store over environment variables holds text.
+- **Errors:** if `get` throws, the error reaches `onError`, and the request resolves with no store values.
+
+## Flag Changes
+
+| Change                     | Stored row                    | Behavior                                             |
+| -------------------------- | ----------------------------- | ---------------------------------------------------- |
+| Add a flag                 | none                          | resolves to `decide`, the variable, then the default |
+| Remove a flag              | an orphan value               | ignored by evaluation. `flargs prune` deletes it     |
+| Change `type` or `options` | a value that fails validation | reported through `onError`, then the next step       |
+| Rename a flag              | the row of the old key        | the new key has no value. The old row is an orphan   |
+
+## Stores
+
+| Store                                      | Purpose                                     |
+| ------------------------------------------ | ------------------------------------------- |
+| [`Store.memory`](/api/server/store/memory) | values and definitions in memory            |
+| [`Store.env`](/api/server/store/env)       | read-only values from `FEATURE_*` variables |
+| [`Store.http`](/api/server/store/http)     | the admin API of another Flargs instance    |
+| [`Store.kv`](/api/server/store/kv)         | a Cloudflare KV namespace                   |
+| [`Store.from`](/api/server/store/from)     | a store that the host implements            |

@@ -1,0 +1,41 @@
+# flags [The typed values of the current request on the server, or of the page in a browser]
+
+`flags` is a read-only object. A read is synchronous and takes no request argument. Its type comes from [`Register`](/api/core/register), so each key has the type of its flag.
+
+```ts [checkout.ts]
+import { flags } from 'flargs'
+
+// boolean, from flargs.gen.ts
+export const label = flags.newCheckout ? 'New checkout' : 'Checkout'
+```
+
+## Type
+
+```ts
+// The value types of the registered definitions, keyed by flag key
+const flags: Readonly<Definitions.Values<Registered>>
+```
+
+Without a generated module, `flags` has the values of any definitions, and each value is `unknown`.
+
+## Sources
+
+`flags` reads the first source that applies:
+
+| Context                       | Source                                                                                 |
+| ----------------------------- | -------------------------------------------------------------------------------------- |
+| Inside `Values.run`           | the values of the request, from `AsyncLocalStorage`                                    |
+| A browser (`document` exists) | the response of the last `Values.load`, else the `#__flargs` script of `flargs.script` |
+| Elsewhere                     | zero config: the `FEATURE_*` variables of `process.env`                                |
+
+- **Missing keys:** a key with no value in the source reads as `undefined`, not as its default. In a browser, every private flag reads as `undefined`.
+- **Zero config:** outside a request, a declared flag whose variable is unset reads as `undefined`. A set variable reads with the type that its text implies.
+- **Integrations:** `flargs/hono` and `Request.toNodeListener` of `flargs/node` call `Values.run` for each request.
+
+## Build Flags
+
+`flargs/vite` and `flargs/zile` replace each read of a build flag with a literal. The read `flags.maintenanceBanner` becomes `false` in the bundle.
+
+## Retirement
+
+[`flargs retire`](/cli/retire) replaces `flags.<key>` with the final value, and removes the import when no read remains.

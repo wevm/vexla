@@ -1,0 +1,39 @@
+# Store.kv [Returns a store on a Cloudflare KV namespace]
+
+The store keeps values and definitions in one KV namespace. [Cloudflare Workers](/guides/cloudflare-workers) shows the full setup.
+
+```ts [src/index.ts]
+import { Flargs, Store } from 'flargs/server'
+import { definitions } from '../flargs.gen.js'
+
+export default {
+  async fetch(request: Request, env: { FLAGS: KVNamespace }) {
+    // The binding exists only inside fetch.
+    const flargs = Flargs.create({
+      definitions,
+      secret: process.env.FLARGS_SECRET,
+      store: Store.kv(env.FLAGS),
+    })
+    return flargs.fetch(request)
+  },
+}
+```
+
+## Signature
+
+```ts
+// A store on a KV namespace
+Store.kv(namespace: Store.KvNamespace): Store
+```
+
+`Store.KvNamespace` is the part of a KV binding that the store uses: `delete`, `get` with `'json'`, `list`, and `put`.
+
+## Key Layout
+
+| KV key             | Content                       |
+| ------------------ | ----------------------------- |
+| `value:<key>`      | the JSON value of a flag      |
+| `definition:<key>` | the JSON definition of a flag |
+
+- **Consistency:** KV is eventually consistent, so a write can take up to a minute to reach every location.
+- **Definitions:** `definitions.delete` also deletes the value of the flag.

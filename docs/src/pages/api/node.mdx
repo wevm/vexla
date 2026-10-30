@@ -1,0 +1,40 @@
+# Request [Converts between node:http and the fetch API]
+
+`flargs/node` exports the `Request` namespace. [Node](/guides/node) shows a server and an Express route.
+
+```ts [server.ts]
+import * as Http from 'node:http'
+import { Request } from 'flargs/node'
+import { app } from './app.js'
+import { flargs } from './flags.js'
+
+// Serves the flags path, and runs every other request of app.fetch in Values.run.
+Http.createServer(Request.toNodeListener(app.fetch, { flargs })).listen(3000)
+```
+
+## Request.toNodeListener
+
+```ts
+// Returns a node:http request listener for a fetch handler
+Request.toNodeListener(handler: (request: Request) => Response | Promise<Response>, options?: { flargs?: Flargs.Flargs; onError?: (error: unknown) => void }): Http.RequestListener
+```
+
+| Option    | Behavior                                                                                                                                   |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `flargs`  | serves the flags path through `flargs.fetch`, runs other requests in `Values.run`, and appends the `flargs` cookie for `flag.*` parameters |
+| `onError` | receives an error that the handler throws. The response is `500`                                                                           |
+
+The listener writes every `Set-Cookie` header of the response as a separate header.
+
+## Request.fromNodeListener
+
+```ts
+// Returns a fetch Request for a node:http request. The body streams from the request.
+Request.fromNodeListener(incoming: Http.IncomingMessage): Request
+```
+
+The URL uses `https` for an encrypted socket, and the `Host` header, else `localhost`. `GET` and `HEAD` requests have no body.
+
+## Types
+
+- **`Request.Handler`:** a fetch handler, `(request) => Response | Promise<Response>`.

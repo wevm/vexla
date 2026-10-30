@@ -1,0 +1,48 @@
+# Store.from [Types a store that the host implements on its own database]
+
+`Store.from` returns its input unchanged, typed as a `Store`. The host owns the table and migrates it with its own tool, such as Drizzle, Prisma, or sqlx.
+
+```ts [store.ts]
+import { Store } from 'flargs/server'
+import { db } from './db.js'
+
+// Maps the three required operations to queries on a flags table.
+export const store = Store.from({
+  delete: async (key) =>
+    void (await db.query('update flags set value = null where key = $1', [key])),
+  get: async (keys) =>
+    Object.fromEntries(
+      (
+        await db.query('select key, value from flags where key = any($1) and value is not null', [
+          keys,
+        ])
+      ).rows.map((row) => [row.key, row.value]),
+    ),
+  set: async (key, value) =>
+    void (await db.query(
+      'insert into flags (key, value) values ($1, $2) on conflict (key) do update set value = $2',
+      [key, value],
+    )),
+})
+```
+
+## Signature
+
+```ts
+// Returns store unchanged
+Store.from(store: Store): Store
+```
+
+## Reference Schema
+
+```sql
+-- SQLite. JSON columns hold text. definition is null when a flags file declares the flags.
+create table flags (
+  key        text primary key,
+  definition text,
+  value      text,
+  updated_at text not null default (datetime('now'))
+);
+```
+
+[Store Definitions](/guides/store-definitions) shows the Postgres schema and a store with every operation. [`Store`](/api/server/store) lists the contract.

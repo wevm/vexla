@@ -1,0 +1,76 @@
+# check [Fails when the environment sets an undeclared or invalid FEATURE_* variable]
+
+`flargs check` validates the process environment, and optional dotenv files, against the flags file. A variable with the `FEATURE_` prefix that no flag declares fails the check, so a typo fails CI. A stale flag fails the check only with `--strict`.
+
+```sh
+# Checks the environment and the .env file
+npx flargs check --env-file .env
+```
+
+## Signature
+
+```sh
+# Arguments first, then options
+flargs check [options]
+```
+
+## Options
+
+### --path
+
+- **Type:** `string`
+- **Default:** `flags.json`
+
+The path of the flags file, relative to the root.
+
+```sh
+# Reads a flags file in another directory
+npx flargs check --path config/flags.json
+```
+
+### --root
+
+- **Type:** `string`
+- **Default:** the working directory
+
+The project root.
+
+```sh
+# Runs in the app package of a monorepo
+npx flargs check --root apps/web
+```
+
+### --env-file
+
+- **Type:** `string[]`
+- **Default:** none
+
+Dotenv files to check with the environment, such as `.env`. Repeatable. A file value takes precedence over the process environment.
+
+```sh
+# Checks two dotenv files
+npx flargs check --env-file .env --env-file .env.local
+```
+
+### --strict
+
+- **Type:** `boolean`
+- **Default:** `false`
+
+Fails on a stale flag too.
+
+```sh
+# Fails when a flag is past its expires date
+npx flargs check --strict
+```
+
+## Output
+
+- **`issues`:** each problem, with `env`, `key`, and `reason` (`invalid`, `stale`, or `unknown`). A passing check can hold stale issues.
+
+## Errors
+
+| Error code      | Exit code | Condition                                                                                                                      |
+| --------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `CHECK`         | 1         | The environment has an unknown or invalid variable, or a stale flag with `--strict`. The message lists `<variable>: <reason>`. |
+| `NO_FLAGS_FILE` | 1         | The flags file does not exist.                                                                                                 |
