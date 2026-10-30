@@ -4,7 +4,7 @@ Flargs is a self-hosted feature flag library for TypeScript and Rust. It declare
 
 ## Motivation
 
-Trunk-based development merges small changes to `main` often. Unfinished work ships to production, disabled behind a flag, and the flag controls the release.
+Trunk-based development merges small changes to `main` often. Unfinished work ships to production, disabled behind a flag, and the flag controls the release. Coding agents make the extra work of small steps (flags, parallel configurations, staged migrations) almost free, so a flag must be cheap to add, read, and remove.
 
 - **Short-lived branches:** a change merges when it is safe to deploy, not when the feature is complete.
 - **Release without deploy:** an admin enables a flag in the admin UI. No new build is necessary.

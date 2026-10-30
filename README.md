@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="#overview">Overview</a> · <a href="#motivation">Motivation</a> · <a href="#philosophy">Philosophy</a> · <a href="#features">Features</a> · <a href="#usage">Usage</a> · <a href="#cli">CLI</a> · <a href="#rust">Rust</a>
+  <a href="#overview">Overview</a> · <a href="#motivation">Motivation</a> · <a href="#agent-prompt">Agent Prompt</a> · <a href="#philosophy">Philosophy</a> · <a href="#features">Features</a> · <a href="#usage">Usage</a> · <a href="#cli">CLI</a> · <a href="#rust">Rust</a>
 </p>
 
 > [!NOTE]
@@ -51,12 +51,31 @@ flowchart LR
 
 ## Motivation
 
-Trunk-based development merges small changes to `main` often. Unfinished work ships to production behind a flag, and the flag, not the branch, controls the release.
+Trunk-based development pushes small changes to `main` continuously, with no long-lived branches. A branch diverges from `main` while it lives, and a late merge turns a routine operation into a risk. A system that integrates in small, continuous steps is safer than one that integrates in large, rare ones.
 
-- **Short-lived branches:** A change merges when it is safe to deploy, not when the feature is complete.
-- **Release without a deploy:** An admin enables a flag in an admin UI. No new build is necessary.
-- **Personal preview:** A developer enables a flag for one browser, through the dev route or a link. Other users see no change.
-- **Self-hosted:** Flags live in the application and its database. No third-party service, account, or toolbar is necessary.
+Almost every change that seems to need a branch can merge in small steps instead:
+
+- **Schema changes:** Add the column, merge, and deploy. Read from it in a later change.
+- **Migrations:** Add the new pattern next to the old one, then move callers one at a time.
+- **Unfinished features:** Merge each step behind a flag. The flag, not the branch, controls the release.
+
+These steps were once expensive to write by hand: a flag for each change, two configurations that work at the same time, and dead code that waits for a release. Coding agents now write this work at almost no cost. A feature flag becomes the cheapest way to merge to `main`, so flags must be easy to add, to read, and to remove.
+
+Flargs makes a flag one typed line:
+
+- **Add:** Declare the flag, and an agent or a developer puts the new code behind it on `main`.
+- **Preview:** A developer enables the flag for one browser, through the dev route or a link. Other users see no change.
+- **Release:** An admin enables the flag in an admin UI, or a deploy sets `FEATURE_*`. No new branch or merge is necessary.
+- **Remove:** Find All References locates every read. Delete the reads, then the declaration.
+- **Self-host:** Flags live in the application and its database. No third-party service, account, or toolbar is necessary.
+
+## Agent Prompt
+
+Paste this prompt into a coding agent:
+
+```txt
+Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished work behind flags so it merges to main.
+```
 
 The [Vercel Flags SDK](https://flags-sdk.dev) established flags as code. Flargs keeps that model and replaces the hosted parts: a store in place of a provider, a dev route in place of a toolbar, and build flags in place of precompute.
 
