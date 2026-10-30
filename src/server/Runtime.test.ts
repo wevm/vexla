@@ -286,6 +286,28 @@ describe('fetch', () => {
     await server.close()
   })
 
+  test('orphan values are listed and may be deleted', async () => {
+    const store = Store.memory({ values: { oldFlag: true, title: 'Stored' } })
+    const runtime = Runtime.create({ definitions, dev: true, store })
+    const manifest = await (
+      await runtime.fetch(new Request('https://app.example.com/.flags/manifest'))
+    ).json()
+    expect(manifest.orphans).toMatchInlineSnapshot(`
+      [
+        "oldFlag",
+      ]
+    `)
+    const deleted = await runtime.fetch(
+      new Request('https://app.example.com/.flags/values/oldFlag', { method: 'DELETE' }),
+    )
+    expect(deleted.status).toMatchInlineSnapshot(`200`)
+    expect(await store.keys!()).toMatchInlineSnapshot(`
+      [
+        "title",
+      ]
+    `)
+  })
+
   test('manifest', async () => {
     const server = await serve({ dev: true, store: Store.memory({ values: { title: 'Stored' } }) })
     const manifest = await (await fetch(`${server.url}/.flags/manifest?flag.pricing=b`)).json()

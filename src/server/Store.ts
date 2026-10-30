@@ -11,6 +11,8 @@ export type Store = {
   delete: (key: string) => Promise<void>
   /** Returns the values of `keys` that the store holds. A key with no value is absent. */
   get: (keys: readonly string[]) => Promise<Record<string, unknown>>
+  /** Returns every key that holds a value. Optional: `flargs prune` needs it to find orphan values. */
+  keys?: (() => Promise<readonly string[]>) | undefined
   /** Sets the value of a flag. The runtime validates `value` before the call. */
   set: (key: string, value: Definitions.Json) => Promise<void>
   /**
@@ -54,6 +56,9 @@ export function memory(options: memory.Options = {}): Store {
       return Object.fromEntries(
         keys.filter((key) => values.has(key)).map((key) => [key, values.get(key)]),
       )
+    },
+    async keys() {
+      return [...values.keys()]
     },
     async set(key, value) {
       values.set(key, value)

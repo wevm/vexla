@@ -330,8 +330,12 @@ export function create<
           value: resolved.value,
         }
       }
+      const orphans = options.store?.keys
+        ? (await options.store.keys()).filter((key) => !(key in current.definitions)).sort()
+        : null
       return json(200, {
         flags,
+        orphans,
         store: Boolean(options.store),
         storeDefinitions: !options.definitions && Boolean(options.store?.definitions),
         version: 1,
@@ -341,12 +345,13 @@ export function create<
     if (resource === 'values' && key !== undefined && segments.length === 2) {
       if (!options.store) return json(501, { error: 'no_store' })
       const definition = (await definitions())[key]
-      if (!definition) return json(404, { error: 'unknown_flag' })
 
-      if (method === 'DELETE') {
+      // An orphan value, of a flag that no longer exists, may be deleted.
+      if (method === 'DELETE' && (definition || (await options.store.keys?.())?.includes(key))) {
         await options.store.delete(key)
         return json(200, { key })
       }
+      if (!definition) return json(404, { error: 'unknown_flag' })
       if (method !== 'PUT') return json(405, { error: 'method_not_allowed' })
 
       const body = await readJson(request)
