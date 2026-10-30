@@ -51,25 +51,9 @@ flowchart LR
 
 ## Motivation
 
-Long-lived feature branches are a problem. A branch diverges from `main` for each day that it lives. The merge at the end turns into a large, risky event, and the work stays out of production until then. Integration happens in large, rare steps, which is the opposite of continuous integration.
+Long-lived feature branches are a problem. They drift from `main`, end in large and risky merges, and keep finished work out of production. The fix is to push small changes to `main` continuously, with unfinished work behind a feature flag.
 
-The fix is to push to `main`. Trunk-based development merges small changes to `main` continuously, with no long-lived branches. A system that integrates in small, continuous steps is safer than one that integrates in large, rare ones.
-
-Almost every change that seems to need a branch can merge in small steps instead:
-
-- **Schema changes:** Add the column, merge, and deploy. Read from it in a later change.
-- **Migrations:** Add the new pattern next to the old one, then move callers one at a time.
-- **Unfinished features:** Merge each step behind a flag. The flag, not the branch, controls the release.
-
-These steps were once expensive to write by hand: a flag for each change, two configurations that work at the same time, and dead code that waits for a release. Coding agents now write this work at almost no cost. A feature flag becomes the cheapest way to merge to `main`, so flags must be easy to add, to read, and to remove.
-
-Flargs makes a flag one typed line:
-
-- **Add:** Declare the flag, and an agent or a developer puts the new code behind it on `main`.
-- **Preview:** A developer enables the flag for one browser, through the dev route or a link. Other users see no change.
-- **Release:** An admin enables the flag in an admin UI, or a deploy sets `FEATURE_*`. No new branch or merge is necessary.
-- **Remove:** Find All References locates every read. Delete the reads, then the declaration.
-- **Self-host:** Flags live in the application and its database. No third-party service, account, or toolbar is necessary.
+That extra work (flags, staged migrations, two configurations at once) was once tedious, but coding agents now write it at almost no cost. Flargs makes each flag one typed line that is easy to add, preview, release, and remove, on infrastructure that the application already owns.
 
 ## Agent Prompt
 
