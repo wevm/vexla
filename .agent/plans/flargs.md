@@ -1,5 +1,7 @@
 # Flargs Plan
 
+Status: phase 0 done. Phase 1 is next.
+
 Flargs is a self-hosted feature flag library for TypeScript and Rust. It declares flags in code, evaluates them on the server, and serves a dev route and an admin API from the host application. This plan defines the public API, the phases, and the acceptance gate of each phase.
 
 ## Motivation
@@ -705,7 +707,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 
 - Package with zile, Vite Plus, the `catalog:` workspace, `tsconfig.json` paths, and test aliases.
 - Entries: `flargs`, `flargs/server`, `flargs/values`.
-- **Gate:** `pnpm check`, `pnpm check:types`, `pnpm test`, and `pnpm build` pass on an empty entry.
+- **Gate:** `pnpm check`, `pnpm check:types`, `pnpm test`, and `pnpm build` pass on an empty entry. Done in `65f286a`.
 
 ### Phase 1: Definitions and Overrides
 
