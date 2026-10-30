@@ -1,0 +1,35 @@
+import * as Path from 'node:path'
+import { defineConfig } from 'vite-plus'
+
+export default defineConfig({
+  test: {
+    // Longer specifiers come first, since the bare `flargs` pattern is anchored.
+    alias: [
+      {
+        find: 'flargs/server',
+        replacement: Path.resolve(import.meta.dirname, 'src/server/index.ts'),
+      },
+      {
+        find: 'flargs/values',
+        replacement: Path.resolve(import.meta.dirname, 'src/values/index.ts'),
+      },
+      { find: /^flargs$/, replacement: Path.resolve(import.meta.dirname, 'src/index.ts') },
+    ],
+    globals: true,
+  },
+  lint: {
+    ignorePatterns: ['dist/**'],
+    // TypeScript runs separately through `pnpm check:types`.
+    options: {
+      typeAware: false,
+      typeCheck: false,
+    },
+  },
+  fmt: {
+    ignorePatterns: ['dist/**'],
+    printWidth: 100,
+    semi: false,
+    singleQuote: true,
+    sortPackageJson: false,
+  },
+})

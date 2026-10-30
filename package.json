@@ -1,0 +1,65 @@
+{
+  "scripts": {
+    "build": "zile",
+    "changeset:publish": "zile publish:prepare && changeset publish && zile publish:post",
+    "changeset:version": "changeset version",
+    "check": "vp check --fix",
+    "check:types": "tsc",
+    "dev": "zile dev",
+    "postinstall": "zile dev",
+    "test": "vp test"
+  },
+  "devDependencies": {
+    "@changesets/cli": "catalog:",
+    "@types/node": "catalog:",
+    "esbuild": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:",
+    "zile": "catalog:"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "[!start-pkg]": "",
+  "name": "flargs",
+  "description": "Self-hosted feature flags for TypeScript and Rust.",
+  "type": "module",
+  "version": "0.0.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wevm/flargs.git"
+  },
+  "sideEffects": false,
+  "bin": {
+    "flargs": "./dist/cli/bin.js",
+    "flargs.src": "./src/cli/bin.ts"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "src": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./server": {
+      "src": "./src/server/index.ts",
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    },
+    "./values": {
+      "src": "./src/values/index.ts",
+      "types": "./dist/values/index.d.ts",
+      "default": "./dist/values/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "!src/**/*.test-d.ts",
+    "!src/**/*.test.ts"
+  ],
+  "dependencies": {
+    "incur": "catalog:"
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}

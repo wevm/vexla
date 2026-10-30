@@ -1,0 +1,14 @@
+packages:
+  - '.'
+
+allowBuilds:
+  esbuild: true
+
+catalog:
+  '@changesets/cli': '^3.0.3'
+  '@types/node': '^24.10.1'
+  'esbuild': '0.28.2'
+  'incur': '0.7.1'
+  'typescript': '6.0.3'
+  'vite-plus': '0.2.2'
+  'zile': '0.0.30'
