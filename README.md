@@ -291,6 +291,9 @@ flargs unset newCheckout
 # Creates a flag in the store, for a project with no flags file.
 flargs define newCheckout --type boolean --default false --public
 
+# Lists stored values of removed flags, and deletes them with --yes.
+flargs prune
+
 # Returns a signed link that overrides a private flag for one week.
 flargs link https://app.example.com/checkout pricing=c --expires 7d
 

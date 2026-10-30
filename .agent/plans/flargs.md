@@ -74,7 +74,7 @@ flowchart LR
 - **`decide`:** code on `Runtime.create`, keyed by flag, with the `identify` context. It returns `undefined` to fall through.
 - **`default`:** required on every declaration.
 
-An invalid override, store value, or `decide` result never selects a value. The server reports it through `onError` and continues with the next source.
+An invalid override, store value, or `decide` result never selects a value. The server reports it through `onError` and continues with the next source. A stored value that a changed type or changed `options` invalidates therefore falls back to `decide`, then the default.
 
 ### Overrides
 
@@ -322,6 +322,54 @@ type Store = {
   }
 }
 ```
+
+#### Store Schema
+
+Flargs runs no database migrations. `Store.from` takes functions that the host writes against its own database, so the host owns the table and migrates it with its own tool, such as Drizzle, Prisma, or sqlx. The documentation publishes a reference schema for Postgres and SQLite.
+
+```sql
+-- Postgres. One row for each flag. `definition` is null when a flags file declares the flags.
+create table flags (
+  key        text primary key,
+  definition jsonb,
+  value      jsonb,
+  updated_at timestamptz not null default now()
+);
+```
+
+```sql
+-- SQLite. JSON columns hold text.
+create table flags (
+  key        text primary key,
+  definition text,
+  value      text,
+  updated_at text not null default (datetime('now'))
+);
+```
+
+```ts
+// Store.from maps the store operations to queries on the reference table.
+const store = Store.from({
+  delete: (key) => db.update(flags).set({ value: null }).where(eq(flags.key, key)),
+  get: (keys) => db.select().from(flags).where(inArray(flags.key, keys)).then(toRecord),
+  set: (key, value) =>
+    db
+      .insert(flags)
+      .values({ key, value })
+      .onConflictDoUpdate({ set: { value }, target: flags.key }),
+})
+```
+
+#### Flag Changes
+
+A change to a flag needs no database migration. Existing rows resolve as follows:
+
+| Change                     | Stored row                    | Behavior                                                     |
+| -------------------------- | ----------------------------- | ------------------------------------------------------------ |
+| Add a flag                 | none                          | resolves to `decide`, then the default, until a value is set |
+| Remove a flag              | an orphan value               | ignored by evaluation. `flargs prune` deletes it             |
+| Change `type` or `options` | a value that fails validation | reported through `onError`, then `decide`, then the default  |
+| Rename a flag              | the row of the old key        | the new key has no value. The old row is an orphan           |
 
 `Runtime.create` options:
 
@@ -614,6 +662,7 @@ flargs list --url https://api-admin.example.com/.flags
 | `flargs unset <key>`               | deletes the store value                                                                                                    |
 | `flargs define <key>`              | creates or replaces a store definition. `--type`, `--default`, `--options`, `--public`, and `--description` set its fields |
 | `flargs undefine <key>`            | deletes a store definition                                                                                                 |
+| `flargs prune`                     | lists stored values and definitions of undeclared keys. `--yes` deletes them                                               |
 | `flargs link <url> <key=value...>` | returns a signed share URL. `--expires` sets the lifetime                                                                  |
 | `flargs check`                     | validates the environment against the flags file, for CI                                                                   |
 | `flargs env`                       | writes `.env.example` from the flags file                                                                                  |
@@ -727,7 +776,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 
 ### Phase 6: CLI
 
-- `list`, `get`, `set`, `unset`, `define`, `undefine`, `link`, `check`, `env`, `generate`, and `dev`.
+- `list`, `get`, `set`, `unset`, `define`, `undefine`, `prune`, `link`, `check`, `env`, `generate`, and `dev`.
 - **Gate:** the built CLI runs against a local `runtime.fetch`. No output contains `FLARGS_TOKEN` or `FLARGS_SECRET`. A `.test-d.ts` fixture type-checks against the output of `flargs generate`.
 
 ### Phase 7: Stores
@@ -751,6 +800,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 - **Precompute of runtime flags:** encodes values into the URL for static pages. Add it when a static page needs a runtime flag.
 - **Vercel Toolbar compatibility:** a `/.well-known/vercel/flags` adapter. Add it when a host uses the Toolbar.
 - **Audit log and history:** a host store can record writes. Add an API when two hosts need the same shape.
+- **Database adapters:** `Store.postgres` or `Store.drizzle`, with Flargs-owned tables and migrations. Add one when three projects need the same adapter. Until then, `Store.from` and the reference schema cover each database.
 - **Real-time updates:** the client refreshes on request. Add a stream when a page must change without a reload.
 - **Content mapper:** a TypeScript 7.1 content mapper (`flargs/content-mapper`) that types the flags file with no generated module. Mappers match files by extension, and TypeScript handles `.json` itself, so a mapper cannot claim `flags.json`. Add it when mappers match a compound extension such as `.flags.json`. Type checks with a mapper also need `tsc --runExternalCode`, and VS Code needs workspace trust and mapper permission.
 
