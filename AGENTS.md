@@ -222,7 +222,7 @@ The `flargs` crate evaluates the same manifest, overrides, and signatures as the
 ## Repository Layout
 
 - `src/`: flat PascalCase modules of the core entry (`Definitions`, `Override`, `Values`), with colocated tests. `src/index.ts` re-exports them as namespaces, and exports `flags` directly.
-- `src/hono/`, `src/node/`, `src/react/`, `src/server/`, `src/vite/`: the `flargs/hono`, `flargs/node`, `flargs/react`, `flargs/server`, and `flargs/vite` entries.
+- `src/hono/`, `src/node/`, `src/react/`, `src/server/`, `src/vite/`, `src/zile/`: the `flargs/hono`, `flargs/node`, `flargs/react`, `flargs/server`, `flargs/vite`, and `flargs/zile` entries.
 - `src/server/ui/`: the dev route page, one HTML document with inline styles and no runtime dependency.
 - `src/cli/`: the incur CLI. `bin.ts` is the entry, and each command lives in its own file.
 - `src/internal/`: helpers that no entry exports.
@@ -238,7 +238,7 @@ The `flargs` crate evaluates the same manifest, overrides, and signatures as the
 - Use zile for library builds and development linking.
 - Put scripts, devDependencies, and packageManager before `[!start-pkg]` in package.json. Package metadata and runtime dependencies follow it. Alphabetize entries within each group.
 - Use the single scaffold tsconfig.json for the package. `docs/` has its own tsconfig.json, and the root one excludes it. Zile derives build inputs from package entrypoints. Add each entry to `paths` in `tsconfig.json` and to the test aliases in `vite.config.ts`.
-- `incur` is the one runtime dependency, for the CLI. `hono`, `react`, and `vite` are optional peers.
+- `incur` is the one runtime dependency, for the CLI. `hono`, `react`, `vite`, and `zile` are optional peers.
 - Use Vocs for the documentation site. `docs/src/pages/_root.css` holds the theme overrides: black and a lighter black in dark mode, and square corners.
 
 ## Commands

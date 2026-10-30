@@ -204,6 +204,22 @@ export default defineConfig({
 })
 ```
 
+### Libraries
+
+A library declares build flags only, and publishes from `main` with unfinished work off. Zile replaces each read after `tsc`, so the published files contain a literal and no `flargs` import.
+
+```jsonc
+// package.json
+"zile": { "define": "flargs/zile" }
+```
+
+```ts
+import { flags } from 'flargs'
+
+// Becomes `if (false)` in the published files.
+if (flags.newEncoder) return encodeV2(value)
+```
+
 ### Overrides
 
 In dev mode, search parameters override any flag. In production, they override public flags, and a signed link overrides a private flag. The server stores valid overrides in a signed `HttpOnly` cookie.

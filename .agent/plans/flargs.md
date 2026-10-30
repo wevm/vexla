@@ -645,6 +645,35 @@ export default defineConfig({
 - In dev mode, the dev route also lists build flags. A change writes an override file and triggers a full reload.
 - `Definitions.defines(definitions, options)` returns the same replacements for esbuild, Rollup, and webpack `DefinePlugin`.
 
+### Libraries
+
+A library merges unfinished work to `main` behind a build flag, and publishes from `main` with the flag off. A library has no request, so it declares build flags only.
+
+```json
+{
+  "$schema": "./node_modules/flargs/schema.json",
+  "newEncoder": { "build": true, "default": false, "type": "boolean" }
+}
+```
+
+```ts
+import { flags } from 'flargs'
+
+// Becomes `if (false)` in the published files. The consumer's bundler drops the branch.
+if (flags.newEncoder) return encodeV2(value)
+```
+
+```jsonc
+// package.json: zile replaces each build flag read after tsc.
+"zile": { "define": "flargs/zile" }
+```
+
+- **Zile:** zile transpiles with `tsc` and has no replacement step. A generic `define` option in zile (a change in `wevm/zile`) names a module whose default export returns replacements. Zile applies them to the `tsc` output, before it writes `dist`.
+- **`flargs/zile`:** returns `Definitions.defines` for the flags file of the package. Each value resolves from its variable in the environment of the build, then the default, so a CI job can publish a prerelease with `FEATURE_NEW_ENCODER=true`.
+- **No runtime dependency:** the replacement removes the `flargs` import once every read is a literal, so `flargs` stays a dev dependency of the library. A runtime flag or a remaining `flargs` import fails the build.
+- **Types:** `tsc` still emits the types of an unfinished export. Mark the export `@internal`, or keep it in an entry that the package does not publish.
+- **Other builders:** tsup, tsdown, and Rollup take `Definitions.defines` through their own `define` option.
+
 ### CLI
 
 The CLI uses incur, so `--llms`, `--mcp`, `--format`, and `skills add` are available on every command.
@@ -771,8 +800,8 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 
 ### Phase 5: Build Flags
 
-- `flargs/vite` and `Definitions.defines`.
-- **Gate:** a Vite build of a fixture app contains the literal, drops the dead branch, and contains no private build flag key.
+- `flargs/vite`, `flargs/zile`, and `Definitions.defines`. The `define` option of zile lands in `wevm/zile` first.
+- **Gate:** a Vite build of a fixture app contains the literal, drops the dead branch, and contains no private build flag key. A zile build of a fixture library contains the literal and no `flargs` import.
 
 ### Phase 6: CLI
 
