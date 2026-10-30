@@ -65,6 +65,7 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 - **Dev Route:** a page at `/.flags` toggles flags for one browser, or for every request with admin access.
 - **Admin API:** an HTTP API reads and writes store values for an admin UI, the CLI, or CI.
 - **Overrides:** search parameters override public flags, and signed links override private flags.
+- **Retirement:** `flargs retire` replaces each read with the final value and deletes the flag, and `expires` marks flags that are due.
 - **Stores:** memory, environment variables, Cloudflare KV, a remote Flargs API, or a table in the database of the application.
 - **Integrations:** a fetch handler for Next.js, Cloudflare Workers, and Bun, plus Hono, Node, React, and Vite.
 - **CLI and MCP:** the `flargs` command lists, sets, and links flags, checks the environment, and generates types.
@@ -309,6 +310,12 @@ flargs define newCheckout --type boolean --default false --public
 
 # Lists stored values of removed flags, and deletes them with --yes.
 flargs prune
+
+# Lists flags past their expiry date.
+flargs stale
+
+# Replaces each read of a flag with its final value, then deletes the flag.
+flargs retire newCheckout --value true
 
 # Returns a signed link that overrides a private flag for one week.
 flargs link https://app.example.com/checkout pricing=c --expires 7d

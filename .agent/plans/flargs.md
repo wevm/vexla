@@ -166,6 +166,7 @@ Every flag is an object with an explicit `type` and `default`. Flargs infers no 
 | `default`     | the default value. It must match `type`, and one of `options` for a select flag | required                                         |
 | `description` | the description, for the dev route, the admin API, and `.env.example`           | none                                             |
 | `env`         | the environment variable name                                                   | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
+| `expires`     | a date (`YYYY-MM-DD`) after which the flag is due for retirement                | none                                             |
 | `options`     | the values of a select flag                                                     | required for `select`                            |
 | `public`      | `true` lets the value reach the browser                                         | `false`                                          |
 | `type`        | `'boolean'`, `'json'`, `'number'`, `'select'`, or `'string'`                    | required                                         |
@@ -364,12 +365,12 @@ const store = Store.from({
 
 A change to a flag needs no database migration. Existing rows resolve as follows:
 
-| Change                     | Stored row                    | Behavior                                                     |
-| -------------------------- | ----------------------------- | ------------------------------------------------------------ |
-| Add a flag                 | none                          | resolves to `decide`, then the default, until a value is set |
-| Remove a flag              | an orphan value               | ignored by evaluation. `flargs prune` deletes it             |
-| Change `type` or `options` | a value that fails validation | reported through `onError`, then `decide`, then the default  |
-| Rename a flag              | the row of the old key        | the new key has no value. The old row is an orphan           |
+| Change                     | Stored row                    | Behavior                                                            |
+| -------------------------- | ----------------------------- | ------------------------------------------------------------------- |
+| Add a flag                 | none                          | resolves to `decide`, then the default, until a value is set        |
+| Remove a flag              | an orphan value               | ignored by evaluation. `flargs retire` or `flargs prune` deletes it |
+| Change `type` or `options` | a value that fails validation | reported through `onError`, then `decide`, then the default         |
+| Rename a flag              | the row of the old key        | the new key has no value. The old row is an orphan                  |
 
 `Runtime.create` options:
 
@@ -645,6 +646,32 @@ export default defineConfig({
 - In dev mode, the dev route also lists build flags. A change writes an override file and triggers a full reload.
 - `Definitions.defines(definitions, options)` returns the same replacements for esbuild, Rollup, and webpack `DefinePlugin`.
 
+### Retirement
+
+A flag exists to merge unfinished work, so each flag has an end. Retirement replaces every read with the final value, then deletes the flag.
+
+```json
+{
+  "newCheckout": { "default": false, "expires": "2027-01-31", "public": true, "type": "boolean" }
+}
+```
+
+```bash
+# Lists flags past their `expires` date, and flags whose value has not changed for 30 days.
+flargs stale
+
+# Replaces each read of newCheckout with true, deletes the declaration, and prunes the store.
+flargs retire newCheckout --value true
+```
+
+- **Expiry:** after its `expires` date, a flag is stale. `flargs check` reports stale flags, and fails with `--strict`. The dev route marks them.
+- **Final value:** `--value` sets the value that replaces every read. Without it, `flargs retire` uses the current store value, then the default, and prints the value it chose.
+- **Code:** `flargs retire` rewrites TypeScript with the TypeScript compiler API. `flags.newCheckout` becomes `true`, a `useFlag('newCheckout')` call becomes `true`, and an `if` or a ternary with a literal condition keeps only the branch that runs. It prints each read it cannot rewrite, such as a dynamic key, with its file and line.
+- **Declaration:** it deletes the key from `flags.json` (or `flags.toml`), or the store definition through `DELETE /.flags/definitions/:key`, and the store value through `DELETE /.flags/values/:key`.
+- **Rust:** `flargs retire` deletes the key from `flags.toml`. `flargs::flags!` then fails to compile at every read of the removed key, which lists the reads to replace.
+- **Agents:** the command is also an MCP tool through incur, so an agent retires a flag, then runs the type check and tests.
+- **Dry run:** `--dry-run` prints the diff and changes nothing.
+
 ### Libraries
 
 A library merges unfinished work to `main` behind a build flag, and publishes from `main` with the flag off. A library has no request, so it declares build flags only.
@@ -692,6 +719,8 @@ flargs list --url https://api-admin.example.com/.flags
 | `flargs define <key>`              | creates or replaces a store definition. `--type`, `--default`, `--options`, `--public`, and `--description` set its fields |
 | `flargs undefine <key>`            | deletes a store definition                                                                                                 |
 | `flargs prune`                     | lists stored values and definitions of undeclared keys. `--yes` deletes them                                               |
+| `flargs retire <key>`              | replaces each read with the final value, deletes the declaration, and prunes the store. `--value` and `--dry-run`          |
+| `flargs stale`                     | lists flags past `expires`, and flags whose value has not changed for 30 days                                              |
 | `flargs link <url> <key=value...>` | returns a signed share URL. `--expires` sets the lifetime                                                                  |
 | `flargs check`                     | validates the environment against the flags file, for CI                                                                   |
 | `flargs env`                       | writes `.env.example` from the flags file                                                                                  |
@@ -805,8 +834,8 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 
 ### Phase 6: CLI
 
-- `list`, `get`, `set`, `unset`, `define`, `undefine`, `prune`, `link`, `check`, `env`, `generate`, and `dev`.
-- **Gate:** the built CLI runs against a local `runtime.fetch`. No output contains `FLARGS_TOKEN` or `FLARGS_SECRET`. A `.test-d.ts` fixture type-checks against the output of `flargs generate`.
+- `list`, `get`, `set`, `unset`, `define`, `undefine`, `prune`, `retire`, `stale`, `link`, `check`, `env`, `generate`, and `dev`.
+- **Gate:** the built CLI runs against a local `runtime.fetch`. No output contains `FLARGS_TOKEN` or `FLARGS_SECRET`. A `.test-d.ts` fixture type-checks against the output of `flargs generate`. `flargs retire` on a fixture app rewrites every read, removes dead branches, and leaves a project that passes `tsc`.
 
 ### Phase 7: Stores
 
