@@ -11,10 +11,11 @@ export default defineConfig({
       },
       { find: /^flargs$/, replacement: Path.resolve(import.meta.dirname, 'src/index.ts') },
     ],
+    exclude: ['.claude/**', 'dist/**', 'node_modules/**'],
     globals: true,
   },
   lint: {
-    ignorePatterns: ['dist/**'],
+    ignorePatterns: ['.claude/**', 'dist/**'],
     // TypeScript runs separately through `pnpm check:types`.
     options: {
       typeAware: false,
@@ -22,7 +23,7 @@ export default defineConfig({
     },
   },
   fmt: {
-    ignorePatterns: ['dist/**'],
+    ignorePatterns: ['.claude/**', 'dist/**'],
     printWidth: 100,
     semi: false,
     singleQuote: true,
