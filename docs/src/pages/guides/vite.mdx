@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `flargs/vite` plugin reads `flags.json`, writes `flargs.gen.ts`, and replaces each read of a build flag with a literal. A minifier then drops the dead branch. In browser code, a read of a private runtime flag fails the build.
+The `flargs/vite` plugin reads `flags.json`, writes `flargs.gen.ts`, and replaces each read of a build flag with a literal. A minifier then drops the dead branch. In browser code, a read of a private flag fails the build, whether it is a build flag or a runtime flag.
 
 A bundler `define` cannot replace a member of an imported binding, such as `flags.maintenanceBanner`. The plugin therefore rewrites reads with the TypeScript compiler API, so `typescript` must be installed.
 

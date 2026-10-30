@@ -33,6 +33,6 @@ flargs(options?: flargs.Options): Plugin
 - **Generation:** at the start of a build, the plugin parses the flags file and writes the generated module when its content changes.
 - **Values:** each build flag resolves from `store`, then its variable, then its default. Variables come from `process.env` and the `.env` files of the Vite mode.
 - **Rewrite:** in each JavaScript or TypeScript module outside `node_modules`, a read of a build flag through the `flags` import of `flargs`, or `useFlag` of `flargs/react`, becomes a literal.
-- **Private flags:** in browser code, a read of a private runtime flag fails the build. Server code (`ssr`) may read any flag.
+- **Private flags:** in browser code, a read of a private flag, build or runtime, fails the build. Server code (`ssr`) may read any flag.
 - **Dev server:** a change of the flags file writes the module again and triggers a full reload.
 - **Dependency:** the rewrite uses the TypeScript compiler API, so `typescript` must be installed.

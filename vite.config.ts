@@ -31,7 +31,7 @@ export default defineConfig({
       },
       { find: /^flargs$/, replacement: Path.resolve(import.meta.dirname, 'src/index.ts') },
     ],
-    exclude: ['.claude/**', 'dist/**', 'node_modules/**', 'target/**'],
+    exclude: ['**/node_modules/**', '.claude/**', 'dist/**', 'docs/**', 'target/**'],
     globals: true,
     // CLI tests start processes, which take longer on CI runners.
     testTimeout: 30_000,
