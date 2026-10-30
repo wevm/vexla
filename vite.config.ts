@@ -31,13 +31,13 @@ export default defineConfig({
       },
       { find: /^flargs$/, replacement: Path.resolve(import.meta.dirname, 'src/index.ts') },
     ],
-    exclude: ['.claude/**', 'dist/**', 'node_modules/**'],
+    exclude: ['.claude/**', 'dist/**', 'node_modules/**', 'target/**'],
     globals: true,
     // CLI tests start processes, which take longer on CI runners.
     testTimeout: 30_000,
   },
   lint: {
-    ignorePatterns: ['.claude/**', 'dist/**'],
+    ignorePatterns: ['.claude/**', 'dist/**', 'target/**'],
     // TypeScript runs separately through `pnpm check:types`.
     options: {
       typeAware: false,
@@ -45,7 +45,7 @@ export default defineConfig({
     },
   },
   fmt: {
-    ignorePatterns: ['.claude/**', 'dist/**'],
+    ignorePatterns: ['.claude/**', 'dist/**', 'target/**'],
     printWidth: 100,
     semi: false,
     singleQuote: true,

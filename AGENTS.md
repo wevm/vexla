@@ -226,7 +226,7 @@ The `flargs` crate evaluates the same manifest, overrides, and signatures as the
 - `src/server/ui/`: the dev route page, one HTML document with inline styles and no runtime dependency.
 - `src/cli/`: the incur CLI. `bin.ts` is the entry, and each command lives in its own file.
 - `src/internal/`: helpers that no entry exports.
-- `crates/flargs/`: the Rust crate. `crates/flargs-macros/`: the `flargs::flags!` macro.
+- `crates/flargs/`: the Rust crate. `crates/flargs-definitions/`: the parser that the crate and the macro share. `crates/flargs-macros/`: the `flargs::flags!` macro.
 - `test/`: the shared harness. `test/vectors/`: evaluation, override, and signature vectors that TypeScript and Rust both run.
 - `docs/`: the Vocs documentation site, a private workspace package. Pages live in `docs/src/pages/`, organized as Introduction, Guides, API Reference, and CLI Reference. `docs/vocs.config.ts` holds the sidebar.
 - `.agent/plans/flargs.md`: the plan, the public API, and the acceptance gate of each phase.
