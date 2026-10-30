@@ -10,18 +10,21 @@
 
 ## Overview
 
-```json
-{
-  "$schema": "./node_modules/flargs/schema.json",
-  "newCheckout": { "default": false, "public": true, "type": "boolean" },
-  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
-}
+```bash
+# .env.flags
+
+# Use the new checkout flow.
+# @type {boolean} @public
+FEATURE_NEW_CHECKOUT=false
+
+# @type {'a' | 'b' | 'c'}
+FEATURE_PRICING=a
 ```
 
 ```ts
 import { flags } from 'flargs'
 
-// Typed from flags.json. Resolves on the server, or from the page in a browser.
+// Typed from .env.flags. Resolves on the server, or from the page in a browser.
 if (flags.newCheckout) renderNewCheckout()
 ```
 
@@ -50,7 +53,7 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 
 ## Features
 
-- **Flags Files:** `flags.json` or `flags.toml`, validated by one JSON Schema.
+- **Flags File:** `.env.flags` declares each flag as a `FEATURE_*` variable, with JSDoc-style tags for its type.
 - **Environment Variables:** each flag links to a `FEATURE_*` variable, and an undeclared variable fails at startup.
 - **Build Flags:** values compile to literals, so dead branches drop from the bundle.
 - **Runtime Flags:** values resolve on the server for each request, from an override, a store value, `decide`, or the default.
@@ -61,34 +64,41 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 - **Stores:** memory, environment variables, Cloudflare KV, a remote Flargs API, or a table in the database of the application.
 - **Integrations:** a fetch handler for Next.js, Cloudflare Workers, and Bun, plus Hono, Node, React, and Vite.
 - **CLI and MCP:** the `flargs` command lists, sets, and links flags, checks the environment, and generates types.
-- **Rust:** `flargs::flags!` reads `flags.toml` at compile time and generates typed flags.
+- **Rust:** `flargs::flags!` reads `.env.flags` at compile time and generates typed flags.
 
 ## Usage
 
 ### Flags File
 
-`flags.json` declares every flag with its type and default. The JSON Schema validates the file and completes keys in editors.
+`.env.flags` declares every flag in dotenv syntax. Each `FEATURE_*` variable is a flag, and its value is the default. Comment lines directly above it hold the description and JSDoc-style tags.
 
-```json
-{
-  "$schema": "./node_modules/flargs/schema.json",
-  "limits": { "default": { "requests": 100 }, "type": "json" },
-  "maintenanceBanner": { "build": true, "default": false, "public": true, "type": "boolean" },
-  "newCheckout": {
-    "default": false,
-    "description": "Use the new checkout flow.",
-    "public": true,
-    "type": "boolean"
-  },
-  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
-}
+```bash
+# .env.flags (committed)
+
+# Use the new checkout flow.
+# @type {boolean}
+# @public
+FEATURE_NEW_CHECKOUT=false
+
+# Pricing page variant.
+# @type {'a' | 'b' | 'c'}
+FEATURE_PRICING=a
+
+# @type {json}
+FEATURE_LIMITS={"requests":100}
+
+# Show the maintenance banner. Tags may share one line.
+# @type {boolean} @build @public @expires 2027-01-31
+FEATURE_MAINTENANCE_BANNER=false
 ```
 
-A flag is private unless `public` is `true`, and a private value never reaches a browser. A `build` flag resolves when the bundle builds.
+`@type` is required: `{boolean}`, `{number}`, `{string}`, `{json}`, or a union of string literals for a select flag. A flag is private unless it has `@public`, and a private value never reaches a browser. A `@build` flag resolves when the bundle builds.
+
+A `.gitignore` entry such as `.env*` also ignores `.env.flags`. Add `!.env.flags` after it, so the file is committed.
 
 ### Environment Variables
 
-Each flag links to an environment variable: `newCheckout` reads `FEATURE_NEW_CHECKOUT`, and `env` sets another name. A `.env` file or the deploy environment sets values that differ from the defaults.
+The key of a flag comes from its variable: `FEATURE_NEW_CHECKOUT` is `newCheckout`. A `.env` file, `.env.local`, or the deploy environment sets values that differ from the defaults.
 
 ```bash
 # .env (gitignored): values for this environment.
@@ -96,14 +106,14 @@ FEATURE_NEW_CHECKOUT=true
 FEATURE_PRICING=b
 ```
 
-A `FEATURE_*` variable that `flags.json` does not declare throws at startup, so a typo does not fail silently.
+A `FEATURE_*` variable that `.env.flags` does not declare throws at startup, so a typo does not fail silently.
 
 ### Store Definitions
 
 A project with no flags file declares its flags in the store. An admin UI or the CLI then creates flags with no deploy, and `flargs generate --url` writes the types from the running server.
 
 ```ts
-// No flags.json: the store holds the definitions and the values.
+// No .env.flags: the store holds the definitions and the values.
 const flargs = Flargs.create({
   authorize,
   secret: process.env.FLARGS_SECRET,
@@ -115,7 +125,7 @@ A project uses one source: a flags file, reviewed with the code that reads it, o
 
 ### Types
 
-`flargs generate` reads `flags.json` and writes `flargs.gen.ts`, which holds the definitions and their types. `flargs/vite` runs the same step on each change of `flags.json`.
+`flargs generate` reads `.env.flags` and writes `flargs.gen.ts`, which holds the definitions and their types. `flargs/vite` runs the same step on each change of `.env.flags`.
 
 ```ts
 import { flags } from 'flargs'
@@ -192,7 +202,7 @@ import { defineConfig } from 'vite'
 import flargs from 'flargs/vite'
 
 export default defineConfig({
-  // Reads flags.json, writes flargs.gen.ts, and resolves build flags from the environment.
+  // Reads .env.flags, writes flargs.gen.ts, and resolves build flags from the environment.
   plugins: [flargs()],
 })
 ```
@@ -248,24 +258,11 @@ PUT /.flags/values/newCheckout
 
 ### Rust
 
-`flags.toml` follows the same schema as `flags.json`. `flargs::flags!` reads it at compile time, so a bad declaration fails the build.
-
-```toml
-#:schema https://unpkg.com/flargs/schema.json
-[new_checkout]
-default = false
-public = true
-type = "boolean"
-
-[pricing]
-default = "a"
-options = ["a", "b", "c"]
-type = "select"
-```
+`flargs::flags!` reads the same `.env.flags` at compile time, so a bad declaration fails the build, and one file serves a TypeScript app and a Rust service.
 
 ```rust
-// Generates `Flags`, typed keys, and the `Pricing` enum from flags.toml.
-flargs::flags!("flags.toml");
+// Generates `Flags`, typed keys, and the `Pricing` enum from .env.flags.
+flargs::flags!(".env.flags");
 
 let pricing: Pricing = flargs.get(&parts, Flags::PRICING).await?;
 
@@ -281,11 +278,8 @@ let app = Router::new()
 The CLI uses [incur](https://github.com/wevm/incur), so every command supports `--llms`, `--mcp`, and `--format`. `FLARGS_URL` and `FLARGS_TOKEN` select the server and its token.
 
 ```bash
-# Writes flargs.gen.ts from flags.json.
+# Writes flargs.gen.ts from .env.flags.
 flargs generate
-
-# Writes .env.example: every variable, its default, and its description.
-flargs env
 
 # Fails when the environment sets an undeclared or invalid FEATURE_* variable.
 flargs check

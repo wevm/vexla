@@ -7,20 +7,20 @@ Source commit: `78decd57e6823ec5de899a5acb8bbdb9c227b3a3`. Retrieved 2026-10-30.
 
 ## Project Principles
 
-- Flargs is a self-hosted feature flag library. It declares flags in a committed `flags.json` or `flags.toml` file, evaluates them on the server, and serves a dev route and an admin API from the host application. It is a self-hosted alternative to the Vercel Flags SDK.
+- Flargs is a self-hosted feature flag library. It declares flags in a committed `.env.flags` file, evaluates them on the server, and serves a dev route and an admin API from the host application. It is a self-hosted alternative to the Vercel Flags SDK.
 - Flargs supports trunk-based development. Unfinished work merges to `main` behind a flag, and the flag, not the branch, controls the release.
-- Flargs covers four roles: the definitions (`flags.json` or `flags.toml`, validated by `Definitions` in `flargs`), the instance (`Flargs.create` in `flargs/server`, served through `flargs.fetch`), the values (`flags` in `flargs`), and the build (`flargs/vite`). The CLI and the Rust crate use the same wire format. Stay general purpose. Never add code for one product or one deployment.
+- Flargs covers four roles: the definitions (`.env.flags`, parsed by `Definitions` in `flargs`), the instance (`Flargs.create` in `flargs/server`, served through `flargs.fetch`), the values (`flags` in `flargs`), and the build (`flargs/vite`). The CLI and the Rust crate use the same wire format. Stay general purpose. Never add code for one product or one deployment.
 - A flag resolves at one of two times. A `build` flag resolves when the bundle is built, compiles to a literal, and never reaches the API. A `runtime` flag resolves on the server for each request.
-- `flags.json` (TypeScript), `flags.toml` (Rust), or the store declares each flag with its default, following one JSON Schema. A project uses one source: with `definitions`, the store holds values only. Each flag links to a `FEATURE_*` environment variable. A gitignored `.env` or the deploy environment sets values.
+- `.env.flags` or the store declares each flag. In `.env.flags`, each `FEATURE_*` variable is a flag and its value is the default, and comment lines above it hold the description and JSDoc-style tags: `@type` (required), `@public`, `@build`, and `@expires`. A project uses one source: with `definitions`, the store holds values only. Each flag links to a `FEATURE_*` environment variable. A gitignored `.env` or the deploy environment sets values.
 - `public: true`, not a variable prefix, controls whether a value reaches the browser. Flargs configuration variables use the `FLARGS_` prefix.
-- `flargs generate` and `flargs/vite` write `flargs.gen.ts` from `flags.json`. No runtime reads the flags file from disk. Rust parses `flags.toml` at compile time with `flargs::flags!`.
+- `flargs generate` and `flargs/vite` write `flargs.gen.ts` from `.env.flags`. No runtime reads the flags file from disk. Rust parses `.env.flags` at compile time with `flargs::flags!`.
 - The server resolves a runtime flag value in one order: an override, the store value, `decide`, then `default`. Change this order only in `.agent/plans/flargs.md` first.
 - A flag is `private` unless it declares `visibility: 'public'`. A private flag value never leaves the server, except through the authorized admin API.
 - In dev mode, every flag accepts an override. In production, an unsigned override applies only to a public runtime flag. A private flag accepts only a signed override. A build flag accepts no override.
 - The dev route sets personal overrides in a cookie. The admin API writes the store, which applies to every request. Keep these two paths separate.
 - Keep `flargs/server` and the `browser` condition of `flargs` free of dependencies and of Node built-ins, so they run in Node, Bun, Deno, edge runtimes, and browsers. Sign and verify with WebCrypto. The server condition of `flargs` uses only `AsyncLocalStorage` from `node:async_hooks`, which Node, Bun, Deno, and Workers (`nodejs_compat`) provide.
 - The browser snapshot of `flags` in `flargs` is the only module-scope state. Every other module follows the instance conventions below.
-- The flags file schema and the JSON manifest of the admin API are the contract between TypeScript, the CLI, and Rust. Shared vectors in `test/vectors/` prove that every implementation evaluates, parses, and signs the same way.
+- The `.env.flags` format and the JSON manifest of the admin API are the contract between TypeScript, the CLI, and Rust. Shared vectors in `test/vectors/` prove that every implementation evaluates, parses, and signs the same way.
 - `.agent/plans/flargs.md` defines the public API, the phases, and the acceptance gates. Update it in the same change as an API decision.
 
 ## Security Conventions
@@ -192,7 +192,7 @@ Applies to documentation, comments, TSDoc, interface copy, commit messages, and 
 The `flargs` crate evaluates the same manifest, overrides, and signatures as the TypeScript packages. These conventions are adapted from `wevm/ondine`. Project principles, TypeScript conventions, and testing rules still apply wherever they have a Rust equivalent.
 
 - Keep evaluation, override parsing, and signing pure in the `flargs` crate. Put HTTP behind the `client` feature, the dev route behind the `server` feature (a `tower::Service`), the extractor behind `axum`, and `build.rs` support behind `build`.
-- Keep `flargs-macros` a thin proc-macro crate. It reads `flags.toml` or `flags.json` with the parser that the vectors cover, reports errors with `syn::Error` spans that name the key, and emits calls into `flargs`. Runtime logic in the macro is a defect.
+- Keep `flargs-macros` a thin proc-macro crate. It reads `.env.flags` with the parser that the vectors cover, reports errors with `syn::Error` spans that name the key, and emits calls into `flargs`. Runtime logic in the macro is a defect.
 - Use edition 2024 and pin the toolchain in `rust-toolchain.toml`. Declare `rust-version` in the workspace.
 - Configure `[workspace.lints]` with `clippy::all` and `clippy::pedantic` at `warn` (priority `-1`), plus `allow_attributes`, `dbg_macro`, `get_unwrap`, `print_stderr`, `print_stdout`, `todo`, `undocumented_unsafe_blocks`, and `unimplemented`. Allow only `module_name_repetitions`, `must_use_candidate`, `similar_names`, and `too_many_lines`.
 - Suppress a lint locally with `#[expect(lint, reason = "...")]`, never `#[allow]`. Deny `unsafe_code`.
