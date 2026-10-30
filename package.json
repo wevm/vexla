@@ -12,9 +12,14 @@
   "devDependencies": {
     "@changesets/cli": "catalog:",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "esbuild": "catalog:",
     "hono": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vite-plus": "catalog:",
     "zile": "catalog:"
   },
@@ -51,10 +56,25 @@
       "types": "./dist/node/index.d.ts",
       "default": "./dist/node/index.js"
     },
+    "./react": {
+      "src": "./src/react/index.ts",
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
+    },
     "./server": {
       "src": "./src/server/index.ts",
       "types": "./dist/server/index.d.ts",
       "default": "./dist/server/index.js"
+    },
+    "./vite": {
+      "src": "./src/vite/index.ts",
+      "types": "./dist/vite/index.d.ts",
+      "default": "./dist/vite/index.js"
+    },
+    "./zile": {
+      "src": "./src/zile/index.ts",
+      "types": "./dist/zile/index.d.ts",
+      "default": "./dist/zile/index.js"
     }
   },
   "files": [
@@ -68,10 +88,22 @@
     "incur": "catalog:"
   },
   "peerDependencies": {
-    "hono": "catalog:"
+    "hono": "catalog:",
+    "react": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:"
   },
   "peerDependenciesMeta": {
     "hono": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    },
+    "vite": {
       "optional": true
     }
   },

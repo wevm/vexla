@@ -211,7 +211,7 @@ A library declares build flags only, and publishes from `main` with unfinished w
 
 ```jsonc
 // package.json
-"zile": { "define": "flargs/zile" }
+"zile": { "transform": "flargs/zile" }
 ```
 
 ```ts

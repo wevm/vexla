@@ -14,8 +14,20 @@ export default defineConfig({
         replacement: Path.resolve(import.meta.dirname, 'src/node/index.ts'),
       },
       {
+        find: 'flargs/react',
+        replacement: Path.resolve(import.meta.dirname, 'src/react/index.ts'),
+      },
+      {
         find: 'flargs/server',
         replacement: Path.resolve(import.meta.dirname, 'src/server/index.ts'),
+      },
+      {
+        find: 'flargs/vite',
+        replacement: Path.resolve(import.meta.dirname, 'src/vite/index.ts'),
+      },
+      {
+        find: 'flargs/zile',
+        replacement: Path.resolve(import.meta.dirname, 'src/zile/index.ts'),
       },
       { find: /^flargs$/, replacement: Path.resolve(import.meta.dirname, 'src/index.ts') },
     ],

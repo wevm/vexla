@@ -10,7 +10,10 @@
       "flargs": ["./src/index.ts"],
       "flargs/hono": ["./src/hono/index.ts"],
       "flargs/node": ["./src/node/index.ts"],
-      "flargs/server": ["./src/server/index.ts"]
+      "flargs/react": ["./src/react/index.ts"],
+      "flargs/server": ["./src/server/index.ts"],
+      "flargs/vite": ["./src/vite/index.ts"],
+      "flargs/zile": ["./src/zile/index.ts"]
     },
     "types": ["node", "vite-plus/test/globals"],
 

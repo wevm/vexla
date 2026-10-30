@@ -1,6 +1,6 @@
 # Flargs Plan
 
-Status: phases 1 to 3 done. Phase 4 is next.
+Status: phases 1 to 5 done. Phase 6 is next.
 
 Flargs is a self-hosted feature flag library for TypeScript and Rust. It declares flags in a committed `flags.json` or `flags.toml` file, evaluates them on the server, and serves a dev route and an admin API from the host application. This plan defines the public API, the phases, and the acceptance gate of each phase.
 
@@ -644,7 +644,7 @@ export default defineConfig({
 - The plugin replaces `flags.<key>` with a literal for every build flag, where `flags` is the import from `flargs`. Dead branches drop from the bundle.
 - A read of a private flag in browser code is a build error.
 - In dev mode, the dev route also lists build flags. A change writes an override file and triggers a full reload.
-- `Definitions.defines(definitions, options)` returns the same replacements for esbuild, Rollup, and webpack `DefinePlugin`.
+- `Definitions.defines(definitions, options)` returns `define` replacements for code that reads a global `flags` object. A bundler `define` does not replace a member of an imported binding, so code that imports `flags` uses the `flargs/zile` transform in a transform hook of the bundler.
 
 ### Retirement
 
@@ -692,14 +692,14 @@ if (flags.newEncoder) return encodeV2(value)
 
 ```jsonc
 // package.json: zile replaces each build flag read after tsc.
-"zile": { "define": "flargs/zile" }
+"zile": { "transform": "flargs/zile" }
 ```
 
-- **Zile:** zile transpiles with `tsc` and has no replacement step. A generic `define` option in zile (a change in `wevm/zile`) names a module whose default export returns replacements. Zile applies them to the `tsc` output, before it writes `dist`.
-- **`flargs/zile`:** returns `Definitions.defines` for the flags file of the package. Each value resolves from its variable in the environment of the build, then the default, so a CI job can publish a prerelease with `FEATURE_NEW_ENCODER=true`.
+- **Zile:** zile transpiles with `tsc`. Its `transform` option (wevm/zile#52) names a module whose default export, `(code, file) => string`, rewrites each emitted `.js` file before zile writes it.
+- **`flargs/zile`:** rewrites each read of a build flag to a literal with the TypeScript compiler API, since a bundler `define` cannot replace a member of an imported binding. Each value resolves from its variable in the environment of the build, then the default, so a CI job can publish a prerelease with `FEATURE_NEW_ENCODER=true`.
 - **No runtime dependency:** the replacement removes the `flargs` import once every read is a literal, so `flargs` stays a dev dependency of the library. A runtime flag or a remaining `flargs` import fails the build.
 - **Types:** `tsc` still emits the types of an unfinished export. Mark the export `@internal`, or keep it in an entry that the package does not publish.
-- **Other builders:** tsup, tsdown, and Rollup take `Definitions.defines` through their own `define` option.
+- **Other builders:** tsup, tsdown, and Rollup call the `flargs/zile` transform from their own transform hook.
 
 ### CLI
 
@@ -829,7 +829,7 @@ Each phase ends with its gate. A later phase starts only after the gate of the p
 
 ### Phase 5: Build Flags
 
-- `flargs/vite`, `flargs/zile`, and `Definitions.defines`. The `define` option of zile lands in `wevm/zile` first.
+- `flargs/vite`, `flargs/zile`, and `Definitions.defines`. The `transform` option of zile lands in `wevm/zile` first (wevm/zile#52).
 - **Gate:** a Vite build of a fixture app contains the literal, drops the dead branch, and contains no private build flag key. A zile build of a fixture library contains the literal and no `flargs` import.
 
 ### Phase 6: CLI

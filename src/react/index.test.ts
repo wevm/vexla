@@ -1,0 +1,27 @@
+/** @module Renders useFlag on the server inside a request scope. */
+import { createElement } from 'react'
+import { renderToString } from 'react-dom/server'
+import { Definitions, Values } from 'flargs'
+import { useFlag } from 'flargs/react'
+import { Runtime } from 'flargs/server'
+
+const definitions = Definitions.parse({
+  newCheckout: { default: false, public: true, type: 'boolean' },
+})
+
+function Checkout() {
+  return createElement('p', null, useFlag('newCheckout' as never) ? 'new' : 'old')
+}
+
+describe('useFlag', () => {
+  test('reads the value of the request on the server', async () => {
+    const runtime = Runtime.create({ definitions, dev: true })
+    const render = (url: string) =>
+      Values.run(runtime, new Request(url), () => renderToString(createElement(Checkout)))
+
+    expect(await render('https://app.example.com/?flag.newCheckout=true')).toMatchInlineSnapshot(
+      `"<p>new</p>"`,
+    )
+    expect(await render('https://app.example.com/')).toMatchInlineSnapshot(`"<p>old</p>"`)
+  })
+})
