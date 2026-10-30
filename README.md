@@ -8,9 +8,6 @@
   <a href="#overview">Overview</a> · <a href="#motivation">Motivation</a> · <a href="#agent-prompt">Agent Prompt</a> · <a href="#philosophy">Philosophy</a> · <a href="#features">Features</a> · <a href="#usage">Usage</a> · <a href="#cli">CLI</a> · <a href="#documentation">Documentation</a>
 </p>
 
-> [!NOTE]
-> Flargs is in development. The examples below describe the planned API and do not work yet.
-
 ## Overview
 
 ```json
@@ -19,11 +16,6 @@
   "newCheckout": { "default": false, "public": true, "type": "boolean" },
   "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
 }
-```
-
-```bash
-# .env: each flag links to an environment variable.
-FEATURE_NEW_CHECKOUT=true
 ```
 
 ```ts
