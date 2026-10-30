@@ -15,17 +15,17 @@
 
 # Use the new checkout flow.
 # @type {boolean} @public
-FEATURE_NEW_CHECKOUT=false
+NEW_CHECKOUT=false
 
 # @type {'a' | 'b' | 'c'}
-FEATURE_PRICING=a
+PRICING=a
 ```
 
 ```ts
 import { flags } from 'flargs'
 
 // Typed from .env.flags. Resolves on the server, or from the page in a browser.
-if (flags.newCheckout) renderNewCheckout()
+if (flags.NEW_CHECKOUT) renderNewCheckout()
 ```
 
 ## Motivation
@@ -45,16 +45,17 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 ## Philosophy
 
 - **Declared.** Each flag has one declaration, one type, and one default, in a committed file.
-- **Typed.** Every read carries the type of its flag, so Find All References locates every use.
-- **Private.** A value stays on the server unless its flag is public.
+- **Typed.** Every read carries the type of its flag, so a misspelled or removed flag fails the type check.
+- **Private.** A flag can stay on the server. Only a `@public` flag reaches a browser.
+- **Short-lived.** A flag has an end. `@expires` marks it as due, `flargs stale` lists it, `flargs retire` replaces its reads with the final value, and `flargs prune` clears stored values of removed flags.
 - **Incremental.** Environment variables, a dev route, and an admin API use the same declarations and the same reads.
 - **Self-hosted.** Flags live in the application and its database, with no third-party service.
 - **Portable.** The core, server, and browser entries have no dependencies, and run in Node, Bun, Deno, edge runtimes, and browsers.
 
 ## Features
 
-- **Flags File:** `.env.flags` declares each flag as a `FEATURE_*` variable, with JSDoc-style tags for its type.
-- **Environment Variables:** each flag links to a `FEATURE_*` variable, and an undeclared variable fails at startup.
+- **Flags File:** `.env.flags` declares each flag as a variable, with JSDoc-style tags for its type.
+- **Environment Variables:** a flag reads the variable of the same name, such as `NEW_CHECKOUT`.
 - **Build Flags:** values compile to literals, so dead branches drop from the bundle.
 - **Runtime Flags:** values resolve on the server for each request, from an override, a store value, `decide`, or the default.
 - **Dev Route:** a page at `/.flags` toggles flags for one browser, or for every request with admin access.
@@ -70,7 +71,7 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 
 ### Flags File
 
-`.env.flags` declares every flag in dotenv syntax. Each `FEATURE_*` variable is a flag, and its value is the default. Comment lines directly above it hold the description and JSDoc-style tags.
+`.env.flags` declares every flag in dotenv syntax. Each variable is a flag, its name is the key, and its value is the default. Comment lines directly above it hold the description and JSDoc-style tags.
 
 ```bash
 # .env.flags (committed)
@@ -78,18 +79,18 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 # Use the new checkout flow.
 # @type {boolean}
 # @public
-FEATURE_NEW_CHECKOUT=false
+NEW_CHECKOUT=false
 
 # Pricing page variant.
 # @type {'a' | 'b' | 'c'}
-FEATURE_PRICING=a
+PRICING=a
 
 # @type {json}
-FEATURE_LIMITS={"requests":100}
+LIMITS={"requests":100}
 
 # Show the maintenance banner. Tags may share one line.
 # @type {boolean} @build @public @expires 2027-01-31
-FEATURE_MAINTENANCE_BANNER=false
+MAINTENANCE_BANNER=false
 ```
 
 `@type` is required: `{boolean}`, `{number}`, `{string}`, `{json}`, or a union of string literals for a select flag. A flag is private unless it has `@public`, and a private value never reaches a browser. A `@build` flag resolves when the bundle builds.
@@ -98,15 +99,15 @@ A `.gitignore` entry such as `.env*` also ignores `.env.flags`. Add `!.env.flags
 
 ### Environment Variables
 
-The key of a flag comes from its variable: `FEATURE_NEW_CHECKOUT` is `newCheckout`. A `.env` file, `.env.local`, or the deploy environment sets values that differ from the defaults.
+A flag reads the environment variable of the same name. A `.env` file, `.env.local`, or the deploy environment sets values that differ from the defaults.
 
 ```bash
 # .env (gitignored): values for this environment.
-FEATURE_NEW_CHECKOUT=true
-FEATURE_PRICING=b
+NEW_CHECKOUT=true
+PRICING=b
 ```
 
-A `FEATURE_*` variable that `.env.flags` does not declare throws at startup, so a typo does not fail silently.
+`flargs check` fails when a variable holds a value that is not a value of its flag. With `--prefix`, it also fails on an undeclared variable with that prefix, so a typo does not fail silently.
 
 ### Store Definitions
 
@@ -130,9 +131,9 @@ A project uses one source: a flags file, reviewed with the code that reads it, o
 ```ts
 import { flags } from 'flargs'
 
-flags.newCheckout // boolean
-flags.pricing // 'a' | 'b' | 'c'
-flags.limits // { requests: number }
+flags.NEW_CHECKOUT // boolean
+flags.PRICING // 'a' | 'b' | 'c'
+flags.LIMITS // { requests: number }
 ```
 
 ### Server
@@ -147,7 +148,7 @@ export const flargs = Flargs.create({
   authorize: (request) => Admin.access(request),
   decide: {
     // Returns undefined to fall through to the store value or the default.
-    pricing: (user) => (user?.plan === 'enterprise' ? 'c' : undefined),
+    PRICING: (user) => (user?.plan === 'enterprise' ? 'c' : undefined),
   },
   definitions,
   dev: process.env.NODE_ENV === 'development',
@@ -157,7 +158,7 @@ export const flargs = Flargs.create({
 })
 
 // Evaluates one flag for one request.
-const pricing = await flargs.get(request, 'pricing')
+const pricing = await flargs.get(request, 'PRICING')
 
 // Serves the dev route and the admin API under /.flags.
 const response = await flargs.fetch(request)
@@ -187,10 +188,10 @@ import { flags } from 'flargs'
 import { useFlag } from 'flargs/react'
 
 // A plain read, on the server or in a browser.
-if (flags.newCheckout) renderNewCheckout()
+if (flags.NEW_CHECKOUT) renderNewCheckout()
 
 // React: renders again when the values change. No provider is necessary.
-const pricing = useFlag('pricing')
+const pricing = useFlag('PRICING')
 ```
 
 ### Build Flags
@@ -228,8 +229,8 @@ if (flags.newEncoder) return encodeV2(value)
 In dev mode, search parameters override any flag. In production, they override public flags, and a signed link overrides a private flag. The server stores valid overrides in a signed `HttpOnly` cookie.
 
 ```txt
-https://app.example.com/checkout?flag.newCheckout=true
-https://app.example.com/checkout?flag.pricing=c&flag.exp=1767225600&flag.sig=3q2-7w
+https://app.example.com/checkout?flag.NEW_CHECKOUT=true
+https://app.example.com/checkout?flag.PRICING=c&flag.exp=1767225600&flag.sig=3q2-7w
 https://app.example.com/?flag.reset
 ```
 
@@ -251,7 +252,7 @@ authorize: async (request) => {
 
 ```http
 GET /.flags/manifest
-PUT /.flags/values/newCheckout
+PUT /.flags/values/NEW_CHECKOUT
 
 { "value": true }
 ```
@@ -281,18 +282,18 @@ The CLI uses [incur](https://github.com/wevm/incur), so every command supports `
 # Writes flargs.gen.ts from .env.flags.
 flargs generate
 
-# Fails when the environment sets an undeclared or invalid FEATURE_* variable.
+# Fails when the environment sets an invalid flag value.
 flargs check
 
 # Lists every flag of a running server, with its value and source.
 flargs list --url https://api.example.com/.flags
 
 # Sets and deletes a store value for every request.
-flargs set newCheckout true
-flargs unset newCheckout
+flargs set NEW_CHECKOUT true
+flargs unset NEW_CHECKOUT
 
 # Creates a flag in the store, for a project with no flags file.
-flargs define newCheckout --type boolean --default false --public
+flargs define NEW_CHECKOUT --type boolean --default false --public
 
 # Lists stored values of removed flags, and deletes them with --yes.
 flargs prune
@@ -301,10 +302,10 @@ flargs prune
 flargs stale
 
 # Replaces each read of a flag with its final value, then deletes the flag.
-flargs retire newCheckout --value true
+flargs retire NEW_CHECKOUT --value true
 
 # Returns a signed link that overrides a private flag for one week.
-flargs link https://app.example.com/checkout pricing=c --expires 7d
+flargs link https://app.example.com/checkout PRICING=c --expires 7d
 
 # Serves the dev route for a flags file, for an application with no TypeScript server.
 flargs dev
