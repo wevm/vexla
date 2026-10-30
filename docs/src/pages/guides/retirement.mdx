@@ -2,7 +2,7 @@
 
 ## Overview
 
-A flag exists to merge unfinished work, so each flag has an end. The `expires` field marks the date after which a flag is due. `flargs retire` replaces each read with the final value, removes the dead branch, and deletes the declaration.
+A flag exists to merge unfinished work, so each flag has an end. The `@expires` tag marks the date after which a flag is due. `flargs retire` replaces each read with the final value, removes the dead branch, and deletes the declaration.
 
 ```mermaid
 flowchart LR
@@ -17,13 +17,13 @@ flowchart LR
 
 ### Set an Expiry
 
-```json [flags.json]
-{
-  "newCheckout": { "default": false, "expires": "2027-01-31", "public": true, "type": "boolean" }
-}
+```sh [.env.flags]
+# Use the new checkout flow.
+# @type {boolean} @public @expires 2027-01-31
+FEATURE_NEW_CHECKOUT=false
 ```
 
-A flag is stale from the day after its `expires` date, in UTC. The dev route marks a stale flag, and the manifest sets `stale: true`.
+A flag is stale from the day after its `@expires` date, in UTC. The dev route marks a stale flag, and the manifest sets `stale: true`.
 
 ### List Stale Flags
 
@@ -99,11 +99,11 @@ npx flargs retire newCheckout --dry-run
 - **Dynamic reads:** a read with a computed key stays. The `unresolved` field lists its file and line.
 - **Files:** the files that git tracks or does not ignore, with a JavaScript or TypeScript extension. Declaration files and `flargs.gen.ts` are skipped.
 
-The command deletes the key from `flags.json`, and writes `flargs.gen.ts` again if it exists. The type check and the tests run after it.
+The command deletes the declaration from `.env.flags` (its comment lines and its variable), and writes `flargs.gen.ts` again if it exists. The type check and the tests run after it.
 
 ### Store Definitions
 
-`flargs retire` reads the declaration from `flags.json`. A flag that the store declares is removed with [`flargs undefine`](/cli/undefine) after a manual rewrite of its reads.
+`flargs retire` reads the declaration from `.env.flags`. A flag that the store declares is removed with [`flargs undefine`](/cli/undefine) after a manual rewrite of its reads.
 
 ### Orphan Values
 

@@ -19,13 +19,13 @@ flargs check [options]
 ### --path
 
 - **Type:** `string`
-- **Default:** `flags.json`
+- **Default:** `.env.flags`
 
 The path of the flags file, relative to the root.
 
 ```sh
 # Reads a flags file in another directory
-npx flargs check --path config/flags.json
+npx flargs check --path config/.env.flags
 ```
 
 ### --root

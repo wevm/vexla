@@ -1,66 +1,77 @@
-# Flags File [Declares every flag with its type and its default, and links it to an environment variable]
+# Flags File [Declares every flag in .env.flags with its type and its default]
 
 ## Overview
 
-The flags file is the committed list of every flag. TypeScript reads `flags.json`, and Rust reads `flags.toml` or `flags.json`. One JSON Schema, `flargs/schema.json`, validates both formats and completes keys in editors.
+The flags file, `.env.flags`, is the committed list of every flag. It uses dotenv syntax. Each `FEATURE_*` variable declares one flag, and its value is the default. The comment lines directly above the variable hold the description and the tags.
 
-Each flag links to one environment variable. A `.env` file or the deploy environment sets the values that differ from the defaults. A project with no Flargs instance and no store uses environment variables only.
+TypeScript and Rust read the same file. `.env`, `.env.local`, or the deploy environment set the values that differ from the defaults. A project with no Flargs instance and no store uses environment variables only.
 
 ## Walkthrough
 
 ### Declare a Flag
 
-Every flag is an object with an explicit `type` and `default`. Flargs infers no type and no default.
+Every flag needs a `@type` tag. The key comes from the variable name, so `FEATURE_NEW_CHECKOUT` declares `newCheckout`.
 
-```json [flags.json]
-{
-  "$schema": "./node_modules/flargs/schema.json",
-  "limits": { "default": { "requests": 100 }, "type": "json" },
-  "maintenanceBanner": { "build": true, "default": false, "public": true, "type": "boolean" },
-  "newCheckout": {
-    "default": false,
-    "description": "Use the new checkout flow.",
-    "expires": "2027-01-31",
-    "public": true,
-    "type": "boolean"
-  },
-  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
-}
+```sh [.env.flags]
+# Use the new checkout flow.
+# @type {boolean}
+# @public
+# @expires 2027-01-31
+FEATURE_NEW_CHECKOUT=false
+
+# Pricing page variant.
+# @type {'a' | 'b' | 'c'}
+FEATURE_PRICING=a
+
+# @type {json}
+FEATURE_LIMITS={"requests":100}
+
+# Show the maintenance banner. Several tags may share one line.
+# @type {boolean} @build @public
+FEATURE_MAINTENANCE_BANNER=false
 ```
 
-| Field         | Meaning                                                                    | Default                                          |
-| ------------- | -------------------------------------------------------------------------- | ------------------------------------------------ |
-| `build`       | `true` makes a build flag, which resolves when the bundle builds           | `false`                                          |
-| `default`     | the value when no other source has one. It must match `type` and `options` | required                                         |
-| `description` | text for the dev route, the admin API, and `.env.example`                  | none                                             |
-| `env`         | the environment variable name, in `SCREAMING_SNAKE_CASE`                   | `FEATURE_` and the key in `SCREAMING_SNAKE_CASE` |
-| `expires`     | a date (`YYYY-MM-DD`) after which the flag is due for retirement           | none                                             |
-| `options`     | the distinct string values of a select flag                                | required for `select`                            |
-| `public`      | `true` lets the value reach the browser                                    | `false`                                          |
-| `type`        | `boolean`, `json`, `number`, `select`, or `string`                         | required                                         |
+| Tag        | Meaning                                                                          | Default  |
+| ---------- | -------------------------------------------------------------------------------- | -------- |
+| `@type`    | `{boolean}`, `{number}`, `{string}`, `{json}`, or a union such as `{'a' \| 'b'}` | required |
+| `@public`  | the value may reach the browser                                                  | private  |
+| `@build`   | the flag is a build flag, which resolves when the bundle builds                  | runtime  |
+| `@expires` | a date (`YYYY-MM-DD`) after which the flag is due for retirement                 | none     |
 
-An unknown field, a missing `type` or `default`, a default outside `options`, or two flags with the same variable throws `Definitions.InvalidDeclarationError`. The error names the key.
+A comment line without a tag is part of the description. A blank line ends the comment block, so a comment above a blank line does not apply to the variable below it.
+
+A missing `@type`, an unknown type or tag, a default that does not match its type, or a key declared twice throws `Definitions.InvalidDeclarationError`. The error names the key and the line.
+
+### Commit the File
+
+A `.gitignore` entry such as `.env*` also ignores `.env.flags`. Add an exception after it, so Git tracks the flags file.
+
+```txt [.gitignore]
+# Ignores local values, but tracks the flags file.
+.env*
+!.env.flags
+```
 
 ### Generate the Types
 
-A JSON import widens strings, so `'a' | 'b' | 'c'` needs a generated module. `flargs generate` writes `flargs.gen.ts`, which exports `definitions` and registers their types.
+`flargs generate` writes `flargs.gen.ts`, which exports `definitions` and registers their types. The [Vite plugin](/guides/vite) writes the same module at startup and on each change of `.env.flags`.
 
 ```sh
-# Writes flargs.gen.ts next to flags.json
+# Writes flargs.gen.ts next to .env.flags
 npx flargs generate
 ```
 
-| `type`    | Value type                                                    |
-| --------- | ------------------------------------------------------------- |
-| `boolean` | `boolean`                                                     |
-| `json`    | the widened type of `default`, such as `{ requests: number }` |
-| `number`  | `number`                                                      |
-| `select`  | the union of `options`, such as `'a' \| 'b' \| 'c'`           |
-| `string`  | `string`                                                      |
+| `@type`        | Value type                                                      |
+| -------------- | --------------------------------------------------------------- |
+| `{boolean}`    | `boolean`                                                       |
+| `{json}`       | the widened type of the default, such as `{ requests: number }` |
+| `{number}`     | `number`                                                        |
+| `{'a' \| 'b'}` | the union of the options, such as `'a' \| 'b'`                  |
+| `{string}`     | `string`                                                        |
 
 ### Set Variables
 
-`newCheckout` reads `FEATURE_NEW_CHECKOUT`. The `env` field sets another name, and the `envPrefix` option replaces `FEATURE_`.
+`.env.flags` holds the defaults. `.env`, `.env.local`, or the deploy environment set the values for one environment. The `envPrefix` option replaces `FEATURE_`.
 
 ```sh [.env]
 # Values for this environment. The file is not committed.
@@ -69,13 +80,13 @@ FEATURE_NEW_CHECKOUT=true
 FEATURE_PRICING=b
 ```
 
-| `type`    | Variable text                         |
-| --------- | ------------------------------------- |
-| `boolean` | `true` or `false`                     |
-| `json`    | JSON text                             |
-| `number`  | a finite number, such as `3` or `2.5` |
-| `select`  | one of `options`                      |
-| `string`  | any text                              |
+| `@type`        | Variable text                         |
+| -------------- | ------------------------------------- |
+| `{boolean}`    | `true` or `false`                     |
+| `{json}`       | JSON text                             |
+| `{number}`     | a finite number, such as `3` or `2.5` |
+| `{'a' \| 'b'}` | one of the options                    |
+| `{string}`     | any text                              |
 
 The instance reads the variable after the override, the store value, and `decide`. An invalid value never selects a value. The instance passes `Definitions.InvalidValueError` to `onError`, and the error names the variable but never holds the value.
 
@@ -90,43 +101,14 @@ npx flargs check --env-file .env
 
 ## Recipes
 
-### Example File
+### Rust
 
-`flargs env` writes `.env.example` with every variable, its default, and its description as a comment.
+`flargs::flags!` reads the same file at compile time. A project with a TypeScript app and a Rust service keeps one `.env.flags`.
 
-```sh
-# Writes .env.example from flags.json
-npx flargs env
+```rust [src/flags.rs]
+// Generates typed flags from the flags file at the root of the crate.
+flargs::flags!(".env.flags");
 ```
-
-```txt
-# Use the new checkout flow.
-# Type: boolean.
-FEATURE_NEW_CHECKOUT=false
-
-# One of: a, b, c.
-FEATURE_PRICING=a
-```
-
-### TOML
-
-`flags.toml` follows the same schema. Keys in `snake_case` map to `camelCase`, so `new_checkout` reads `FEATURE_NEW_CHECKOUT` and serves the key `newCheckout`.
-
-```toml [flags.toml]
-#:schema https://unpkg.com/flargs/schema.json
-# The same flags for Rust. Taplo validates the file against the schema.
-[new_checkout]
-default = false
-public = true
-type = "boolean"
-
-[pricing]
-default = "a"
-options = ["a", "b", "c"]
-type = "select"
-```
-
-The CLI, `flargs/vite`, and `flargs/zile` read `flags.json` only. A project with a TypeScript app and a Rust service keeps one `flags.json`, which the Rust macro also reads.
 
 ### Zero Config
 
@@ -143,7 +125,8 @@ Zero config has no options, no public flags, and no typo check. A flags file add
 
 ## More
 
-- **Function:** [`Definitions`](/api/core/definitions) lists `parse`, `fromEnv`, `check`, and the other helpers.
-- **Commands:** [`generate`](/cli/generate), [`env`](/cli/env), and [`check`](/cli/check).
+- **Function:** [`Definitions`](/api/core/definitions) lists `parseFile`, `fromEnv`, `check`, and the other helpers.
+- **Commands:** [`generate`](/cli/generate) and [`check`](/cli/check).
 - **Build flags:** [Vite](/guides/vite) and [Libraries](/guides/libraries).
+- **Rust:** [Rust](/guides/rust) reads the same file.
 - **Concepts:** [Resolution Order](/introduction/concepts#resolution-order).

@@ -3,7 +3,7 @@
 `flargs generate` writes the module that holds the definitions and registers their types. With `--url`, it reads `GET /.flags/manifest`, which needs `read` access, so a client in another repository types its reads.
 
 ```sh
-# Writes flargs.gen.ts from flags.json
+# Writes flargs.gen.ts from .env.flags
 npx flargs generate
 ```
 
@@ -19,13 +19,13 @@ flargs generate [options]
 ### --path
 
 - **Type:** `string`
-- **Default:** `flags.json`
+- **Default:** `.env.flags`
 
 The path of the flags file, relative to the root.
 
 ```sh
 # Reads a flags file in another directory
-npx flargs generate --path config/flags.json
+npx flargs generate --path config/.env.flags
 ```
 
 ### --root

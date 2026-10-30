@@ -77,7 +77,6 @@ export default defineConfig({
             { link: '/cli/check', text: 'check' },
             { link: '/cli/define', text: 'define' },
             { link: '/cli/dev', text: 'dev' },
-            { link: '/cli/env', text: 'env' },
             { link: '/cli/generate', text: 'generate' },
             { link: '/cli/get', text: 'get' },
             { link: '/cli/link', text: 'link' },

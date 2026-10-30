@@ -31,7 +31,7 @@ export const flargs = Flargs.create({
 
 ### Define a Flag
 
-A store definition follows the schema of one flag in `flags.json`. The instance validates it on each write and each read.
+A store definition is a JSON object with the fields of a [`Definition`](/api/core/definitions): `type` and `default` are required, and `public`, `build`, `options`, `description`, and `expires` are optional. The instance validates it on each write and each read.
 
 ```http
 PUT /.flags/definitions/newCheckout

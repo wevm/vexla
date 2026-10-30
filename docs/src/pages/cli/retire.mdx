@@ -1,6 +1,6 @@
 # retire [Replaces each read of a flag with its final value, and deletes the flag]
 
-`flargs retire` rewrites each read of the flag in the source files of the project, removes dead branches and unused imports, deletes the key from `flags.json`, and writes `flargs.gen.ts` again if it exists. [Retirement](/guides/retirement) describes the rewrite.
+`flargs retire` rewrites each read of the flag in the source files of the project, removes dead branches and unused imports, deletes the declaration from `.env.flags`, and writes `flargs.gen.ts` again if it exists. [Retirement](/guides/retirement) describes the rewrite.
 
 ```sh
 # Replaces each read of newCheckout with true
@@ -27,13 +27,13 @@ Key of the flag, such as `newCheckout`.
 ### --path
 
 - **Type:** `string`
-- **Default:** `flags.json`
+- **Default:** `.env.flags`
 
 The path of the flags file, relative to the root.
 
 ```sh
 # Reads a flags file in another directory
-npx flargs retire newCheckout --path config/flags.json
+npx flargs retire newCheckout --path config/.env.flags
 ```
 
 ### --root

@@ -12,7 +12,7 @@ import { Card, Cards, HomePage } from 'vocs'
   <HomePage.Tagline>{'Feature flags for trunk-based development'}</HomePage.Tagline>
   <HomePage.Description>
     {
-      'Flargs declares each flag once in a committed flags file, evaluates it on the server of the application, and serves a dev route and an admin API from that server. No third-party service is necessary.'
+      'Flargs declares each flag once in a committed .env.flags file. A build flag resolves in the bundle with no server. A runtime flag resolves on the server of the application, which also serves a dev route and an admin API. No third-party service is necessary.'
     }
   </HomePage.Description>
   <HomePage.Buttons>
@@ -26,17 +26,19 @@ import { Card, Cards, HomePage } from 'vocs'
 
 ## Overview
 
-The flags file declares each flag with its type and its default. A flag is private unless `public` is `true`.
+The flags file, `.env.flags`, declares each flag with its type and its default. A flag is private unless it has the `@public` tag.
 
-```json [flags.json]
-{
-  "$schema": "./node_modules/flargs/schema.json",
-  "newCheckout": { "default": false, "public": true, "type": "boolean" },
-  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" }
-}
+```sh [.env.flags]
+# Use the new checkout flow.
+# @type {boolean} @public
+FEATURE_NEW_CHECKOUT=false
+
+# Pricing page variant.
+# @type {'a' | 'b' | 'c'}
+FEATURE_PRICING=a
 ```
 
-Each flag links to one environment variable. The server reads the value for each request.
+Each flag links to one environment variable. A build flag resolves when the bundle builds, with no server. A runtime flag resolves on the server for each request.
 
 ```ts [app.ts]
 import { flags } from 'flargs'

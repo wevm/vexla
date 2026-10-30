@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `flargs` crate reads the same flags file, override format, and signatures as the TypeScript packages. `flargs::flags!` parses `flags.toml` or `flags.json` at compile time and generates typed flags, so Rust needs no generated file. A bad declaration fails the build.
+The `flargs` crate reads the same flags file, override format, and signatures as the TypeScript packages. `flargs::flags!` parses `.env.flags` at compile time and generates typed flags, so Rust needs no generated file. A bad declaration fails the build.
 
 :::note
 The Rust support is partial. The crate has `flargs::flags!`, `flargs::definitions`, and `flargs::overrides`. `Runtime`, `Store`, and the `axum`, `build`, `client`, and `server` features are not merged yet. A Rust service reads its runtime flag values from the environment, or from the admin API of a TypeScript server.
@@ -18,35 +18,29 @@ The Rust support is partial. The crate has `flargs::flags!`, `flargs::definition
 
 ### Declare the Flags
 
-Keys in `snake_case` map to `camelCase` keys, so `new_checkout` serves `newCheckout` and reads `FEATURE_NEW_CHECKOUT`.
+The crate reads the same `.env.flags` as the TypeScript packages. `FEATURE_NEW_CHECKOUT` declares the key `newCheckout`.
 
-```toml [flags.toml]
-#:schema https://unpkg.com/flargs/schema.json
-# One table for each flag. The JSON Schema validates the file through Taplo.
-[maintenance_banner]
-build = true
-default = false
-public = true
-type = "boolean"
+```sh [.env.flags]
+# Show the maintenance banner.
+# @type {boolean} @build @public
+FEATURE_MAINTENANCE_BANNER=false
 
-[new_checkout]
-default = false
-public = true
-type = "boolean"
+# Use the new checkout flow.
+# @type {boolean} @public
+FEATURE_NEW_CHECKOUT=false
 
-[pricing]
-default = "a"
-options = ["a", "b", "c"]
-type = "select"
+# Pricing page variant.
+# @type {'a' | 'b' | 'c'}
+FEATURE_PRICING=a
 ```
 
 ### Generate the Flags
 
-The path is relative to `CARGO_MANIFEST_DIR`, and ends in `.toml` or `.json`.
+The path is relative to `CARGO_MANIFEST_DIR`.
 
 ```rust [src/flags.rs]
 // Generates Flags, one Key for each runtime flag, one const for each build flag, and Pricing.
-flargs::flags!("flags.toml");
+flargs::flags!(".env.flags");
 ```
 
 | Generated item                | Example                                                                              |
@@ -78,7 +72,7 @@ use flargs::definitions::{self, ENV_PREFIX};
 use flargs::overrides::{self, ParseOptions};
 
 // Parses the query string of a request against the flags file.
-let definitions = definitions::parse_toml(include_str!("../flags.toml"), ENV_PREFIX)?;
+let definitions = definitions::parse_file(include_str!("../.env.flags"), ENV_PREFIX)?;
 let overrides = overrides::parse(
     "flag.pricing=c&flag.exp=1767225600&flag.sig=3q2-7w",
     &ParseOptions { definitions: &definitions, dev: false, now, secret: Some(&secret) },
@@ -87,19 +81,19 @@ let overrides = overrides::parse(
 
 ### Environment Prefix
 
-`env_prefix` replaces `FEATURE_` for every flag of the file.
+`env_prefix` replaces `FEATURE_` for every variable of the file.
 
 ```rust [src/flags.rs]
-// new_checkout reads APP_NEW_CHECKOUT.
-flargs::flags!("flags.toml", env_prefix = "APP_");
+// Each variable of the file starts with APP_, such as APP_NEW_CHECKOUT.
+flargs::flags!(".env.flags", env_prefix = "APP_");
 ```
 
 ### Retirement
 
-After a key is removed from the flags file, `flargs::flags!` no longer generates its items. `flargs retire` removes keys from `flags.json` only, so a `flags.toml` key is removed by hand. Each read of the removed key fails to compile, so the compiler lists the reads to replace.
+After [`flargs retire`](/cli/retire) removes a declaration from `.env.flags`, `flargs::flags!` no longer generates its items. `flargs retire` rewrites TypeScript reads only. Each read of the removed key fails to compile, so the compiler lists the reads to replace.
 
 ## More
 
-- **Flags file:** [Flags File](/guides/flags-file) lists every field.
+- **Flags file:** [Flags File](/guides/flags-file) lists every tag.
 - **Overrides:** [Concepts](/introduction/concepts) describes the signature format.
 - **Vectors:** the TypeScript and Rust implementations run the same vectors in `test/vectors/`.

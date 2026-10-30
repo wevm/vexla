@@ -32,13 +32,13 @@ type Registered = Register extends { definitions: infer definitions }
   : Definitions.Definitions
 ```
 
-| Declaration                                            | Value type                      |
-| ------------------------------------------------------ | ------------------------------- |
-| `"type": "boolean"`                                    | `boolean`                       |
-| `"type": "number"`                                     | `number`                        |
-| `"type": "string"`                                     | `string`                        |
-| `"options": ["a", "b"]` with `"type": "select"`        | `'a' \| 'b'`                    |
-| `"default": { "requests": 100 }` with `"type": "json"` | `{ readonly requests: number }` |
+| Declaration in `.env.flags`                        | Value type                      |
+| -------------------------------------------------- | ------------------------------- |
+| `@type {boolean}`                                  | `boolean`                       |
+| `@type {number}`                                   | `number`                        |
+| `@type {string}`                                   | `string`                        |
+| `@type {'a' \| 'b'}`                               | `'a' \| 'b'`                    |
+| `@type {json}` with the default `{"requests":100}` | `{ readonly requests: number }` |
 
 ## Generation
 

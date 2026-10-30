@@ -21,7 +21,7 @@ transform(code: string, file: string): string
 
 ## Behavior
 
-- **Flags file:** it reads `flags.json` from the working directory of the build.
+- **Flags file:** it reads `.env.flags` from the working directory of the build.
 - **Values:** each build flag resolves from its variable in `process.env`, then its default.
 - **Imports:** it removes the `flags` and `useFlag` imports once no read remains.
 - **Unchanged files:** a file that does not contain `flargs` returns unchanged.
@@ -33,5 +33,5 @@ A read of a runtime flag, or a read with a computed key, throws. The error names
 ```txt
 dist/pricing.js:2 reads pricing, which is not a build flag.
 
-To resolve: Set `build: true` on the flag in flags.json, since a library resolves build flags only.
+To resolve: Add `@build` to the flag in .env.flags, since a library resolves build flags only.
 ```

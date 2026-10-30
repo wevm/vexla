@@ -1,15 +1,13 @@
-# Definitions [Validates the flags file, maps keys to variables, and returns the manifest and the generated module]
+# Definitions [Parses .env.flags, maps keys to variables, and returns the manifest and the generated module]
 
 `Definitions` holds the pure functions over flag definitions. The Flargs instance, the build plugins, and the CLI use the same functions.
 
 ```ts [definitions.ts]
+import * as Fs from 'node:fs'
 import { Definitions } from 'flargs'
 
-// Validates a parsed flags file. Throws Definitions.InvalidDeclarationError on a bad declaration.
-export const definitions = Definitions.parse({
-  newCheckout: { default: false, public: true, type: 'boolean' },
-  pricing: { default: 'a', options: ['a', 'b', 'c'], type: 'select' },
-})
+// Parses .env.flags. Throws Definitions.InvalidDeclarationError on a bad declaration.
+export const definitions = Definitions.parseFile(Fs.readFileSync('.env.flags', 'utf8'))
 ```
 
 ## Types
@@ -22,7 +20,7 @@ One validated flag. `parse` fills `build`, `env`, and `public`.
 | ------------- | --------------------------------------------------------- | ----------------------------------------------------- |
 | `build`       | `boolean`                                                 | `true` for a build flag                               |
 | `default`     | `Json`                                                    | the value when no other source has one                |
-| `description` | `string \| undefined`                                     | text for the dev route and `.env.example`             |
+| `description` | `string \| undefined`                                     | text for the dev route and the admin API              |
 | `env`         | `string`                                                  | the environment variable of the flag                  |
 | `expires`     | `string \| undefined`                                     | the date (`YYYY-MM-DD`) after which the flag is stale |
 | `options`     | `readonly string[] \| undefined`                          | the values of a select flag                           |
@@ -44,11 +42,29 @@ One validated flag. `parse` fills `build`, `env`, and `public`.
 ### Definitions.parse
 
 ```ts
-// Returns the definitions of a parsed flags.json or flags.toml
+// Returns the definitions of a definition object, the format of the store and the admin API
 Definitions.parse(input: unknown, options?: { envPrefix?: string }): Definitions
 ```
 
-Keys in `snake_case` map to `camelCase`. `$schema` is skipped. `envPrefix` defaults to `'FEATURE_'`. Throws `InvalidDeclarationError` for an unknown field, a missing `type` or `default`, a default of the wrong type, invalid `options`, an invalid `env` or `expires`, a key declared twice, or two flags with the same variable.
+Keys in `snake_case` map to `camelCase`. `envPrefix` defaults to `'FEATURE_'`. Throws `InvalidDeclarationError` for an unknown field, a missing `type` or `default`, a default of the wrong type, invalid `options`, an invalid `env` or `expires`, a key declared twice, or two flags with the same variable.
+
+### Definitions.parseFile
+
+```ts
+// Returns the definitions in the text of .env.flags
+Definitions.parseFile(text: string, options?: { envPrefix?: string }): Definitions
+```
+
+Each `FEATURE_*` variable declares a flag, and its value is the default. The comment lines directly above it hold the description and the `@type`, `@public`, `@build`, and `@expires` tags. [Flags File](/guides/flags-file) describes each tag. Throws `InvalidDeclarationError` with the line number for an invalid line, a missing `@type`, an unknown type or tag, a variable without the prefix, or an invalid default.
+
+### Definitions.removeFromFile
+
+```ts
+// Returns the text of .env.flags without the declaration of one key
+Definitions.removeFromFile(text: string, key: string, options?: { envPrefix?: string }): string
+```
+
+Removes the comment lines, the variable, and one blank line after it. Returns `text` unchanged when no variable declares `key`. [`flargs retire`](/cli/retire) uses it.
 
 ### Definitions.fromEnv
 

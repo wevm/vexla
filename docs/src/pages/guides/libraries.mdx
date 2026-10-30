@@ -2,7 +2,7 @@
 
 ## Overview
 
-A library merges unfinished work to `main` behind a build flag, and publishes from `main` with the flag off. A library has no request, so it declares build flags only.
+A library merges unfinished work to `main` behind a build flag, and publishes from `main` with the flag off. A library has no request, so it declares build flags only and needs no server.
 
 Zile transpiles the library with `tsc`. Its `transform` option names a module that rewrites each emitted `.js` file. `flargs/zile` replaces each read of a build flag with a literal and removes the `flargs` import, so `flargs` stays a dev dependency.
 
@@ -10,11 +10,12 @@ Zile transpiles the library with `tsc`. Its `transform` option names a module th
 
 ### Declare the Flag
 
-```json [flags.json]
-{
-  "$schema": "./node_modules/flargs/schema.json",
-  "newEncoder": { "build": true, "default": false, "type": "boolean" }
-}
+The `@build` tag makes a build flag.
+
+```sh [.env.flags]
+# Use the new encoder.
+# @type {boolean} @build
+FEATURE_NEW_ENCODER=false
 ```
 
 ### Read the Flag
@@ -70,7 +71,7 @@ A read of a runtime flag, or a read with a computed key, fails the build. The er
 ```txt
 dist/pricing.js:2 reads pricing, which is not a build flag.
 
-To resolve: Set `build: true` on the flag in flags.json, since a library resolves build flags only.
+To resolve: Add `@build` to the flag in .env.flags, since a library resolves build flags only.
 ```
 
 ### Types
@@ -79,7 +80,7 @@ To resolve: Set `build: true` on the flag in flags.json, since a library resolve
 
 ### Other Builders
 
-The transform is a function `(code, file) => string`. tsup, tsdown, and Rollup call it from their own transform hook. It reads `flags.json` from the working directory of the build.
+The transform is a function `(code, file) => string`. tsup, tsdown, and Rollup call it from their own transform hook. It reads `.env.flags` from the working directory of the build.
 
 ```ts [rollup.config.ts]
 import transform from 'flargs/zile'

@@ -18,9 +18,11 @@ Flargs makes each flag one typed declaration in a committed file. Find All Refer
 
 Flags live in the application and its database. The dev route is a page that the application serves, and the admin API is a set of routes under the same path. Nothing loads from a third party, and no account is necessary.
 
+The server is optional. A project with build flags only resolves every value in the bundler plugin, and serves no dev route and no admin API.
+
 | Concern     | Flargs                                                    |
 | ----------- | --------------------------------------------------------- |
-| Definitions | `flags.json` or `flags.toml`, reviewed with the code      |
+| Definitions | `.env.flags`, reviewed with the code                      |
 | Values      | environment variables, then a store that the host owns    |
 | Toggles     | the dev route at `/.flags`, served by the application     |
 | Access      | `authorize`, a function of the host. No credential format |
@@ -31,7 +33,7 @@ Flags live in the application and its database. The dev route is a page that the
 - **Declared:** each flag has one declaration, one type, and one default, in a committed file.
 - **Typed:** every read carries the type of its flag.
 - **Private:** a value stays on the server unless its flag is public.
-- **Incremental:** environment variables, a dev route, and an admin API use the same declarations and the same reads.
+- **Incremental:** build flags, environment variables, a dev route, and an admin API use the same declarations and the same reads. Each step after build flags adds a server.
 - **Portable:** the `flargs` and `flargs/server` entries have no dependencies.
 
 ## Vercel Flags SDK

@@ -4,13 +4,13 @@ The `flargs` binary reads the flags file of a project, and calls the admin API o
 
 | Group     | Commands                                                             | Input                      |
 | --------- | -------------------------------------------------------------------- | -------------------------- |
-| Local     | `check`, `dev`, `env`, `generate`, `retire`, `stale`                 | the flags file             |
+| Local     | `check`, `dev`, `generate`, `retire`, `stale`                        | the flags file             |
 | Admin API | `define`, `get`, `link`, `list`, `prune`, `set`, `undefine`, `unset` | `--url`, else `FLARGS_URL` |
 
 `generate` and `retire` also accept `--url`.
 
 ```sh
-# Writes flargs.gen.ts from flags.json
+# Writes flargs.gen.ts from .env.flags
 npx flargs generate
 
 # Lists every flag of a running server. FLARGS_TOKEN holds the admin token.
@@ -23,9 +23,8 @@ npx flargs list --url https://api.example.com/.flags
 | --------------------------- | -------------------------------------------------------------------------------------- |
 | [`check`](/cli/check)       | Fails when the environment sets an undeclared or invalid `FEATURE_*` variable.         |
 | [`define`](/cli/define)     | Creates or replaces a flag in the store, for a project with no flags file.             |
-| [`dev`](/cli/dev)           | Serves the dev route for `flags.json`, for an application with no TypeScript server.   |
-| [`env`](/cli/env)           | Writes `.env.example`: each flag variable, its default, and its description.           |
-| [`generate`](/cli/generate) | Writes `flargs.gen.ts` from `flags.json`, or from the manifest of a running server.    |
+| [`dev`](/cli/dev)           | Serves the dev route for `.env.flags`, for an application with no TypeScript server.   |
+| [`generate`](/cli/generate) | Writes `flargs.gen.ts` from `.env.flags`, or from the manifest of a running server.    |
 | [`get`](/cli/get)           | Returns one flag of a running server, with its definition, value, and source.          |
 | [`link`](/cli/link)         | Returns a signed link that overrides flags, including private flags, until it expires. |
 | [`list`](/cli/list)         | Lists every flag of a running server, with its value and source.                       |
@@ -47,11 +46,11 @@ The CLI reads the admin token from `FLARGS_TOKEN`, and sends it as `Authorizatio
 
 ## Shared Options
 
-| Option   | Commands                                             | Default               |
-| -------- | ---------------------------------------------------- | --------------------- |
-| `--path` | `check`, `dev`, `env`, `generate`, `retire`, `stale` | `flags.json`          |
-| `--root` | `check`, `dev`, `env`, `generate`, `retire`, `stale` | the working directory |
-| `--url`  | the admin API commands, `generate`, and `retire`     | `FLARGS_URL`          |
+| Option   | Commands                                         | Default               |
+| -------- | ------------------------------------------------ | --------------------- |
+| `--path` | `check`, `dev`, `generate`, `retire`, `stale`    | `.env.flags`          |
+| `--root` | `check`, `dev`, `generate`, `retire`, `stale`    | the working directory |
+| `--url`  | the admin API commands, `generate`, and `retire` | `FLARGS_URL`          |
 
 ## Output
 

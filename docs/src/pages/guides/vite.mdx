@@ -2,7 +2,9 @@
 
 ## Overview
 
-The `flargs/vite` plugin reads `flags.json`, writes `flargs.gen.ts`, and replaces each read of a build flag with a literal. A minifier then drops the dead branch. In browser code, a read of a private flag fails the build, whether it is a build flag or a runtime flag.
+The `flargs/vite` plugin reads `.env.flags`, writes `flargs.gen.ts`, and replaces each read of a build flag with a literal. A minifier then drops the dead branch. In browser code, a read of a private flag fails the build, whether it is a build flag or a runtime flag.
+
+An app with build flags only needs no server. The plugin resolves every value at build time.
 
 A bundler `define` cannot replace a member of an imported binding, such as `flags.maintenanceBanner`. The plugin therefore rewrites reads with the TypeScript compiler API, so `typescript` must be installed.
 
@@ -10,11 +12,12 @@ A bundler `define` cannot replace a member of an imported binding, such as `flag
 
 ### Declare the Flag
 
-```json [flags.json]
-{
-  "$schema": "./node_modules/flargs/schema.json",
-  "maintenanceBanner": { "build": true, "default": false, "public": true, "type": "boolean" }
-}
+The `@build` tag makes a build flag.
+
+```sh [.env.flags]
+# Show the maintenance banner.
+# @type {boolean} @build @public
+FEATURE_MAINTENANCE_BANNER=false
 ```
 
 ### Add the Plugin
@@ -24,7 +27,7 @@ import flargs from 'flargs/vite'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  // Reads flags.json, writes flargs.gen.ts, and replaces build flag reads with literals.
+  // Reads .env.flags, writes flargs.gen.ts, and replaces build flag reads with literals.
   plugins: [flargs()],
 })
 ```
@@ -91,7 +94,7 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   // A flags file and a generated module outside the root of the app.
-  plugins: [flargs({ out: 'src/flargs.gen.ts', path: 'config/flags.json' })],
+  plugins: [flargs({ out: 'src/flargs.gen.ts', path: 'config/.env.flags' })],
 })
 ```
 

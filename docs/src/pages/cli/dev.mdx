@@ -1,6 +1,6 @@
 # dev [Serves the dev route for a flags file]
 
-`flargs dev` serves the dev route and the admin API for `flags.json` on `127.0.0.1`, in dev mode, with a store in memory. It suits an application with no TypeScript server, such as a Rust service in development. The command runs until it is stopped.
+`flargs dev` serves the dev route and the admin API for `.env.flags` on `127.0.0.1`, in dev mode, with a store in memory. It suits an application with no TypeScript server, such as a Rust service in development. The command runs until it is stopped.
 
 ```sh
 # Serves http://127.0.0.1:4000/.flags
@@ -19,13 +19,13 @@ flargs dev [options]
 ### --path
 
 - **Type:** `string`
-- **Default:** `flags.json`
+- **Default:** `.env.flags`
 
 The path of the flags file, relative to the root.
 
 ```sh
 # Reads a flags file in another directory
-npx flargs dev --path config/flags.json
+npx flargs dev --path config/.env.flags
 ```
 
 ### --root
