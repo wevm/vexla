@@ -1,0 +1,27 @@
+[package]
+name = "flargs"
+description = "Self-hosted feature flags: flag definitions, overrides, and signatures."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[features]
+default = ["macros"]
+macros = ["dep:flargs-macros"]
+
+[dependencies]
+base64.workspace = true
+flargs-definitions.workspace = true
+flargs-macros = { workspace = true, optional = true }
+hmac.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+trybuild.workspace = true
+
+[lints]
+workspace = true

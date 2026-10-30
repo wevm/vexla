@@ -1,0 +1,54 @@
+#:schema ../../../../schema.json
+# Build flags read CARGO_PKG_* variables, which Cargo sets for every build.
+[build_limits]
+build = true
+default = { requests = 5 }
+type = "json"
+
+[limits]
+default = { requests = 100, regions = ["eu", "us"] }
+type = "json"
+
+[maintenance_banner]
+build = true
+default = false
+public = true
+type = "boolean"
+
+[new_checkout]
+default = false
+description = "Use the new checkout flow."
+public = true
+type = "boolean"
+
+[package_name]
+build = true
+default = "unknown"
+env = "CARGO_PKG_NAME"
+type = "string"
+
+[pricing]
+default = "a"
+options = ["a", "b", "c"]
+type = "select"
+
+[release]
+build = true
+default = 1
+env = "CARGO_PKG_VERSION_MAJOR"
+type = "number"
+
+[retries]
+default = 2.5
+type = "number"
+
+[theme]
+build = true
+default = "light"
+options = ["dark", "high-contrast", "light"]
+type = "select"
+
+[title]
+default = "Hello"
+env = "APP_TITLE"
+type = "string"

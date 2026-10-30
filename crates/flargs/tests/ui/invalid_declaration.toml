@@ -1,0 +1,4 @@
+[pricing]
+default = "d"
+options = ["a", "b"]
+type = "select"

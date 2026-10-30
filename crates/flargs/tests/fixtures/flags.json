@@ -1,0 +1,23 @@
+{
+  "$schema": "../../../../schema.json",
+  "buildLimits": { "build": true, "default": { "requests": 5 }, "type": "json" },
+  "limits": { "default": { "regions": ["eu", "us"], "requests": 100 }, "type": "json" },
+  "maintenanceBanner": { "build": true, "default": false, "public": true, "type": "boolean" },
+  "newCheckout": {
+    "default": false,
+    "description": "Use the new checkout flow.",
+    "public": true,
+    "type": "boolean"
+  },
+  "packageName": { "build": true, "default": "unknown", "env": "CARGO_PKG_NAME", "type": "string" },
+  "pricing": { "default": "a", "options": ["a", "b", "c"], "type": "select" },
+  "release": { "build": true, "default": 1, "env": "CARGO_PKG_VERSION_MAJOR", "type": "number" },
+  "retries": { "default": 2.5, "type": "number" },
+  "theme": {
+    "build": true,
+    "default": "light",
+    "options": ["dark", "high-contrast", "light"],
+    "type": "select"
+  },
+  "title": { "default": "Hello", "env": "APP_TITLE", "type": "string" }
+}

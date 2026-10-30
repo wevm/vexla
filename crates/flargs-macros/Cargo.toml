@@ -1,0 +1,21 @@
+[package]
+name = "flargs-macros"
+description = "The flargs::flags! macro: typed flags from flags.toml or flags.json at compile time."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+flargs-definitions.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true
+serde_json.workspace = true
+syn.workspace = true
+
+[lints]
+workspace = true
