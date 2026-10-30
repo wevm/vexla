@@ -1,6 +1,6 @@
 [package]
 name = "flargs"
-description = "Self-hosted feature flags: flag definitions, overrides, signatures, and the runtime."
+description = "Feature flags for trunk-based development."
 edition.workspace = true
 license.workspace = true
 repository.workspace = true

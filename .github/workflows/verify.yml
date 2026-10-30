@@ -46,6 +46,12 @@ jobs:
       - name: Set up Rust
         run: rustup show
 
+      - name: Install dependencies
+        uses: ./.github/actions/install-dependencies
+
+      - name: Build the TypeScript package
+        run: pnpm build
+
       - name: Check formatting
         run: cargo fmt --all --check
 
@@ -54,3 +60,6 @@ jobs:
 
       - name: Run tests
         run: cargo test --workspace
+
+      - name: Run cross-language tests
+        run: cargo test -p flargs --test node -- --ignored
