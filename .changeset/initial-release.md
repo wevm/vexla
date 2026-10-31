@@ -1,5 +1,5 @@
 ---
-'vexla': minor
+'vexla': patch
 ---
 
 Initial release.
