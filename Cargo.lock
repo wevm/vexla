@@ -197,48 +197,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
-name = "flargs"
-version = "0.0.0"
-dependencies = [
- "axum",
- "base64",
- "bytes",
- "flargs",
- "flargs-definitions",
- "flargs-macros",
- "hmac",
- "http",
- "http-body",
- "http-body-util",
- "insta",
- "reqwest",
- "serde_json",
- "sha2",
- "tokio",
- "tower-layer",
- "tower-service",
- "trybuild",
-]
-
-[[package]]
-name = "flargs-definitions"
-version = "0.0.0"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "flargs-macros"
-version = "0.0.0"
-dependencies = [
- "flargs-definitions",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "form_urlencoded"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1107,6 +1065,48 @@ name = "utf_types"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a3b425286980a367278453f3b6d28cdcb134b574e5a35824a6ff5eebad50bb6"
+
+[[package]]
+name = "vexla"
+version = "0.0.0"
+dependencies = [
+ "axum",
+ "base64",
+ "bytes",
+ "hmac",
+ "http",
+ "http-body",
+ "http-body-util",
+ "insta",
+ "reqwest",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tower-layer",
+ "tower-service",
+ "trybuild",
+ "vexla",
+ "vexla-definitions",
+ "vexla-macros",
+]
+
+[[package]]
+name = "vexla-definitions"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "vexla-macros"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "vexla-definitions",
+]
 
 [[package]]
 name = "want"

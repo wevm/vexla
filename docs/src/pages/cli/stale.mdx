@@ -1,17 +1,17 @@
 # stale [Lists flags past their expires date]
 
-`flargs stale` reads the flags file and lists each flag whose `expires` date has passed. A flag is stale from the day after its `expires` date, in UTC.
+`vexla stale` reads the flags file and lists each flag whose `expires` date has passed. A flag is stale from the day after its `expires` date, in UTC.
 
 ```sh
 # Lists stale flags
-npx flargs stale
+npx vexla stale
 ```
 
 ## Signature
 
 ```sh
 # Arguments first, then options
-flargs stale [options]
+vexla stale [options]
 ```
 
 ## Options
@@ -25,7 +25,7 @@ The path of the flags file, relative to the root.
 
 ```sh
 # Reads a flags file in another directory
-npx flargs stale --path config/.env.flags
+npx vexla stale --path config/.env.flags
 ```
 
 ### --root
@@ -37,7 +37,7 @@ The project root.
 
 ```sh
 # Runs in the app package of a monorepo
-npx flargs stale --root apps/web
+npx vexla stale --root apps/web
 ```
 
 ## Output

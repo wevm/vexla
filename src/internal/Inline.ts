@@ -1,7 +1,7 @@
 /**
  * @module Rewrites reads of flags in source with the TypeScript compiler API. `flags.key` (from
- * `flargs`) and `useFlag('key')` (from `flargs/react`) become literals. Bundlers, zile, and
- * `flargs retire` share it, since `define` cannot replace a member of an imported binding.
+ * `vexla`) and `useFlag('key')` (from `vexla/react`) become literals. Bundlers, zile, and
+ * `vexla retire` share it, since `define` cannot replace a member of an imported binding.
  */
 import ts from 'typescript'
 import type * as Definitions from '../Definitions.js'
@@ -190,7 +190,7 @@ export declare namespace transform {
 
 type Edit = { end: number; start: number; text: string }
 
-// The local names of `flags` from `flargs` and `useFlag` from `flargs/react`, and the edits that remove them.
+// The local names of `flags` from `vexla` and `useFlag` from `vexla/react`, and the edits that remove them.
 function imports(source: ts.SourceFile): {
   edits: Edit[]
   flags?: string | undefined
@@ -202,7 +202,7 @@ function imports(source: ts.SourceFile): {
     if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier))
       continue
     const module = statement.moduleSpecifier.text
-    const target = module === 'flargs' ? 'flags' : module === 'flargs/react' ? 'useFlag' : undefined
+    const target = module === 'vexla' ? 'flags' : module === 'vexla/react' ? 'useFlag' : undefined
     const bindings = statement.importClause?.namedBindings
     if (!target || !bindings || !ts.isNamedImports(bindings)) continue
 

@@ -1,5 +1,0 @@
-//! A select flag whose default is not one of its options fails the build.
-
-flargs::flags!("../../../../crates/flargs/tests/ui/invalid_declaration.env.flags");
-
-fn main() {}

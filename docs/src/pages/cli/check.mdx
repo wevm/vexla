@@ -1,17 +1,17 @@
 # check [Fails when the environment sets an invalid flag value, and reports stale flags]
 
-`flargs check` validates the process environment, and optional dotenv files, against the flags file. A variable that holds a value that is not a value of its flag fails the check. With `--prefix`, an undeclared variable with that prefix also fails, so a typo fails CI. A stale flag fails the check only with `--strict`.
+`vexla check` validates the process environment, and optional dotenv files, against the flags file. A variable that holds a value that is not a value of its flag fails the check. With `--prefix`, an undeclared variable with that prefix also fails, so a typo fails CI. A stale flag fails the check only with `--strict`.
 
 ```sh
 # Checks the environment and the .env file
-npx flargs check --env-file .env
+npx vexla check --env-file .env
 ```
 
 ## Signature
 
 ```sh
 # Arguments first, then options
-flargs check [options]
+vexla check [options]
 ```
 
 ## Options
@@ -25,7 +25,7 @@ The path of the flags file, relative to the root.
 
 ```sh
 # Reads a flags file in another directory
-npx flargs check --path config/.env.flags
+npx vexla check --path config/.env.flags
 ```
 
 ### --root
@@ -37,7 +37,7 @@ The project root.
 
 ```sh
 # Runs in the app package of a monorepo
-npx flargs check --root apps/web
+npx vexla check --root apps/web
 ```
 
 ### --env-file
@@ -49,7 +49,7 @@ Dotenv files to check with the environment, such as `.env`. Repeatable. A file v
 
 ```sh
 # Checks two dotenv files
-npx flargs check --env-file .env --env-file .env.local
+npx vexla check --env-file .env --env-file .env.local
 ```
 
 ### --prefix
@@ -61,7 +61,7 @@ Reports each variable with this prefix that no flag declares, as `unknown`. With
 
 ```sh
 # Fails on a typo such as FEATURE_NEW_CHEKOUT
-npx flargs check --prefix FEATURE_
+npx vexla check --prefix FEATURE_
 ```
 
 ### --strict
@@ -73,7 +73,7 @@ Fails on a stale flag too.
 
 ```sh
 # Fails when a flag is past its expires date
-npx flargs check --strict
+npx vexla check --strict
 ```
 
 ## Output

@@ -1,0 +1,5 @@
+error: ../../../../crates/vexla/tests/ui/same_name.env.flags: Two flags make the Rust field new_checkout. Rename one of them.
+ --> tests/ui/same_name.rs:3:15
+  |
+3 | vexla::flags!("../../../../crates/vexla/tests/ui/same_name.env.flags");
+  |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

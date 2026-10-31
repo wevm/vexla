@@ -1,4 +1,4 @@
-<h1 align="center">Flargs</h1>
+<h1 align="center">Vexla</h1>
 
 <p align="center">
   Feature flags for trunk-based development
@@ -22,7 +22,7 @@ PRICING=a
 ```
 
 ```ts
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
 // Typed from .env.flags. Resolves on the server, or from the page in a browser.
 if (flags.NEW_CHECKOUT) renderNewCheckout()
@@ -32,14 +32,14 @@ if (flags.NEW_CHECKOUT) renderNewCheckout()
 
 Feature branches drift from `main`, end in large and risky merges, and keep finished work out of production. The fix is to push small changes to `main` continuously, with unfinished work behind a feature flag.
 
-Extra work such as feature flags, staged migrations, and two configurations at once was once tedious, but coding agents now write it at almost no cost. Flargs makes each flag one typed declaration that is easy to add, preview, release, and remove, on infrastructure that the application already owns.
+Extra work such as feature flags, staged migrations, and two configurations at once was once tedious, but coding agents now write it at almost no cost. Vexla makes each flag one typed declaration that is easy to add, preview, release, and remove, on infrastructure that the application already owns.
 
 ## Agent Prompt
 
 Paste this prompt into a coding agent:
 
 ```txt
-Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished work behind flags so it merges to main.
+Read github.com/wevm/flargs, add Vexla to my project, and put my unfinished work behind flags so it merges to main.
 ```
 
 ## Philosophy
@@ -47,7 +47,7 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 - **Declared.** Each flag has one declaration, one type, and one default, in a committed file.
 - **Typed.** Every read carries the type of its flag, so a misspelled or removed flag fails the type check.
 - **Private.** A flag can stay on the server. Only a `@public` flag reaches a browser.
-- **Retirement.** A release flag can declare its end. `@expires` marks it as due, `flargs stale` lists it, `flargs retire` replaces its reads with the final value, and `flargs prune` clears stored values of removed flags. A flag without `@expires`, such as a kill switch, stays until it is removed.
+- **Retirement.** A release flag can declare its end. `@expires` marks it as due, `vexla stale` lists it, `vexla retire` replaces its reads with the final value, and `vexla prune` clears stored values of removed flags. A flag without `@expires`, such as a kill switch, stays until it is removed.
 - **Incremental.** Environment variables, a dev route, and an admin API use the same declarations and the same reads.
 - **Self-hosted.** Flags live in the application and its database, with no third-party service.
 - **Portable.** The core, server, and browser entries have no dependencies, and run in Node, Bun, Deno, edge runtimes, and browsers.
@@ -61,11 +61,11 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 - **Dev Route:** a page at `/.flags` toggles flags for one browser, or for every request with admin access.
 - **Admin API:** an HTTP API reads and writes store values for an admin UI, the CLI, or CI.
 - **Overrides:** search parameters override public flags, and signed links override private flags.
-- **Retirement:** `flargs retire` replaces each read with the final value and deletes the flag, and `expires` marks flags that are due.
-- **Stores:** memory, environment variables, Cloudflare KV, a remote Flargs API, or a table in the database of the application.
+- **Retirement:** `vexla retire` replaces each read with the final value and deletes the flag, and `expires` marks flags that are due.
+- **Stores:** memory, environment variables, Cloudflare KV, a remote Vexla API, or a table in the database of the application.
 - **Integrations:** a fetch handler for Next.js, Cloudflare Workers, and Bun, plus Hono, Node, React, and Vite.
-- **CLI and MCP:** the `flargs` command lists, sets, and links flags, checks the environment, and generates types.
-- **Rust:** `flargs::flags!` reads `.env.flags` at compile time and generates typed flags.
+- **CLI and MCP:** the `vexla` command lists, sets, and links flags, checks the environment, and generates types.
+- **Rust:** `vexla::flags!` reads `.env.flags` at compile time and generates typed flags.
 
 ## Usage
 
@@ -107,17 +107,17 @@ NEW_CHECKOUT=true
 PRICING=b
 ```
 
-`flargs check` fails when a variable holds a value that is not a value of its flag. With `--prefix`, it also fails on an undeclared variable with that prefix, so a typo does not fail silently.
+`vexla check` fails when a variable holds a value that is not a value of its flag. With `--prefix`, it also fails on an undeclared variable with that prefix, so a typo does not fail silently.
 
 ### Store Definitions
 
-A project with no flags file declares its flags in the store. An admin UI or the CLI then creates flags with no deploy, and `flargs generate --url` writes the types from the running server.
+A project with no flags file declares its flags in the store. An admin UI or the CLI then creates flags with no deploy, and `vexla generate --url` writes the types from the running server.
 
 ```ts
 // No .env.flags: the store holds the definitions and the values.
-const flargs = Flargs.create({
+const vexla = Vexla.create({
   authorize,
-  secret: process.env.FLARGS_SECRET,
+  secret: process.env.VEXLA_SECRET,
   store: Store.from(database.flags),
 })
 ```
@@ -126,10 +126,10 @@ A project uses one source: a flags file, reviewed with the code that reads it, o
 
 ### Types
 
-`flargs generate` reads `.env.flags` and writes `flargs.gen.ts`, which holds the definitions and their types. `flargs/vite` runs the same step on each change of `.env.flags`.
+`vexla generate` reads `.env.flags` and writes `vexla.gen.ts`, which holds the definitions and their types. `vexla/vite` runs the same step on each change of `.env.flags`.
 
 ```ts
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
 flags.NEW_CHECKOUT // boolean
 flags.PRICING // 'a' | 'b' | 'c'
@@ -138,13 +138,13 @@ flags.LIMITS // { requests: number }
 
 ### Server
 
-`Flargs.create` adds overrides, a store, `decide`, the dev route, and the admin API. `flargs.fetch` is a fetch handler.
+`Vexla.create` adds overrides, a store, `decide`, the dev route, and the admin API. `vexla.fetch` is a fetch handler.
 
 ```ts
-import { Flargs, Store } from 'flargs/server'
-import { definitions } from './flargs.gen.js'
+import { Vexla, Store } from 'vexla/server'
+import { definitions } from './vexla.gen.js'
 
-export const flargs = Flargs.create({
+export const vexla = Vexla.create({
   authorize: (request) => Admin.access(request),
   decide: {
     // Returns undefined to fall through to the store value or the default.
@@ -153,39 +153,39 @@ export const flargs = Flargs.create({
   definitions,
   dev: process.env.NODE_ENV === 'development',
   identify: (request) => Session.user(request),
-  secret: process.env.FLARGS_SECRET,
+  secret: process.env.VEXLA_SECRET,
   store: Store.from(database.flags),
 })
 
 // Evaluates one flag for one request.
-const pricing = await flargs.get(request, 'PRICING')
+const pricing = await vexla.get(request, 'PRICING')
 
 // Serves the dev route and the admin API under /.flags.
-const response = await flargs.fetch(request)
+const response = await vexla.fetch(request)
 ```
 
 ```ts
 // Hono: serves /.flags and resolves `flags` for each request.
-import { middleware } from 'flargs/hono'
+import { middleware } from 'vexla/hono'
 
-app.use(middleware(flargs))
+app.use(middleware(vexla))
 ```
 
 ```ts
 // Node: serves /.flags, and resolves `flags` for each request of the app.
 import * as Http from 'node:http'
-import { Request } from 'flargs/node'
+import { Request } from 'vexla/node'
 
-Http.createServer(Request.toNodeListener(app.fetch, { flargs })).listen(3000)
+Http.createServer(Request.toNodeListener(app.fetch, { vexla })).listen(3000)
 ```
 
 ### Values
 
-`flargs` exports `flags`. A read is synchronous and takes no request argument. On the server, `flags` holds the values of the current request. In a browser, it holds the public values that the server embeds in the page.
+`vexla` exports `flags`. A read is synchronous and takes no request argument. On the server, `flags` holds the values of the current request. In a browser, it holds the public values that the server embeds in the page.
 
 ```tsx
-import { flags } from 'flargs'
-import { useFlag } from 'flargs/react'
+import { flags } from 'vexla'
+import { useFlag } from 'vexla/react'
 
 // A plain read, on the server or in a browser.
 if (flags.NEW_CHECKOUT) renderNewCheckout()
@@ -196,29 +196,29 @@ const pricing = useFlag('PRICING')
 
 ### Build Flags
 
-`flargs/vite` replaces each read of a build flag with a literal, so dead branches drop from the bundle. A read of a private flag in browser code is a build error.
+`vexla/vite` replaces each read of a build flag with a literal, so dead branches drop from the bundle. A read of a private flag in browser code is a build error.
 
 ```ts
 import { defineConfig } from 'vite'
-import flargs from 'flargs/vite'
+import vexla from 'vexla/vite'
 
 export default defineConfig({
-  // Reads .env.flags, writes flargs.gen.ts, and resolves build flags from the environment.
-  plugins: [flargs()],
+  // Reads .env.flags, writes vexla.gen.ts, and resolves build flags from the environment.
+  plugins: [vexla()],
 })
 ```
 
 ### Libraries
 
-A library declares build flags only, and publishes from `main` with unfinished work off. Zile replaces each read after `tsc`, so the published files contain a literal and no `flargs` import.
+A library declares build flags only, and publishes from `main` with unfinished work off. Zile replaces each read after `tsc`, so the published files contain a literal and no `vexla` import.
 
 ```jsonc
 // package.json
-"zile": { "transform": "flargs/zile" }
+"zile": { "transform": "vexla/zile" }
 ```
 
 ```ts
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
 // Becomes `if (false)` in the published files.
 if (flags.NEW_ENCODER) return encodeV2(value)
@@ -236,7 +236,7 @@ https://app.example.com/?flag.reset
 
 ### Admin API
 
-The admin API lives under `/.flags`. `authorize` returns the access of each request: `'read'`, `'write'`, `undefined`, or a `Response`. Flargs defines no credential format.
+The admin API lives under `/.flags`. `authorize` returns the access of each request: `'read'`, `'write'`, `undefined`, or a `Response`. Vexla defines no credential format.
 
 ```ts
 // The admin UI session writes. CI tokens from Handshakes read.
@@ -259,56 +259,56 @@ PUT /.flags/values/NEW_CHECKOUT
 
 ### Rust
 
-`flargs::flags!` reads the same `.env.flags` at compile time, so a bad declaration fails the build, and one file serves a TypeScript app and a Rust service.
+`vexla::flags!` reads the same `.env.flags` at compile time, so a bad declaration fails the build, and one file serves a TypeScript app and a Rust service.
 
 ```rust
 // Generates `Flags`, typed keys, and the `Pricing` enum from .env.flags.
-flargs::flags!(".env.flags");
+vexla::flags!(".env.flags");
 
-let pricing: Pricing = flargs.get(&parts, Flags::PRICING).await?;
+let pricing: Pricing = vexla.get(&parts, Flags::PRICING).await?;
 
 // axum: serves /.flags, and evaluates flags for each request.
 let app = Router::new()
-    .nest_service("/.flags", flargs.service())
+    .nest_service("/.flags", vexla.service())
     .route("/checkout", get(checkout))
-    .layer(flargs.layer());
+    .layer(vexla.layer());
 ```
 
 ## CLI
 
-The CLI uses [incur](https://github.com/wevm/incur), so every command supports `--llms`, `--mcp`, and `--format`. `FLARGS_URL` and `FLARGS_TOKEN` select the server and its token.
+The CLI uses [incur](https://github.com/wevm/incur), so every command supports `--llms`, `--mcp`, and `--format`. `VEXLA_URL` and `VEXLA_TOKEN` select the server and its token.
 
 ```bash
-# Writes flargs.gen.ts from .env.flags.
-flargs generate
+# Writes vexla.gen.ts from .env.flags.
+vexla generate
 
 # Fails when the environment sets an invalid flag value.
-flargs check
+vexla check
 
 # Lists every flag of a running server, with its value and source.
-flargs list --url https://api.example.com/.flags
+vexla list --url https://api.example.com/.flags
 
 # Sets and deletes a store value for every request.
-flargs set NEW_CHECKOUT true
-flargs unset NEW_CHECKOUT
+vexla set NEW_CHECKOUT true
+vexla unset NEW_CHECKOUT
 
 # Creates a flag in the store, for a project with no flags file.
-flargs define NEW_CHECKOUT --type boolean --default false --public
+vexla define NEW_CHECKOUT --type boolean --default false --public
 
 # Lists stored values of removed flags, and deletes them with --yes.
-flargs prune
+vexla prune
 
 # Lists flags past their expiry date.
-flargs stale
+vexla stale
 
 # Replaces each read of a flag with its final value, then deletes the flag.
-flargs retire NEW_CHECKOUT --value true
+vexla retire NEW_CHECKOUT --value true
 
 # Returns a signed link that overrides a private flag for one week.
-flargs link https://app.example.com/checkout PRICING=c --expires 7d
+vexla link https://app.example.com/checkout PRICING=c --expires 7d
 
 # Serves the dev route for a flags file, for an application with no TypeScript server.
-flargs dev
+vexla dev
 ```
 
 ## Documentation

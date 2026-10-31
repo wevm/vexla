@@ -1,6 +1,6 @@
 /** @module Serves a fetch handler over real HTTP on a random port, for integration tests. */
 import * as Http from 'node:http'
-import { Request } from 'flargs/node'
+import { Request } from 'vexla/node'
 
 /** Starts a server on `127.0.0.1` with a `node:http` request listener. */
 export async function listen(

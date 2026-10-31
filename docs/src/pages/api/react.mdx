@@ -1,12 +1,12 @@
 # useFlag [Returns the value of one flag, and renders again when the values change]
 
-`flargs/react` exports `useFlag`. It uses `useSyncExternalStore` over the values of `flags` and `Values.subscribe`, so it needs no provider. [React](/guides/react) shows the setup.
+`vexla/react` exports `useFlag`. It uses `useSyncExternalStore` over the values of `flags` and `Values.subscribe`, so it needs no provider. [React](/guides/react) shows the setup.
 
 ```tsx [checkout.tsx]
-import { useFlag } from 'flargs/react'
+import { useFlag } from 'vexla/react'
 
 export function Checkout() {
-  // 'a' | 'b' | 'c', from flargs.gen.ts
+  // 'a' | 'b' | 'c', from vexla.gen.ts
   const pricing = useFlag('PRICING')
   return <Price plan={pricing} />
 }
@@ -24,4 +24,4 @@ useFlag<const key extends keyof Registered & string>(key: key): Definitions.Valu
 - **Server:** inside `Values.run`, it returns the value of the current request.
 - **Browser:** it returns the value of the page, and renders again after each `Values.load`.
 - **Missing values:** a key with no value returns `undefined`. In a browser, a private flag has no value.
-- **Retirement:** [`flargs retire`](/cli/retire) replaces a `useFlag('<key>')` call with the final value.
+- **Retirement:** [`vexla retire`](/cli/retire) replaces a `useFlag('<key>')` call with the final value.

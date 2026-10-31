@@ -1,33 +1,33 @@
 # Adapted from wevm/handshakes
 
 Source: https://github.com/wevm/handshakes/blob/main/AGENTS.md
-Source commit: `78decd57e6823ec5de899a5acb8bbdb9c227b3a3`. Retrieved 2026-10-30. Handshakes adapts `wevm/ondine`, which adapts `wevm/zyzz`. General TypeScript, module, testing, prose, and Git conventions are retained. Rust conventions are adapted from `wevm/ondine`. Project principles, security, documentation, layout, and commands are adapted for Flargs.
+Source commit: `78decd57e6823ec5de899a5acb8bbdb9c227b3a3`. Retrieved 2026-10-30. Handshakes adapts `wevm/ondine`, which adapts `wevm/zyzz`. General TypeScript, module, testing, prose, and Git conventions are retained. Rust conventions are adapted from `wevm/ondine`. Project principles, security, documentation, layout, and commands are adapted for Vexla.
 
 # Agent Guidelines
 
 ## Project Principles
 
-- Flargs is a self-hosted feature flag library. It declares flags in a committed `.env.flags` file, evaluates them on the server, and serves a dev route and an admin API from the host application. It is a self-hosted alternative to the Vercel Flags SDK.
-- Flargs supports trunk-based development. Unfinished work merges to `main` behind a flag, and the flag, not the branch, controls the release.
-- Flargs covers four roles: the definitions (`.env.flags`, parsed by `Definitions` in `flargs`), the instance (`Flargs.create` in `flargs/server`, served through `flargs.fetch`), the values (`flags` in `flargs`), and the build (`flargs/vite`). The CLI and the Rust crate use the same wire format. Stay general purpose. Never add code for one product or one deployment.
+- Vexla is a self-hosted feature flag library. It declares flags in a committed `.env.flags` file, evaluates them on the server, and serves a dev route and an admin API from the host application. It is a self-hosted alternative to the Vercel Flags SDK.
+- Vexla supports trunk-based development. Unfinished work merges to `main` behind a flag, and the flag, not the branch, controls the release.
+- Vexla covers four roles: the definitions (`.env.flags`, parsed by `Definitions` in `vexla`), the instance (`Vexla.create` in `vexla/server`, served through `vexla.fetch`), the values (`flags` in `vexla`), and the build (`vexla/vite`). The CLI and the Rust crate use the same wire format. Stay general purpose. Never add code for one product or one deployment.
 - A flag resolves at one of two times. A `build` flag resolves when the bundle is built, compiles to a literal, and never reaches the API. A `runtime` flag resolves on the server for each request.
 - `.env.flags` or the store declares each flag. In `.env.flags`, each variable is a flag, its name is the key (`flags.NEW_CHECKOUT`), and its value is the default, and comment lines above it hold the description and JSDoc-style tags: `@type`, `@public`, `@build`, and `@expires`. Without `@type`, the type is inferred from the default. A project uses one source: with `definitions`, the store holds values only. A gitignored `.env` or the deploy environment sets values.
-- `public: true`, not a variable prefix, controls whether a value reaches the browser. Flargs configuration variables use the `FLARGS_` prefix.
-- `flargs generate` and `flargs/vite` write `flargs.gen.ts` from `.env.flags`. No runtime reads the flags file from disk. Rust parses `.env.flags` at compile time with `flargs::flags!`.
-- The server resolves a runtime flag value in one order: an override, the store value, `decide`, then `default`. Change this order only in `.agent/plans/flargs.md` first.
+- `public: true`, not a variable prefix, controls whether a value reaches the browser. Vexla configuration variables use the `VEXLA_` prefix.
+- `vexla generate` and `vexla/vite` write `vexla.gen.ts` from `.env.flags`. No runtime reads the flags file from disk. Rust parses `.env.flags` at compile time with `vexla::flags!`.
+- The server resolves a runtime flag value in one order: an override, the store value, `decide`, then `default`. Change this order only in `.agent/plans/vexla.md` first.
 - A flag is `private` unless it declares `visibility: 'public'`. A private flag value never leaves the server, except through the authorized admin API.
 - In dev mode, every flag accepts an override. In production, an unsigned override applies only to a public runtime flag. A private flag accepts only a signed override. A build flag accepts no override.
 - The dev route sets personal overrides in a cookie. The admin API writes the store, which applies to every request. Keep these two paths separate.
-- Keep `flargs/server` and the `browser` condition of `flargs` free of dependencies and of Node built-ins, so they run in Node, Bun, Deno, edge runtimes, and browsers. Sign and verify with WebCrypto. The server condition of `flargs` uses only `AsyncLocalStorage` from `node:async_hooks`, which Node, Bun, Deno, and Workers (`nodejs_compat`) provide.
-- The browser snapshot of `flags` in `flargs` is the only module-scope state. Every other module follows the instance conventions below.
+- Keep `vexla/server` and the `browser` condition of `vexla` free of dependencies and of Node built-ins, so they run in Node, Bun, Deno, edge runtimes, and browsers. Sign and verify with WebCrypto. The server condition of `vexla` uses only `AsyncLocalStorage` from `node:async_hooks`, which Node, Bun, Deno, and Workers (`nodejs_compat`) provide.
+- The browser snapshot of `flags` in `vexla` is the only module-scope state. Every other module follows the instance conventions below.
 - The `.env.flags` format and the JSON manifest of the admin API are the contract between TypeScript, the CLI, and Rust. Shared vectors in `test/vectors/` prove that every implementation evaluates, parses, and signs the same way.
-- `.agent/plans/flargs.md` defines the public API, the phases, and the acceptance gates. Update it in the same change as an API decision.
+- `.agent/plans/vexla.md` defines the public API, the phases, and the acceptance gates. Update it in the same change as an API decision.
 
 ## Security Conventions
 
-- Secrets (`FLARGS_SECRET`, admin tokens, signatures) never appear in errors, logs, CLI output, MCP output, or snapshots.
-- The values endpoint, `flargs.script`, and the output of `flargs types` contain public flags only, unless `--visibility all` is set. Return a private value only to a request that `authorize` grants `read` or `write`.
-- `authorize` is the only check on the admin API. Write a store value or sign a link only with `write`. `FLARGS_SECRET` signs overrides and never authenticates a request.
+- Secrets (`VEXLA_SECRET`, admin tokens, signatures) never appear in errors, logs, CLI output, MCP output, or snapshots.
+- The values endpoint, `vexla.script`, and the output of `vexla types` contain public flags only, unless `--visibility all` is set. Return a private value only to a request that `authorize` grants `read` or `write`.
+- `authorize` is the only check on the admin API. Write a store value or sign a link only with `write`. `VEXLA_SECRET` signs overrides and never authenticates a request.
 - Never serve the dev route in production without `authorize`. Dev mode is an explicit option, never inferred from a hostname or a header.
 - Sign overrides and share links with HMAC-SHA256 over the canonical override string. Verify before parsing values, and reject an expired signature.
 - Validate every override and store value against the flag definition. Reject an unknown key or a value outside `options`. Never evaluate an override as code.
@@ -88,13 +88,13 @@ Source commit: `78decd57e6823ec5de899a5acb8bbdb9c227b3a3`. Retrieved 2026-10-30.
 
 - Organize each module file as one conceptual namespace containing its public types, constants, functions, and errors. Consumers should read calls as `Module.operation(...)`.
 - Prefer stateless module functions for pure behavior. Do not create an instance when inputs fully describe the operation.
-- When behavior needs dependencies or lifecycle state, expose a factory such as `Flargs.create(options)` that returns a plain object of operations and data.
+- When behavior needs dependencies or lifecycle state, expose a factory such as `Vexla.create(options)` that returns a plain object of operations and data.
 - Construct instances explicitly at the application boundary and pass them down. Do not hide construction in imports or module-scope singletons.
 - Scope an instance to the lifecycle that owns its state, such as one CLI run, one serverless instance, or one test. Do not share mutable state more broadly than required.
 - Inject environment-specific capabilities through factory options: `env`, `fetch`, and `store`. Read `process.env` and `globalThis.fetch` only as defaults at that boundary, so tests inject them and nothing stubs a global.
 - Type dependencies by the smallest capability the module consumes, not by the concrete SDK client. This keeps adapters interchangeable without wrapper classes.
 - Let factory operations close over shared dependencies and state. Do not return methods that depend on `this` or require binding.
-- Name the returned public shape after its role (`Client`, `Flargs`, `Store`) when that role is meaningful. Use `create.ReturnType` for a factory-specific shape that has no independent domain name.
+- Name the returned public shape after its role (`Client`, `Vexla`, `Store`) when that role is meaningful. Use `create.ReturnType` for a factory-specific shape that has no independent domain name.
 - Keep one authoritative instance value. Derive related helpers and views from that instance instead of duplicating configuration or state.
 - Keep mutable caches private to the instance. Expose explicit operations, such as `invalidate`, and provide reset or disposal only when the lifecycle requires it.
 - Avoid side-effect registration. `sideEffects: false` means an import used only to install global behavior can disappear from a bundle.
@@ -155,7 +155,7 @@ Applies to documentation, comments, TSDoc, interface copy, commit messages, and 
 - Use one word for one thing, and give each word one meaning and one part of speech. Do not use a synonym for variety.
 - Keep an instruction to 20 words or fewer, and a descriptive sentence to 25 words or fewer. Give one instruction in each sentence, unless the actions occur at the same time.
 - Keep each paragraph to one topic and six sentences or fewer. Use a vertical list for sequential steps or several conditions.
-- Put a condition before the instruction it controls: "If the signature expires, run `flargs link` again."
+- Put a condition before the instruction it controls: "If the signature expires, run `vexla link` again."
 - Use the active voice in instructions. Use the passive voice in descriptions only when the agent is unknown or not important.
 - Use the imperative, simple present, simple past, and simple future. Do not use a progressive (`-ing`) or perfect form as the main verb. An `-ing` word in a technical name, such as "signing secret", is valid.
 - Do not stack more than three nouns, except in a technical name. Break a longer cluster with a preposition.
@@ -173,11 +173,11 @@ Applies to documentation, comments, TSDoc, interface copy, commit messages, and 
 - Runtime coverage is integration-only. Do not write unit tests, private-helper tests, or per-function suites disguised as integration tests.
 - Colocate integration suites and consumer type fixtures with their owning module: `Client.test.ts` and `Client.test-d.ts` beside `Client.ts`. Keep the shared harness under `test/`.
 - No mocking, stubbing, fake implementations, module replacements, fake timers, or stubbed globals. Run every flow against a real server or platform:
-  - **Server:** `flargs.fetch` behind a local HTTP server on a random port, with its own `Store.memory()`.
-  - **Admin store:** a second `Flargs.create` instance as the remote store for `Store.http`, so writes travel over real HTTP.
-  - **Browser:** the dev route and `flargs/react` in a real browser through Vitest browser mode.
+  - **Server:** `vexla.fetch` behind a local HTTP server on a random port, with its own `Store.memory()`.
+  - **Admin store:** a second `Vexla.create` instance as the remote store for `Store.http`, so writes travel over real HTTP.
+  - **Browser:** the dev route and `vexla/react` in a real browser through Vitest browser mode.
   - **Build:** a real Vite build of a fixture app, with assertions on the emitted bundle.
-  - **Processes:** the built CLI against a local `flargs.fetch`, and the Rust crate against the same server and vectors.
+  - **Processes:** the built CLI against a local `vexla.fetch`, and the Rust crate against the same server and vectors.
 - Write store values through the admin API. Never write into a store directly in a test that covers the server.
 - Cover complete supported flows as they land. Before a later stage exists, test the real available public boundary, and do not fabricate a downstream stage.
 - Exclude colocated tests and type fixtures from published files and build outputs.
@@ -189,10 +189,10 @@ Applies to documentation, comments, TSDoc, interface copy, commit messages, and 
 
 ## Rust Conventions
 
-The `flargs` crate evaluates the same manifest, overrides, and signatures as the TypeScript packages. These conventions are adapted from `wevm/ondine`. Project principles, TypeScript conventions, and testing rules still apply wherever they have a Rust equivalent.
+The `vexla` crate evaluates the same manifest, overrides, and signatures as the TypeScript packages. These conventions are adapted from `wevm/ondine`. Project principles, TypeScript conventions, and testing rules still apply wherever they have a Rust equivalent.
 
-- Keep evaluation, override parsing, and signing pure in the `flargs` crate. Put HTTP behind the `client` feature, the dev route behind the `server` feature (a `tower::Service`), the extractor behind `axum`, and `build.rs` support behind `build`.
-- Keep `flargs-macros` a thin proc-macro crate. It reads `.env.flags` with the parser that the vectors cover, reports errors with `syn::Error` spans that name the key, and emits calls into `flargs`. Runtime logic in the macro is a defect.
+- Keep evaluation, override parsing, and signing pure in the `vexla` crate. Put HTTP behind the `client` feature, the dev route behind the `server` feature (a `tower::Service`), the extractor behind `axum`, and `build.rs` support behind `build`.
+- Keep `vexla-macros` a thin proc-macro crate. It reads `.env.flags` with the parser that the vectors cover, reports errors with `syn::Error` spans that name the key, and emits calls into `vexla`. Runtime logic in the macro is a defect.
 - Use edition 2024 and pin the toolchain in `rust-toolchain.toml`. Declare `rust-version` in the workspace.
 - Configure `[workspace.lints]` with `clippy::all` and `clippy::pedantic` at `warn` (priority `-1`), plus `allow_attributes`, `dbg_macro`, `get_unwrap`, `print_stderr`, `print_stdout`, `todo`, `undocumented_unsafe_blocks`, and `unimplemented`. Allow only `module_name_repetitions`, `must_use_candidate`, `similar_names`, and `too_many_lines`.
 - Suppress a lint locally with `#[expect(lint, reason = "...")]`, never `#[allow]`. Deny `unsafe_code`.
@@ -200,8 +200,8 @@ The `flargs` crate evaluates the same manifest, overrides, and signatures as the
 - Use plain data, functions, and enums. Traits exist for real polymorphism, such as `Store`, not for namespacing.
 - Order `use` declarations, struct fields, and enum variants alphabetically unless order is observable. Mark observable order with a comment.
 - Start every module with a `//!` comment describing its responsibility, and document every public item. Enable `missing_docs` and `unreachable_pub`.
-- Rust tests live in `crates/flargs/tests/`, run the shared vectors and the TypeScript server end to end, and assert with inline `insta` snapshots. Unit tests of private helpers and mocks are banned, as in TypeScript.
-- Cover macro diagnostics with `trybuild` compile-fail fixtures in `crates/flargs/tests/ui/`, the Rust equivalent of `.test-d.ts` fixtures.
+- Rust tests live in `crates/vexla/tests/`, run the shared vectors and the TypeScript server end to end, and assert with inline `insta` snapshots. Unit tests of private helpers and mocks are banned, as in TypeScript.
+- Cover macro diagnostics with `trybuild` compile-fail fixtures in `crates/vexla/tests/ui/`, the Rust equivalent of `.test-d.ts` fixtures.
 
 ## Workflow Conventions
 
@@ -213,7 +213,7 @@ The `flargs` crate evaluates the same manifest, overrides, and signatures as the
 ## Git Conventions
 
 - Conventional commits, lowercase, no trailing period: `feat:`, `fix:`, `perf:`, `refactor:`, `docs:`, `test:`, `chore:`. Scope optional.
-- Name the thing that changed, in the identifiers the codebase already uses. Prefer `feat: add Flargs.create` over `feat: let apps read flags`.
+- Name the thing that changed, in the identifiers the codebase already uses. Prefer `feat: add Vexla.create` over `feat: let apps read flags`.
 - State the change, not the reason for it. Leave `because`, `so that`, and `in order to` out of the subject.
 - Write each message to stand alone for a reader who has not seen the pull request or the task that produced it.
 - Never force push and never amend a pushed commit. Correct a mistake with a follow-up commit.
@@ -222,14 +222,14 @@ The `flargs` crate evaluates the same manifest, overrides, and signatures as the
 ## Repository Layout
 
 - `src/`: flat PascalCase modules of the core entry (`Definitions`, `Override`, `Values`), with colocated tests. `src/index.ts` re-exports them as namespaces, and exports `flags` directly.
-- `src/hono/`, `src/node/`, `src/react/`, `src/server/`, `src/vite/`, `src/zile/`: the `flargs/hono`, `flargs/node`, `flargs/react`, `flargs/server`, `flargs/vite`, and `flargs/zile` entries.
+- `src/hono/`, `src/node/`, `src/react/`, `src/server/`, `src/vite/`, `src/zile/`: the `vexla/hono`, `vexla/node`, `vexla/react`, `vexla/server`, `vexla/vite`, and `vexla/zile` entries.
 - `src/server/internal/Page.ts`: the dev route page, one HTML document with inline styles and no runtime dependency.
 - `src/cli/`: the incur CLI. `bin.ts` is the entry, and each command lives in its own file.
 - `src/internal/`: helpers that no entry exports.
-- `crates/flargs/`: the Rust crate. `crates/flargs-definitions/`: the parser that the crate and the macro share. `crates/flargs-macros/`: the `flargs::flags!` macro.
+- `crates/vexla/`: the Rust crate. `crates/vexla-definitions/`: the parser that the crate and the macro share. `crates/vexla-macros/`: the `vexla::flags!` macro.
 - `test/`: the shared harness. `test/vectors/`: evaluation, override, and signature vectors that TypeScript and Rust both run.
 - `docs/`: the Vocs documentation site, a private workspace package. Pages live in `docs/src/pages/`, organized as Introduction, Guides, API Reference, and CLI Reference. `docs/vocs.config.ts` holds the sidebar.
-- `.agent/plans/flargs.md`: the plan, the public API, and the acceptance gate of each phase.
+- `.agent/plans/vexla.md`: the plan, the public API, and the acceptance gate of each phase.
 
 ## Tooling
 

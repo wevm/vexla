@@ -1,7 +1,7 @@
-/** @module Runs a node:http server with a Flargs instance: the dev route, scoped values, and the override cookie. */
-import { Definitions, flags } from 'flargs'
-import { Request } from 'flargs/node'
-import { Flargs } from 'flargs/server'
+/** @module Runs a node:http server with a Vexla instance: the dev route, scoped values, and the override cookie. */
+import { Definitions, flags } from 'vexla'
+import { Request } from 'vexla/node'
+import { Vexla } from 'vexla/server'
 import * as Http from '../../test/Http.js'
 
 const definitions = Definitions.parse({
@@ -9,11 +9,11 @@ const definitions = Definitions.parse({
 })
 
 describe('toNodeListener', () => {
-  test('serves the flargs path, scopes flags, and stores overrides in a cookie', async () => {
-    const flargs = Flargs.create({ definitions, secret: 'test-secret' })
+  test('serves the vexla path, scopes flags, and stores overrides in a cookie', async () => {
+    const vexla = Vexla.create({ definitions, secret: 'test-secret' })
     const server = await Http.listen(
       Request.toNodeListener(() => Response.json({ NEW_CHECKOUT: flags['NEW_CHECKOUT'] }), {
-        flargs,
+        vexla,
       }),
     )
 

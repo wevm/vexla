@@ -47,7 +47,7 @@ export default Cli.command({
 
       for (const file of sources(root)) {
         const code = Fs.readFileSync(Path.join(root, file), 'utf8')
-        if (!code.includes('flargs')) continue
+        if (!code.includes('vexla')) continue
 
         const result = Inline.transform(code, {
           definitions,

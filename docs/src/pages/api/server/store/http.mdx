@@ -1,16 +1,16 @@
-# Store.http [Returns a store over the admin API of another Flargs instance]
+# Store.http [Returns a store over the admin API of another Vexla instance]
 
 The store reads and writes the admin API of a remote instance, such as a central admin service. A value set on the remote instance applies to every instance that uses this store.
 
 ```ts [flags.ts]
-import { Flargs, Store } from 'flargs/server'
-import { definitions } from './flargs.gen.js'
+import { Vexla, Store } from 'vexla/server'
+import { definitions } from './vexla.gen.js'
 
-export const flargs = Flargs.create({
+export const vexla = Vexla.create({
   definitions,
-  secret: process.env.FLARGS_SECRET,
+  secret: process.env.VEXLA_SECRET,
   // Reads the manifest of the admin service, at most once every 5 seconds.
-  store: Store.http({ token: process.env.FLARGS_TOKEN, url: 'https://admin.example.com/.flags' }),
+  store: Store.http({ token: process.env.VEXLA_TOKEN, url: 'https://admin.example.com/.flags' }),
 })
 ```
 

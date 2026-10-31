@@ -1,5 +1,5 @@
 /** @module Runs the override vectors, which TypeScript and Rust share. */
-import { Definitions, Override } from 'flargs'
+import { Definitions, Override } from 'vexla'
 import vectors from '../test/vectors/overrides.json' with { type: 'json' }
 
 const definitions = Definitions.parse(vectors.definitions)

@@ -1,17 +1,17 @@
 # unset [Deletes the store value of a flag]
 
-`flargs unset` calls `DELETE /.flags/values/:key`, which needs `write` access. The flag then resolves from `decide`, its variable, or its default. The command also deletes the orphan value of a removed flag.
+`vexla unset` calls `DELETE /.flags/values/:key`, which needs `write` access. The flag then resolves from `decide`, its variable, or its default. The command also deletes the orphan value of a removed flag.
 
 ```sh
 # Deletes the store value of PRICING
-npx flargs unset PRICING
+npx vexla unset PRICING
 ```
 
 ## Signature
 
 ```sh
 # Arguments first, then options
-flargs unset <key> [options]
+vexla unset <key> [options]
 ```
 
 ## Arguments
@@ -27,13 +27,13 @@ Key of the flag, such as `NEW_CHECKOUT`.
 ### --url
 
 - **Type:** `string`
-- **Default:** `FLARGS_URL`
+- **Default:** `VEXLA_URL`
 
 The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs unset NEW_CHECKOUT --url https://api.example.com/.flags
+npx vexla unset NEW_CHECKOUT --url https://api.example.com/.flags
 ```
 
 ## Output

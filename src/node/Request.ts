@@ -1,15 +1,15 @@
 /** @module Conversion between `node:http` and the fetch API, for Node servers and Express. */
 import type * as Http from 'node:http'
 import * as Values from '../Values.js'
-import type * as Flargs from '../server/Flargs.js'
+import type * as Vexla from '../server/Vexla.js'
 
 /** A fetch handler. */
 export type Handler = (request: globalThis.Request) => Response | Promise<Response>
 
 /**
- * Returns a `node:http` request listener for `handler`. With `flargs`, requests under its path
- * reach `flargs.fetch`, other requests run in `Values.run`, and override search parameters
- * persist in the `flargs` cookie.
+ * Returns a `node:http` request listener for `handler`. With `vexla`, requests under its path
+ * reach `vexla.fetch`, other requests run in `Values.run`, and override search parameters
+ * persist in the `vexla` cookie.
  */
 export function toNodeListener(
   handler: Handler,
@@ -18,17 +18,17 @@ export function toNodeListener(
   return (incoming, outgoing) => {
     void (async () => {
       const request = fromNodeListener(incoming)
-      const flargs = options.flargs
+      const vexla = options.vexla
 
       const response = await (async () => {
-        if (!flargs) return handler(request)
+        if (!vexla) return handler(request)
 
         const pathname = new URL(request.url).pathname
-        if (pathname === flargs.path || pathname.startsWith(`${flargs.path}/`))
-          return flargs.fetch(request)
+        if (pathname === vexla.path || pathname.startsWith(`${vexla.path}/`))
+          return vexla.fetch(request)
 
-        const response = await Values.run(flargs, request, () => handler(request))
-        const cookie = await flargs.setCookie(request)
+        const response = await Values.run(vexla, request, () => handler(request))
+        const cookie = await vexla.setCookie(request)
         if (!cookie) return response
 
         const headers = new Headers(response.headers)
@@ -57,8 +57,8 @@ export declare namespace toNodeListener {
   type Options = {
     /** Receives errors that the handler throws. The response is `500`. */
     onError?: ((error: unknown) => void) | undefined
-    /** A Flargs instance: serves its path, and scopes `flags` to each request. */
-    flargs?: Flargs.Flargs<any> | undefined
+    /** A Vexla instance: serves its path, and scopes `flags` to each request. */
+    vexla?: Vexla.Vexla<any> | undefined
   }
 }
 

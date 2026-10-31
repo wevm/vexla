@@ -6,12 +6,12 @@ import * as Definitions from '../../Definitions.js'
 import * as Files from '../../internal/Files.js'
 import * as Context from '../Context.js'
 
-/** `flargs generate`: writes `flargs.gen.ts` from the flags file, or from the manifest of `--url`. */
+/** `vexla generate`: writes `vexla.gen.ts` from the flags file, or from the manifest of `--url`. */
 export const generate = Cli.command({
-  description: 'Writes flargs.gen.ts from .env.flags, or from the manifest of a running server.',
+  description: 'Writes vexla.gen.ts from .env.flags, or from the manifest of a running server.',
   options: Context.file.extend({
     ...Context.server.shape,
-    out: z.string().optional().describe('Path of the generated module. Default: flargs.gen.ts'),
+    out: z.string().optional().describe('Path of the generated module. Default: vexla.gen.ts'),
     visibility: z
       .enum(['all', 'public'])
       .optional()
@@ -46,7 +46,7 @@ export const generate = Cli.command({
   },
 })
 
-/** `flargs check`: validates the environment against the flags file. */
+/** `vexla check`: validates the environment against the flags file. */
 export const check = Cli.command({
   description:
     'Fails when the environment sets an invalid flag value, or an undeclared variable with --prefix. Reports stale flags.',
@@ -85,7 +85,7 @@ export const check = Cli.command({
   },
 })
 
-/** `flargs stale`: lists flags past their `expires` date. */
+/** `vexla stale`: lists flags past their `expires` date. */
 export const stale = Cli.command({
   description: 'Lists flags past their expires date, which are due for retirement.',
   options: Context.file,

@@ -1,14 +1,14 @@
-# Override [Parses and signs the flag.* search parameters and the flargs cookie]
+# Override [Parses and signs the flag.* search parameters and the vexla cookie]
 
 An override sets a value for one browser. `Override.parse` verifies and validates overrides, and `Override.serialize` returns the search parameters of a link. The instance calls both. A host calls them directly to build a link or inspect a request.
 
 ```ts [link.ts]
-import { Override } from 'flargs'
+import { Override } from 'vexla'
 
 // Signed search parameters that override a private flag for one week.
 const params = await Override.serialize(
   { PRICING: 'c' },
-  { expiresAt: Date.now() + 7 * 86_400_000, secret: process.env.FLARGS_SECRET },
+  { expiresAt: Date.now() + 7 * 86_400_000, secret: process.env.VEXLA_SECRET },
 )
 const url = `https://app.example.com/checkout?${params}`
 ```
@@ -60,7 +60,7 @@ PRICING=c&exp=1767225600
 
 ## Constants
 
-- **`Override.cookie`:** `'flargs'`, the name of the override cookie.
+- **`Override.cookie`:** `'vexla'`, the name of the override cookie.
 - **`Override.prefix`:** `'flag.'`, the prefix of override search parameters.
 
 ## Errors

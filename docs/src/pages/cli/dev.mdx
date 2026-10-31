@@ -1,17 +1,17 @@
 # dev [Serves the dev route for a flags file]
 
-`flargs dev` serves the dev route and the admin API for `.env.flags` on `127.0.0.1`, in dev mode, with a store in memory. It suits an application with no TypeScript server, such as a Rust service in development. The command runs until it is stopped.
+`vexla dev` serves the dev route and the admin API for `.env.flags` on `127.0.0.1`, in dev mode, with a store in memory. It suits an application with no TypeScript server, such as a Rust service in development. The command runs until it is stopped.
 
 ```sh
 # Serves http://127.0.0.1:4000/.flags
-npx flargs dev
+npx vexla dev
 ```
 
 ## Signature
 
 ```sh
 # Arguments first, then options
-flargs dev [options]
+vexla dev [options]
 ```
 
 ## Options
@@ -25,7 +25,7 @@ The path of the flags file, relative to the root.
 
 ```sh
 # Reads a flags file in another directory
-npx flargs dev --path config/.env.flags
+npx vexla dev --path config/.env.flags
 ```
 
 ### --root
@@ -37,7 +37,7 @@ The project root.
 
 ```sh
 # Runs in the app package of a monorepo
-npx flargs dev --root apps/web
+npx vexla dev --root apps/web
 ```
 
 ### --port
@@ -49,7 +49,7 @@ The port of the server.
 
 ```sh
 # Serves http://127.0.0.1:5000/.flags
-npx flargs dev --port 5000
+npx vexla dev --port 5000
 ```
 
 ## Output

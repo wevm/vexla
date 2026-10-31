@@ -3,7 +3,7 @@
 `Store.from` returns its input unchanged, typed as a `Store`. The host owns the table and migrates it with its own tool, such as Drizzle, Prisma, or sqlx.
 
 ```ts [store.ts]
-import { Store } from 'flargs/server'
+import { Store } from 'vexla/server'
 import { db } from './db.js'
 
 // Maps the three required operations to queries on a flags table.

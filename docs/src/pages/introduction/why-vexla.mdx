@@ -1,0 +1,43 @@
+# Why Vexla [Merge unfinished work to main behind a flag, on infrastructure that the application owns]
+
+## Trunk-Based Development
+
+Feature branches drift from `main`, end in large and risky merges, and keep finished work out of production. Trunk-based development fixes this. Small changes merge to `main` continuously, and unfinished work ships disabled behind a feature flag. The flag, not the branch, controls the release.
+
+- **Short-lived branches:** a change merges when it is safe to deploy, not when the feature is complete.
+- **Release without deploy:** an admin enables a flag through the admin API. No new build is necessary.
+- **Personal preview:** a developer enables a flag for one browser through the dev route or a signed link. Other users see no change.
+
+## Cheap Flags
+
+Extra work such as feature flags, staged migrations, and two configurations at once was once tedious. Coding agents now write it at almost no cost. A flag must therefore be cheap to add, read, and remove.
+
+Vexla makes each flag one typed declaration in a committed file. Find All References locates every read. [`vexla retire`](/cli/retire) replaces every read with the final value and deletes the declaration, so a flag does not stay after its release.
+
+## Self-Hosted
+
+Flags live in the application and its database. The dev route is a page that the application serves, and the admin API is a set of routes under the same path. Nothing loads from a third party, and no account is necessary.
+
+The server is optional. A project with build flags only resolves every value in the bundler plugin, and serves no dev route and no admin API.
+
+| Concern     | Vexla                                                     |
+| ----------- | --------------------------------------------------------- |
+| Definitions | `.env.flags`, reviewed with the code                      |
+| Values      | environment variables, then a store that the host owns    |
+| Toggles     | the dev route at `/.flags`, served by the application     |
+| Access      | `authorize`, a function of the host. No credential format |
+| Runtimes    | Node, Bun, Deno, edge runtimes, and browsers              |
+
+## Principles
+
+- **Declared:** each flag has one declaration, one type, and one default, in a committed file.
+- **Typed:** every read carries the type of its flag, so a misspelled or removed flag fails the type check.
+- **Private:** a flag can stay on the server. Only a `@public` flag reaches a browser.
+- **Retirement:** a release flag can declare its end. `@expires` marks it as due, [`vexla stale`](/cli/stale) lists it, [`vexla retire`](/cli/retire) replaces its reads with the final value, and [`vexla prune`](/cli/prune) clears stored values of removed flags. A flag without `@expires`, such as a kill switch, stays until it is removed.
+- **Incremental:** build flags, environment variables, a dev route, and an admin API use the same declarations and the same reads. Each step after build flags adds a server.
+- **Self-hosted:** flags live in the application and its database, with no third-party service.
+- **Portable:** the core, server, and browser entries have no dependencies, and run in Node, Bun, Deno, edge runtimes, and browsers.
+
+## Vercel Flags SDK
+
+The [Vercel Flags SDK](https://flags-sdk.dev) is the reference design. Vexla keeps typed declarations, evaluation on the server, and one default for each flag. It replaces the provider with a store, the toolbar with the dev route, and precompute with build flags.

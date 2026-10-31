@@ -2,14 +2,14 @@
 
 ## Overview
 
-A project declares its flags in a flags file or in the store, never in both. Without `definitions`, `Flargs.create` reads the definitions from the `definitions` operations of the store. An admin UI or `flargs define` then creates a flag with no deploy.
+A project declares its flags in a flags file or in the store, never in both. Without `definitions`, `Vexla.create` reads the definitions from the `definitions` operations of the store. An admin UI or `vexla define` then creates a flag with no deploy.
 
-|               | Flags file                                     | Store                                          |
-| ------------- | ---------------------------------------------- | ---------------------------------------------- |
-| Add a flag    | a reviewed change on `main`                    | `flargs define` or an admin UI, with no deploy |
-| Defaults      | always available                               | available while the store is                   |
-| Types         | `flargs generate` from the file                | `flargs generate --url` from a running server  |
-| Remove a flag | delete the key, and type errors show each read | `flargs undefine`                              |
+|               | Flags file                                     | Store                                         |
+| ------------- | ---------------------------------------------- | --------------------------------------------- |
+| Add a flag    | a reviewed change on `main`                    | `vexla define` or an admin UI, with no deploy |
+| Defaults      | always available                               | available while the store is                  |
+| Types         | `vexla generate` from the file                 | `vexla generate --url` from a running server  |
+| Remove a flag | delete the key, and type errors show each read | `vexla undefine`                              |
 
 ## Walkthrough
 
@@ -18,13 +18,13 @@ A project declares its flags in a flags file or in the store, never in both. Wit
 `Store.memory`, `Store.http`, and `Store.kv` hold definitions. A `Store.from` store holds them when it implements `definitions`.
 
 ```ts [flags.ts]
-import { Flargs, Store } from 'flargs/server'
+import { Vexla, Store } from 'vexla/server'
 import * as Admin from './admin.js'
 
 // No definitions option: the store holds the definitions and the values.
-export const flargs = Flargs.create({
+export const vexla = Vexla.create({
   authorize: async (request) => ((await Admin.verify(request)) ? 'write' : undefined),
-  secret: process.env.FLARGS_SECRET,
+  secret: process.env.VEXLA_SECRET,
   store: Store.from(Admin.flagsTable),
 })
 ```
@@ -41,24 +41,24 @@ Content-Type: application/json
 ```
 
 ```sh
-# The same write from the CLI. FLARGS_TOKEN holds a token with write access.
-npx flargs define NEW_CHECKOUT --type boolean --default false --public --url https://api.example.com/.flags
+# The same write from the CLI. VEXLA_TOKEN holds a token with write access.
+npx vexla define NEW_CHECKOUT --type boolean --default false --public --url https://api.example.com/.flags
 ```
 
 ### Generate the Types
 
-`flargs generate --url` writes `flargs.gen.ts` from the manifest of the running server. With `--url`, the module declares public flags only, unless `--visibility all` is set.
+`vexla generate --url` writes `vexla.gen.ts` from the manifest of the running server. With `--url`, the module declares public flags only, unless `--visibility all` is set.
 
 ```sh
 # Declares every flag, for server code
-npx flargs generate --url https://api.example.com/.flags --visibility all
+npx vexla generate --url https://api.example.com/.flags --visibility all
 ```
 
 ## Recipes
 
 ### Database Table
 
-Flargs runs no migrations. The host owns the table, and `Store.from` maps the store operations to its queries. This reference schema holds one row for each flag.
+Vexla runs no migrations. The host owns the table, and `Store.from` maps the store operations to its queries. This reference schema holds one row for each flag.
 
 ```sql
 -- Postgres. definition is null when a flags file declares the flags.
@@ -71,7 +71,7 @@ create table flags (
 ```
 
 ```ts [admin.ts]
-import { Store } from 'flargs/server'
+import { Store } from 'vexla/server'
 import { db, flags } from './db.js'
 
 // Maps each store operation to a Drizzle query on the reference table.
@@ -115,7 +115,7 @@ The instance reads the definitions once, and again after each definition write t
 
 ### Store Down
 
-If the store cannot return the definitions, evaluation throws `Flargs.DefinitionsUnavailableError`, and the admin API returns `503` with `definitions_unavailable`. With no definitions, no default exists.
+If the store cannot return the definitions, evaluation throws `Vexla.DefinitionsUnavailableError`, and the admin API returns `503` with `definitions_unavailable`. With no definitions, no default exists.
 
 ### Conflict
 

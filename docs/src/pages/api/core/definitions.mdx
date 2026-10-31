@@ -1,10 +1,10 @@
 # Definitions [Parses .env.flags, decodes variables, and returns the manifest and the generated module]
 
-`Definitions` holds the pure functions over flag definitions. The Flargs instance, the build plugins, and the CLI use the same functions.
+`Definitions` holds the pure functions over flag definitions. The Vexla instance, the build plugins, and the CLI use the same functions.
 
 ```ts [definitions.ts]
 import * as Fs from 'node:fs'
-import { Definitions } from 'flargs'
+import { Definitions } from 'vexla'
 
 // Parses .env.flags. Throws Definitions.InvalidDeclarationError on a bad declaration.
 export const definitions = Definitions.parseFile(Fs.readFileSync('.env.flags', 'utf8'))
@@ -63,7 +63,7 @@ Each variable declares a flag. Its name is the key, and its value is the default
 Definitions.removeFromFile(text: string, key: string): string
 ```
 
-Removes the comment lines, the variable, and one blank line after it. Returns `text` unchanged when no variable declares `key`. [`flargs retire`](/cli/retire) uses it.
+Removes the comment lines, the variable, and one blank line after it. Returns `text` unchanged when no variable declares `key`. [`vexla retire`](/cli/retire) uses it.
 
 ### Definitions.infer
 
@@ -105,12 +105,12 @@ Throws `InvalidValueError` when the text is not a value of the flag. The error n
 Definitions.defines(definitions, options?: { env?: Record<string, string | undefined>; identifier?: string; values?: Record<string, Json> }): Record<string, string>
 ```
 
-Each value resolves from `values`, then the variable in `env`, then the default. `identifier` defaults to `'flags'`. A bundler `define` replaces a global `flags` object only, not a member of an imported binding. Code that imports `flags` uses `flargs/vite` or `flargs/zile`.
+Each value resolves from `values`, then the variable in `env`, then the default. `identifier` defaults to `'flags'`. A bundler `define` replaces a global `flags` object only, not a member of an imported binding. Code that imports `flags` uses `vexla/vite` or `vexla/zile`.
 
 ### Definitions.generate
 
 ```ts
-// Returns the source of flargs.gen.ts
+// Returns the source of vexla.gen.ts
 Definitions.generate(definitions, options?: { visibility?: 'all' | 'public' }): string
 ```
 

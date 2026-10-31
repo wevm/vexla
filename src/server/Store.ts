@@ -11,12 +11,12 @@ export type Store = {
   delete: (key: string) => Promise<void>
   /** Returns the values of `keys` that the store holds. A key with no value is absent. */
   get: (keys: readonly string[]) => Promise<Record<string, unknown>>
-  /** Returns every key that holds a value. Optional: `flargs prune` needs it to find orphan values. */
+  /** Returns every key that holds a value. Optional: `vexla prune` needs it to find orphan values. */
   keys?: (() => Promise<readonly string[]>) | undefined
   /** Sets the value of a flag. The runtime validates `value` before the call. */
   set: (key: string, value: Definitions.Json) => Promise<void>
   /**
-   * Definition operations. Required only when `Flargs.create` has no `definitions`, so the store
+   * Definition operations. Required only when `Vexla.create` has no `definitions`, so the store
    * declares the flags.
    */
   definitions?:
@@ -99,7 +99,7 @@ export function env(variables: Readonly<Record<string, string | undefined>>): St
 }
 
 /**
- * Returns a store over the admin API of another Flargs runtime, such as a central admin service.
+ * Returns a store over the admin API of another Vexla runtime, such as a central admin service.
  * Reads cache the manifest for `ttl` milliseconds. Writes go through at once and clear the cache.
  */
 export function http(options: http.Options): Store {

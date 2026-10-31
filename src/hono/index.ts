@@ -1,40 +1,40 @@
 /** @module Hono entry: middleware that serves the dev route and scopes `flags` to each request. */
 import type { MiddlewareHandler } from 'hono'
 import * as Values from '../Values.js'
-import type * as Flargs from '../server/Flargs.js'
+import type * as Vexla from '../server/Vexla.js'
 
-/** The Hono environment that the middleware sets: `new Hono<Env<typeof flargs>>()`. */
-export type Env<flargs extends Flargs.Flargs<any>> = { Variables: { flags: Flags<flargs> } }
+/** The Hono environment that the middleware sets: `new Hono<Env<typeof vexla>>()`. */
+export type Env<vexla extends Vexla.Vexla<any>> = { Variables: { flags: Flags<vexla> } }
 
 /** The flag operations of one request, as `c.var.flags`. */
-export type Flags<flargs extends Flargs.Flargs<any>> = {
-  evaluate: () => ReturnType<flargs['evaluate']>
-  get: <key extends Parameters<flargs['get']>[1]>(key: key) => ReturnType<flargs['get']>
+export type Flags<vexla extends Vexla.Vexla<any>> = {
+  evaluate: () => ReturnType<vexla['evaluate']>
+  get: <key extends Parameters<vexla['get']>[1]>(key: key) => ReturnType<vexla['get']>
   script: () => Promise<string>
 }
 
 /**
- * Returns Hono middleware. Requests under the path of `flargs` reach `flargs.fetch`. Other requests
- * run in `Values.run`, so `flags` holds their values, and `c.var.flags` binds `flargs` to them.
+ * Returns Hono middleware. Requests under the path of `vexla` reach `vexla.fetch`. Other requests
+ * run in `Values.run`, so `flags` holds their values, and `c.var.flags` binds `vexla` to them.
  */
-export function middleware<flargs extends Flargs.Flargs<any>>(
-  flargs: flargs,
-): MiddlewareHandler<Env<flargs>> {
+export function middleware<vexla extends Vexla.Vexla<any>>(
+  vexla: vexla,
+): MiddlewareHandler<Env<vexla>> {
   return async (c, next) => {
     const request = c.req.raw
     const pathname = new URL(request.url).pathname
-    if (pathname === flargs.path || pathname.startsWith(`${flargs.path}/`))
-      return flargs.fetch(request)
+    if (pathname === vexla.path || pathname.startsWith(`${vexla.path}/`))
+      return vexla.fetch(request)
 
     c.set('flags', {
-      evaluate: () => flargs.evaluate(request) as never,
-      get: (key) => flargs.get(request, key) as never,
-      script: () => flargs.script(request),
+      evaluate: () => vexla.evaluate(request) as never,
+      get: (key) => vexla.get(request, key) as never,
+      script: () => vexla.script(request),
     })
 
-    await Values.run(flargs, request, next)
+    await Values.run(vexla, request, next)
 
-    const cookie = await flargs.setCookie(request)
+    const cookie = await vexla.setCookie(request)
     if (cookie) c.res.headers.append('set-cookie', cookie)
   }
 }

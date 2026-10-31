@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/flargs", "crates/flargs-definitions", "crates/flargs-macros"]
+members = ["crates/vexla", "crates/vexla-definitions", "crates/vexla-macros"]
 resolver = "3"
 
 [workspace.package]
@@ -13,8 +13,8 @@ version = "0.0.0"
 axum = { version = "0.8.9", default-features = false }
 base64 = "0.23.1"
 bytes = "1.12.1"
-flargs-definitions = { path = "crates/flargs-definitions", version = "0.0.0" }
-flargs-macros = { path = "crates/flargs-macros", version = "0.0.0" }
+vexla-definitions = { path = "crates/vexla-definitions", version = "0.0.0" }
+vexla-macros = { path = "crates/vexla-macros", version = "0.0.0" }
 hmac = "0.13.0"
 http = "1.5.0"
 http-body = "1.1.0"

@@ -3,12 +3,12 @@ import * as Fs from 'node:fs'
 import * as Os from 'node:os'
 import * as Path from 'node:path'
 import { build } from 'vite'
-import flargs from 'flargs/vite'
+import vexla from 'vexla/vite'
 
 const src = Path.resolve(import.meta.dirname, '..')
 
 function fixture(main: string) {
-  const root = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'flargs-vite-'))
+  const root = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'vexla-vite-'))
   Fs.writeFileSync(
     Path.join(root, '.env.flags'),
     [
@@ -40,8 +40,8 @@ async function bundle(root: string, options: { ssr?: boolean } = {}) {
     },
     configFile: false,
     logLevel: 'silent',
-    plugins: [flargs()],
-    resolve: { alias: { flargs: Path.join(src, 'index.ts') } },
+    plugins: [vexla()],
+    resolve: { alias: { vexla: Path.join(src, 'index.ts') } },
     root,
   })
   const result = Array.isArray(output) ? output[0]! : output
@@ -49,7 +49,7 @@ async function bundle(root: string, options: { ssr?: boolean } = {}) {
   return result.output.map((chunk) => ('code' in chunk ? chunk.code : '')).join('\n')
 }
 
-const main = `import { flags } from 'flargs'
+const main = `import { flags } from 'vexla'
 
 if (flags.MAINTENANCE_BANNER) console.log('BANNER_ON')
 else console.log('BANNER_OFF')
@@ -57,14 +57,14 @@ else console.log('BANNER_OFF')
 console.log(flags.NEW_CHECKOUT ? 'NEW' : 'OLD')
 `
 
-describe('flargs', () => {
+describe('vexla', () => {
   test('replaces build flags with literals and drops the dead branch', async () => {
     const root = fixture(main)
     const code = await bundle(root)
     expect(code).not.toContain('BANNER_ON')
     expect(code).toContain('BANNER_OFF')
     expect(code).toContain('NEW_CHECKOUT')
-    expect(Fs.existsSync(Path.join(root, 'flargs.gen.ts'))).toMatchInlineSnapshot(`true`)
+    expect(Fs.existsSync(Path.join(root, 'vexla.gen.ts'))).toMatchInlineSnapshot(`true`)
   })
 
   test('the environment of the build sets a build flag', async () => {
@@ -76,7 +76,7 @@ describe('flargs', () => {
   })
 
   test('a private flag read in browser code fails the build', async () => {
-    const root = fixture(`import { flags } from 'flargs'\nconsole.log(flags.PRICING)\n`)
+    const root = fixture(`import { flags } from 'vexla'\nconsole.log(flags.PRICING)\n`)
     await expect(bundle(root)).rejects.toThrow(
       'Browser code reads the private flag PRICING in main.ts:2.',
     )
@@ -84,7 +84,7 @@ describe('flargs', () => {
 
   test('a private build flag read in browser code fails the build', async () => {
     const root = fixture(
-      `import { flags } from 'flargs'\nif (flags.SECRET_BUILD) console.log('SECRET')\n`,
+      `import { flags } from 'vexla'\nif (flags.SECRET_BUILD) console.log('SECRET')\n`,
     )
     await expect(bundle(root)).rejects.toThrow(
       'Browser code reads the private flag SECRET_BUILD in main.ts:2.',
@@ -93,7 +93,7 @@ describe('flargs', () => {
 
   test('server builds may read private flags', async () => {
     const root = fixture(
-      `import { flags } from 'flargs'\nexport const pricing = () => flags.PRICING\n`,
+      `import { flags } from 'vexla'\nexport const pricing = () => flags.PRICING\n`,
     )
     expect(await bundle(root, { ssr: true })).toContain('PRICING')
   })

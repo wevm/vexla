@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `flargs/vite` plugin reads `.env.flags`, writes `flargs.gen.ts`, and replaces each read of a build flag with a literal. A minifier then drops the dead branch. In browser code, a read of a private flag fails the build, whether it is a build flag or a runtime flag.
+The `vexla/vite` plugin reads `.env.flags`, writes `vexla.gen.ts`, and replaces each read of a build flag with a literal. A minifier then drops the dead branch. In browser code, a read of a private flag fails the build, whether it is a build flag or a runtime flag.
 
 An app with build flags only needs no server. The plugin resolves every value at build time.
 
@@ -23,19 +23,19 @@ MAINTENANCE_BANNER=false
 ### Add the Plugin
 
 ```ts [vite.config.ts]
-import flargs from 'flargs/vite'
+import vexla from 'vexla/vite'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  // Reads .env.flags, writes flargs.gen.ts, and replaces build flag reads with literals.
-  plugins: [flargs()],
+  // Reads .env.flags, writes vexla.gen.ts, and replaces build flag reads with literals.
+  plugins: [vexla()],
 })
 ```
 
 ### Read the Flag
 
 ```ts [main.ts]
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
 // Becomes `if (false)` in the bundle, so the branch drops.
 if (flags.MAINTENANCE_BANNER) showBanner()
@@ -57,16 +57,16 @@ MAINTENANCE_BANNER=true npx vite build
 `store` takes any object with the `get` operation of a `Store`. `Store.http` reads the build flag values from a running admin API at build time.
 
 ```ts [vite.config.ts]
-import { Store } from 'flargs/server'
-import flargs from 'flargs/vite'
+import { Store } from 'vexla/server'
+import vexla from 'vexla/vite'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [
-    flargs({
+    vexla({
       // A store value takes precedence over the variable of the build.
       store: Store.http({
-        token: process.env.FLARGS_TOKEN,
+        token: process.env.VEXLA_TOKEN,
         url: 'https://api.example.com/.flags',
       }),
     }),
@@ -89,21 +89,21 @@ To resolve: Read PRICING on the server, or add `@public` to the flag in .env.fla
 `path` sets the flags file, and `out` sets the generated module. Both resolve from the Vite root.
 
 ```ts [vite.config.ts]
-import flargs from 'flargs/vite'
+import vexla from 'vexla/vite'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
   // A flags file and a generated module outside the root of the app.
-  plugins: [flargs({ out: 'src/flargs.gen.ts', path: 'config/.env.flags' })],
+  plugins: [vexla({ out: 'src/vexla.gen.ts', path: 'config/.env.flags' })],
 })
 ```
 
 ### Dev Server
 
-The dev server watches the flags file. A change writes `flargs.gen.ts` again and triggers a full reload.
+The dev server watches the flags file. A change writes `vexla.gen.ts` again and triggers a full reload.
 
 ## More
 
-- **Function:** [`flargs`](/api/vite) lists every option.
+- **Function:** [`vexla`](/api/vite) lists every option.
 - **Libraries:** [Libraries](/guides/libraries) replaces build flags in a published package.
 - **Other bundlers:** [`Definitions.defines`](/api/core/definitions) returns `define` replacements for a global `flags` object.

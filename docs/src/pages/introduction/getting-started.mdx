@@ -4,48 +4,48 @@ import { Card, Cards, Tab, Tabs } from 'vocs'
 
 ## Overview
 
-Flargs is a self-hosted feature flag library. A committed flags file, `.env.flags`, declares each flag with its type and its default. A build flag resolves when the bundle builds. A runtime flag resolves on the server of the application for each request.
+Vexla is a self-hosted feature flag library. A committed flags file, `.env.flags`, declares each flag with its type and its default. A build flag resolves when the bundle builds. A runtime flag resolves on the server of the application for each request.
 
-The server is optional. A project with build flags only needs no server, and adds a Flargs instance for runtime flags later. Reads of `flags` stay the same at each step. [Concepts](/introduction/concepts) defines each term.
+The server is optional. A project with build flags only needs no server, and adds a Vexla instance for runtime flags later. Reads of `flags` stay the same at each step. [Concepts](/introduction/concepts) defines each term.
 
 ## Agent Prompt
 
 Paste this prompt into a coding agent:
 
 ```txt
-Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished work behind flags so it merges to main.
+Read github.com/wevm/flargs, add Vexla to my project, and put my unfinished work behind flags so it merges to main.
 ```
 
 ## Install
 
-Install the package with a package manager. The `flargs` and `flargs/server` entries have no dependencies.
+Install the package with a package manager. The `vexla` and `vexla/server` entries have no dependencies.
 
 :::note
-No release of the `flargs` package is published yet. The commands below apply after the first release.
+No release of the `vexla` package is published yet. The commands below apply after the first release.
 :::
 
 :::code-group
 
 ```sh [pnpm]
-# Adds flargs to the project
-pnpm add flargs
+# Adds vexla to the project
+pnpm add vexla
 ```
 
 ```sh [npm]
-# Adds flargs to the project
-npm install flargs
+# Adds vexla to the project
+npm install vexla
 ```
 
 ```sh [bun]
-# Adds flargs to the project
-bun add flargs
+# Adds vexla to the project
+bun add vexla
 ```
 
 :::
 
 ## Setup
 
-A server is optional. A project with build flags only needs a bundler plugin and no server. A project with runtime flags adds a Flargs instance to its server.
+A server is optional. A project with build flags only needs a bundler plugin and no server. A project with runtime flags adds a Vexla instance to its server.
 
 <Tabs stateKey="setup">
 <Tab title="Build Time">
@@ -64,15 +64,15 @@ MAINTENANCE_BANNER=false
 
 ### Add the Plugin
 
-`flargs/vite` writes `flargs.gen.ts` and replaces each read of a build flag with a literal. A library uses [`flargs/zile`](/guides/libraries) instead.
+`vexla/vite` writes `vexla.gen.ts` and replaces each read of a build flag with a literal. A library uses [`vexla/zile`](/guides/libraries) instead.
 
 ```ts [vite.config.ts]
-import flargs from 'flargs/vite'
+import vexla from 'vexla/vite'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  // Reads .env.flags, writes flargs.gen.ts, and replaces build flag reads with literals.
-  plugins: [flargs()],
+  // Reads .env.flags, writes vexla.gen.ts, and replaces build flag reads with literals.
+  plugins: [vexla()],
 })
 ```
 
@@ -81,7 +81,7 @@ export default defineConfig({
 The read needs no server. The bundle holds the value as a literal, so a minifier drops the dead branch.
 
 ```ts [main.ts]
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
 // Becomes `if (false)` in the bundle.
 if (flags.MAINTENANCE_BANNER) showBanner()
@@ -119,27 +119,27 @@ PRICING=a
 
 ### Generate the Types
 
-`flargs generate` writes `flargs.gen.ts`. The module holds the definitions, and registers their types for `flags`, `flargs.get`, and `useFlag`. The [Vite plugin](/guides/vite) writes the same module at startup and on each change of `.env.flags`.
+`vexla generate` writes `vexla.gen.ts`. The module holds the definitions, and registers their types for `flags`, `vexla.get`, and `useFlag`. The [Vite plugin](/guides/vite) writes the same module at startup and on each change of `.env.flags`.
 
 ```sh
-# Writes flargs.gen.ts from .env.flags
-npx flargs generate
+# Writes vexla.gen.ts from .env.flags
+npx vexla generate
 ```
 
 ### Create the Instance
 
-`Flargs.create` returns the Flargs instance. The store holds the values that the admin API writes. `flargs.fetch` is a fetch handler for the dev route and the admin API.
+`Vexla.create` returns the Vexla instance. The store holds the values that the admin API writes. `vexla.fetch` is a fetch handler for the dev route and the admin API.
 
 ```ts [flags.ts]
-import { Flargs, Store } from 'flargs/server'
-import { definitions } from './flargs.gen.js'
+import { Vexla, Store } from 'vexla/server'
+import { definitions } from './vexla.gen.js'
 
-export const flargs = Flargs.create({
+export const vexla = Vexla.create({
   definitions,
   // Dev mode accepts unsigned overrides for every flag, and opens the dev route.
   dev: process.env.NODE_ENV === 'development',
   // Signs overrides and share links. Required outside dev mode.
-  secret: process.env.FLARGS_SECRET,
+  secret: process.env.VEXLA_SECRET,
   // Holds store values in memory. A database or KV store keeps them across restarts.
   store: Store.memory(),
 })
@@ -150,14 +150,14 @@ export const flargs = Flargs.create({
 The middleware serves the dev route at `/.flags`, and runs each other request in `Values.run`. [Hono](/guides/hono), [Node](/guides/node), [Next.js](/guides/nextjs), and [Cloudflare Workers](/guides/cloudflare-workers) each have a guide.
 
 ```ts [app.ts]
-import { middleware } from 'flargs/hono'
+import { middleware } from 'vexla/hono'
 import { Hono } from 'hono'
-import { flargs } from './flags.js'
+import { vexla } from './flags.js'
 
 const app = new Hono()
 
 // Serves /.flags, and scopes flags to each other request.
-app.use(middleware(flargs))
+app.use(middleware(vexla))
 ```
 
 ### Read a Flag
@@ -165,7 +165,7 @@ app.use(middleware(flargs))
 `flags` holds the values of the current request.
 
 ```ts [app.ts]
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
 // Reads the value of the current request: an override, the store value, decide, or the default.
 export function checkout() {

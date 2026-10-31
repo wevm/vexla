@@ -6,7 +6,7 @@ const key = z.object({ key: z.string().describe('Key of the flag, such as newChe
 
 type Flag = { source: string; type: string; value: unknown }
 
-/** `flargs list`: lists every flag of a running server with its value and source. */
+/** `vexla list`: lists every flag of a running server with its value and source. */
 export const list = Cli.command({
   description: 'Lists every flag of a running server, with its value and source.',
   options: Context.server,
@@ -28,7 +28,7 @@ export const list = Cli.command({
   },
 })
 
-/** `flargs get`: returns one flag of a running server. */
+/** `vexla get`: returns one flag of a running server. */
 export const get = Cli.command({
   args: key,
   description: 'Returns one flag of a running server, with its definition, value, and source.',
@@ -49,7 +49,7 @@ export const get = Cli.command({
   },
 })
 
-/** `flargs set`: sets the store value of a flag for every request. */
+/** `vexla set`: sets the store value of a flag for every request. */
 export const set = Cli.command({
   args: key.extend({ value: z.string().describe('Value, such as true, b, 3, or {"requests":5}') }),
   description: 'Sets the store value of a flag for every request.',
@@ -66,7 +66,7 @@ export const set = Cli.command({
   },
 })
 
-/** `flargs unset`: deletes the store value of a flag. */
+/** `vexla unset`: deletes the store value of a flag. */
 export const unset = Cli.command({
   args: key,
   description: 'Deletes the store value of a flag.',
@@ -81,7 +81,7 @@ export const unset = Cli.command({
   },
 })
 
-/** `flargs define`: creates or replaces a store definition. */
+/** `vexla define`: creates or replaces a store definition. */
 export const define = Cli.command({
   args: key,
   description: 'Creates or replaces a flag in the store, for a project with no flags file.',
@@ -119,7 +119,7 @@ export const define = Cli.command({
   },
 })
 
-/** `flargs undefine`: deletes a store definition. */
+/** `vexla undefine`: deletes a store definition. */
 export const undefine = Cli.command({
   args: key,
   description: 'Deletes a flag from the store, with its value.',
@@ -134,7 +134,7 @@ export const undefine = Cli.command({
   },
 })
 
-/** `flargs prune`: lists, and with `--yes` deletes, store values of keys that no flag declares. */
+/** `vexla prune`: lists, and with `--yes` deletes, store values of keys that no flag declares. */
 export const prune = Cli.command({
   description: 'Lists store values of removed flags. --yes deletes them.',
   options: Context.server.extend({ yes: z.boolean().optional().describe('Delete the values') }),
@@ -156,7 +156,7 @@ export const prune = Cli.command({
   },
 })
 
-/** `flargs link`: returns a signed link that overrides flags until it expires. */
+/** `vexla link`: returns a signed link that overrides flags until it expires. */
 export const link = Cli.command({
   args: z.object({
     url: z.string().describe('Page to link, such as https://app.example.com/checkout'),

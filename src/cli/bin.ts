@@ -19,9 +19,9 @@ const version = (() => {
   }
 })()
 
-const cli = Cli.create('flargs', {
+const cli = Cli.create('vexla', {
   description:
-    'Reads and writes feature flags through the flags file and the admin API of a Flargs server.',
+    'Reads and writes feature flags through the flags file and the admin API of a Vexla server.',
   // The CLI runs in CI, so Incur's background update check stays off.
   update: false,
   version,

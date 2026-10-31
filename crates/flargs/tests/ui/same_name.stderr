@@ -1,5 +1,0 @@
-error: ../../../../crates/flargs/tests/ui/same_name.env.flags: Two flags make the Rust field new_checkout. Rename one of them.
- --> tests/ui/same_name.rs:3:16
-  |
-3 | flargs::flags!("../../../../crates/flargs/tests/ui/same_name.env.flags");
-  |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

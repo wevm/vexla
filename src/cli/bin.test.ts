@@ -5,8 +5,8 @@ import * as Os from 'node:os'
 import * as Path from 'node:path'
 import * as Esbuild from 'esbuild'
 import ts from 'typescript'
-import { Definitions } from 'flargs'
-import { Flargs, Store } from 'flargs/server'
+import { Definitions } from 'vexla'
+import { Vexla, Store } from 'vexla/server'
 import * as Http from '../../test/Http.js'
 
 const file = [
@@ -45,7 +45,7 @@ afterAll(() => {
 })
 
 function project(files: Record<string, string> = {}) {
-  const root = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'flargs-cli-'))
+  const root = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'vexla-cli-'))
   Fs.writeFileSync(Path.join(root, '.env.flags'), file)
   for (const [file, content] of Object.entries(files)) {
     Fs.mkdirSync(Path.dirname(Path.join(root, file)), { recursive: true })
@@ -74,20 +74,20 @@ function run(
   })
 }
 
-describe('flargs', () => {
+describe('vexla', () => {
   test('--help', async () => {
     const result = ChildProcess.spawnSync(process.execPath, [bin, '--help'], { encoding: 'utf8' })
     expect(result.status).toMatchInlineSnapshot(`0`)
     expect(result.stdout).toMatchInlineSnapshot(`
-      "flargs — Reads and writes feature flags through the flags file and the admin API of a Flargs server.
+      "vexla — Reads and writes feature flags through the flags file and the admin API of a Vexla server.
 
-      Usage: flargs <command>
+      Usage: vexla <command>
 
       Commands:
         check     Fails when the environment sets an invalid flag value, or an undeclared variable with --prefix. Reports stale flags.
         define    Creates or replaces a flag in the store, for a project with no flags file.
         dev       Serves the dev route for .env.flags, for an application with no TypeScript server.
-        generate  Writes flargs.gen.ts from .env.flags, or from the manifest of a running server.
+        generate  Writes vexla.gen.ts from .env.flags, or from the manifest of a running server.
         get       Returns one flag of a running server, with its definition, value, and source.
         link      Returns a signed link that overrides flags, including private flags, until it expires.
         list      Lists every flag of a running server, with its value and source.
@@ -122,13 +122,13 @@ describe('flargs', () => {
 })
 
 describe('generate', () => {
-  test('writes flargs.gen.ts from .env.flags', async () => {
+  test('writes vexla.gen.ts from .env.flags', async () => {
     const root = project()
     const result = await run(['generate'], { cwd: root })
     expect(result.status).toMatchInlineSnapshot(`0`)
-    const generated = Fs.readFileSync(Path.join(root, 'flargs.gen.ts'), 'utf8')
+    const generated = Fs.readFileSync(Path.join(root, 'vexla.gen.ts'), 'utf8')
     expect(generated).toContain('"NEW_CHECKOUT"')
-    expect(generated).toContain("declare module 'flargs'")
+    expect(generated).toContain("declare module 'vexla'")
   })
 })
 
@@ -171,20 +171,20 @@ describe('stale', () => {
 })
 
 describe('admin API', () => {
-  test('list, set, get, link, and prune, with the token from FLARGS_TOKEN', async () => {
+  test('list, set, get, link, and prune, with the token from VEXLA_TOKEN', async () => {
     const store = Store.memory({ values: { OLD_FLAG: true } })
-    const flargs = Flargs.create({
+    const vexla = Vexla.create({
       authorize: (request) =>
         request.headers.get('authorization') === 'Bearer secret-token' ? 'write' : undefined,
       definitions: Definitions.parseFile(file),
       secret: 'test-secret',
       store,
     })
-    const server = await Http.serve(flargs.fetch)
-    const env = { FLARGS_TOKEN: 'secret-token', FLARGS_URL: `${server.url}/.flags` }
+    const server = await Http.serve(vexla.fetch)
+    const env = { VEXLA_TOKEN: 'secret-token', VEXLA_URL: `${server.url}/.flags` }
 
     expect(
-      (await run(['list'], { env: { FLARGS_URL: env.FLARGS_URL } })).status,
+      (await run(['list'], { env: { VEXLA_URL: env.VEXLA_URL } })).status,
     ).toMatchInlineSnapshot(`3`)
 
     const set = await run(['set', 'PRICING', 'b'], { env })
@@ -231,9 +231,9 @@ describe('admin API', () => {
   })
 
   test('define on a store with no flags file', async () => {
-    const flargs = Flargs.create({ dev: true, store: Store.memory() })
-    const server = await Http.serve(flargs.fetch)
-    const env = { FLARGS_URL: `${server.url}/.flags` }
+    const vexla = Vexla.create({ dev: true, store: Store.memory() })
+    const server = await Http.serve(vexla.fetch)
+    const env = { VEXLA_URL: `${server.url}/.flags` }
 
     const define = await run(
       ['define', 'BETA', '--type', 'boolean', '--default', 'false', '--public'],
@@ -250,7 +250,7 @@ describe('admin API', () => {
 describe('retire', () => {
   test('rewrites every read, removes dead branches, and leaves a project that type checks', async () => {
     const root = project({
-      'src/checkout.ts': `import { flags } from 'flargs'
+      'src/checkout.ts': `import { flags } from 'vexla'
 
 export function checkout(): string {
   if (flags.NEW_CHECKOUT) {
@@ -263,7 +263,7 @@ export function checkout(): string {
 export const label = flags.NEW_CHECKOUT ? 'New checkout' : 'Checkout'
 export const disabled = !flags.NEW_CHECKOUT
 `,
-      'src/view.tsx': `import { useFlag } from 'flargs/react'
+      'src/view.tsx': `import { useFlag } from 'vexla/react'
 
 export function useLabel(): string {
   return useFlag('NEW_CHECKOUT') ? 'new' : 'old'
@@ -308,7 +308,7 @@ export function useLabel(): string {
   })
 
   test('--dry-run writes nothing', async () => {
-    const code = `import { flags } from 'flargs'\nexport const a = flags.NEW_CHECKOUT\n`
+    const code = `import { flags } from 'vexla'\nexport const a = flags.NEW_CHECKOUT\n`
     const root = project({ 'src/a.ts': code })
     const result = JSON.parse(
       (await run(['retire', 'NEW_CHECKOUT', '--dry-run'], { cwd: root })).output,

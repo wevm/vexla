@@ -1,17 +1,17 @@
 # prune [Lists store values of removed flags, and deletes them with --yes]
 
-`flargs prune` reads the `orphans` of the manifest: stored keys that no flag declares. With `--yes`, it deletes each through `DELETE /.flags/values/:key`, which needs `write` access. The store needs a `keys` operation.
+`vexla prune` reads the `orphans` of the manifest: stored keys that no flag declares. With `--yes`, it deletes each through `DELETE /.flags/values/:key`, which needs `write` access. The store needs a `keys` operation.
 
 ```sh
 # Lists orphan values
-npx flargs prune
+npx vexla prune
 ```
 
 ## Signature
 
 ```sh
 # Arguments first, then options
-flargs prune [options]
+vexla prune [options]
 ```
 
 ## Options
@@ -19,13 +19,13 @@ flargs prune [options]
 ### --url
 
 - **Type:** `string`
-- **Default:** `FLARGS_URL`
+- **Default:** `VEXLA_URL`
 
 The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs prune --url https://api.example.com/.flags
+npx vexla prune --url https://api.example.com/.flags
 ```
 
 ### --yes
@@ -37,7 +37,7 @@ Deletes the orphan values.
 
 ```sh
 # Deletes every orphan value
-npx flargs prune --yes
+npx vexla prune --yes
 ```
 
 ## Output

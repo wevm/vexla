@@ -2,10 +2,10 @@
 import * as Fs from 'node:fs'
 import * as Os from 'node:os'
 import * as Path from 'node:path'
-import transform from 'flargs/zile'
+import transform from 'vexla/zile'
 
 function inProject<result>(fn: () => result): result {
-  const root = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'flargs-zile-'))
+  const root = Fs.mkdtempSync(Path.join(Os.tmpdir(), 'vexla-zile-'))
   Fs.writeFileSync(
     Path.join(root, '.env.flags'),
     "# @type {boolean} @build\nNEW_ENCODER=false\n\n# @type {'a' | 'b'}\nPRICING=a\n",
@@ -20,8 +20,8 @@ function inProject<result>(fn: () => result): result {
 }
 
 describe('transform', () => {
-  test('replaces build flags and removes the flargs import', () => {
-    const code = `import { flags } from 'flargs';
+  test('replaces build flags and removes the vexla import', () => {
+    const code = `import { flags } from 'vexla';
 export function encode(value) {
     if (flags.NEW_ENCODER)
         return encodeV2(value);
@@ -39,7 +39,7 @@ export function encode(value) {
   })
 
   test('a runtime flag fails the build', () => {
-    const code = `import { flags } from 'flargs';\nexport const pricing = () => flags.PRICING;\n`
+    const code = `import { flags } from 'vexla';\nexport const pricing = () => flags.PRICING;\n`
     expect(() => inProject(() => transform(code, 'dist/pricing.js')))
       .toThrowErrorMatchingInlineSnapshot(`
       [Error: dist/pricing.js:2 reads PRICING, which is not a build flag.
@@ -48,7 +48,7 @@ export function encode(value) {
     `)
   })
 
-  test('a file without flargs is unchanged', () => {
+  test('a file without vexla is unchanged', () => {
     const code = `export const a = 1;\n`
     expect(inProject(() => transform(code, 'dist/a.js'))).toBe(code)
   })

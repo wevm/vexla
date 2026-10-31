@@ -16,7 +16,7 @@ export const server = z.object({
   url: z
     .string()
     .optional()
-    .describe('URL of the admin API, such as https://api.example.com/.flags. Default: FLARGS_URL'),
+    .describe('URL of the admin API, such as https://api.example.com/.flags. Default: VEXLA_URL'),
 })
 
 /** Returns the definitions in the flags file. */
@@ -30,7 +30,7 @@ export function root(options: z.output<typeof file>): string {
 }
 
 /**
- * Calls the admin API. The token comes from `FLARGS_TOKEN`, never from argv, and never appears
+ * Calls the admin API. The token comes from `VEXLA_TOKEN`, never from argv, and never appears
  * in output.
  */
 export async function api(
@@ -39,10 +39,10 @@ export async function api(
   path: string,
   body?: unknown,
 ): Promise<Record<string, unknown>> {
-  const base = options.url ?? process.env['FLARGS_URL']
+  const base = options.url ?? process.env['VEXLA_URL']
   if (!base) throw new NoUrlError()
 
-  const token = process.env['FLARGS_TOKEN']
+  const token = process.env['VEXLA_TOKEN']
   const response = await fetch(`${base.replace(/\/$/, '')}${path}`, {
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     headers: {
@@ -99,8 +99,8 @@ export class ApiError extends Errors.BaseError {
       {
         steps: [
           options.status === 401 || options.status === 403
-            ? 'Set FLARGS_TOKEN to a token that `authorize` accepts with the access that the command needs.'
-            : 'Check the command arguments against the flags of the server, with `flargs list`.',
+            ? 'Set VEXLA_TOKEN to a token that `authorize` accepts with the access that the command needs.'
+            : 'Check the command arguments against the flags of the server, with `vexla list`.',
         ],
       },
     )
@@ -113,6 +113,6 @@ export class NoUrlError extends Errors.BaseError {
   override name = 'Context.NoUrlError'
 
   constructor() {
-    super('No URL names the admin API.', { steps: ['Pass `--url`, or set FLARGS_URL.'] })
+    super('No URL names the admin API.', { steps: ['Pass `--url`, or set VEXLA_URL.'] })
   }
 }

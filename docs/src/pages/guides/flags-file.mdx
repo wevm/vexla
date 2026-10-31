@@ -4,7 +4,7 @@
 
 The flags file, `.env.flags`, is the committed list of every flag. It uses dotenv syntax. Each variable declares one flag. Its name is the key of the flag, and its value is the default. The comment lines directly above the variable hold the description and the tags.
 
-TypeScript and Rust read the same file. `.env`, `.env.local`, or the deploy environment set the values that differ from the defaults. A project with no Flargs instance and no store uses environment variables only.
+TypeScript and Rust read the same file. `.env`, `.env.local`, or the deploy environment set the values that differ from the defaults. A project with no Vexla instance and no store uses environment variables only.
 
 ## Walkthrough
 
@@ -54,11 +54,11 @@ A `.gitignore` entry such as `.env*` also ignores `.env.flags`. Add an exception
 
 ### Generate the Types
 
-`flargs generate` writes `flargs.gen.ts`, which exports `definitions` and registers their types. The [Vite plugin](/guides/vite) writes the same module at startup and on each change of `.env.flags`.
+`vexla generate` writes `vexla.gen.ts`, which exports `definitions` and registers their types. The [Vite plugin](/guides/vite) writes the same module at startup and on each change of `.env.flags`.
 
 ```sh
-# Writes flargs.gen.ts next to .env.flags
-npx flargs generate
+# Writes vexla.gen.ts next to .env.flags
+npx vexla generate
 ```
 
 | `@type`        | Value type                                                      |
@@ -92,25 +92,25 @@ The instance reads the variable after the override, the store value, and `decide
 
 ### Check the Environment
 
-`flargs check` fails when a variable holds a value that is not a value of its flag. With `--prefix`, it also fails on an undeclared variable with that prefix, so a typo such as `FEATURE_NEW_CHEKOUT` fails CI.
+`vexla check` fails when a variable holds a value that is not a value of its flag. With `--prefix`, it also fails on an undeclared variable with that prefix, so a typo such as `FEATURE_NEW_CHEKOUT` fails CI.
 
 ```sh
 # Checks the process environment and the .env file
-npx flargs check --env-file .env
+npx vexla check --env-file .env
 
 # Also fails on a FEATURE_ variable that no flag declares
-npx flargs check --env-file .env --prefix FEATURE_
+npx vexla check --env-file .env --prefix FEATURE_
 ```
 
 ## Recipes
 
 ### Rust
 
-`flargs::flags!` reads the same file at compile time. A project with a TypeScript app and a Rust service keeps one `.env.flags`.
+`vexla::flags!` reads the same file at compile time. A project with a TypeScript app and a Rust service keeps one `.env.flags`.
 
 ```rust [src/flags.rs]
 // Generates typed flags from the flags file at the root of the crate.
-flargs::flags!(".env.flags");
+vexla::flags!(".env.flags");
 ```
 
 ### No Server
@@ -118,13 +118,13 @@ flargs::flags!(".env.flags");
 Outside `Values.run`, `flags` reads the process environment. `flags.BETA` reads the variable `BETA`, and its type comes from the text: `true` and `false` are a boolean, a number is a number, a JSON object or array is JSON, and other text is a string.
 
 ```ts [script.ts]
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
 // BETA=true node script.ts reads the boolean true. An unset variable reads as undefined.
 if (flags.BETA) enableBeta()
 ```
 
-Without `.env.flags` or store definitions, `Flargs.create` declares no flags. A flags file adds defaults, options, and public flags, with no change to reads of `flags`.
+Without `.env.flags` or store definitions, `Vexla.create` declares no flags. A flags file adds defaults, options, and public flags, with no change to reads of `flags`.
 
 ## More
 

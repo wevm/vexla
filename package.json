@@ -27,7 +27,7 @@
   },
   "packageManager": "pnpm@11.25.0",
   "[!start-pkg]": "",
-  "name": "flargs",
+  "name": "vexla",
   "description": "Feature flags for trunk-based development.",
   "type": "module",
   "version": "0.0.0",
@@ -38,8 +38,8 @@
   },
   "sideEffects": false,
   "bin": {
-    "flargs": "./dist/cli/bin.js",
-    "flargs.src": "./src/cli/bin.ts"
+    "vexla": "./dist/cli/bin.js",
+    "vexla.src": "./src/cli/bin.ts"
   },
   "main": "./dist/index.js",
   "exports": {

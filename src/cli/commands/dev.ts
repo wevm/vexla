@@ -2,7 +2,7 @@
 import { Cli, z } from 'incur'
 import * as Http from 'node:http'
 import * as NodeRequest from '../../node/Request.js'
-import * as Flargs from '../../server/Flargs.js'
+import * as Vexla from '../../server/Vexla.js'
 import * as Store from '../../server/Store.js'
 import * as Context from '../Context.js'
 
@@ -13,15 +13,15 @@ export default Cli.command({
   }),
   async run(c) {
     try {
-      const flargs = Flargs.create({
+      const vexla = Vexla.create({
         definitions: Context.definitions(c.options),
         dev: true,
         store: Store.memory(),
       })
-      const server = Http.createServer(NodeRequest.toNodeListener(flargs.fetch))
+      const server = Http.createServer(NodeRequest.toNodeListener(vexla.fetch))
       const port = c.options.port ?? 4000
       await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve))
-      if (!c.agent) console.log(`Dev route: http://127.0.0.1:${port}${flargs.path}`)
+      if (!c.agent) console.log(`Dev route: http://127.0.0.1:${port}${vexla.path}`)
       await new Promise(() => {})
       return {}
     } catch (error) {

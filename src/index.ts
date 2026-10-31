@@ -7,7 +7,7 @@ export { flags } from './Values.js'
 export * as Values from './Values.js'
 
 /**
- * Holds the definitions of the project for type inference. `flargs.gen.ts` augments it with
+ * Holds the definitions of the project for type inference. `vexla.gen.ts` augments it with
  * `definitions`, so every read of a flag carries its type.
  */
 export interface Register {}

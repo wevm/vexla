@@ -3,33 +3,33 @@ import { defineConfig } from 'vite-plus'
 
 export default defineConfig({
   test: {
-    // Longer specifiers come first, since the bare `flargs` pattern is anchored.
+    // Longer specifiers come first, since the bare `vexla` pattern is anchored.
     alias: [
       {
-        find: 'flargs/hono',
+        find: 'vexla/hono',
         replacement: Path.resolve(import.meta.dirname, 'src/hono/index.ts'),
       },
       {
-        find: 'flargs/node',
+        find: 'vexla/node',
         replacement: Path.resolve(import.meta.dirname, 'src/node/index.ts'),
       },
       {
-        find: 'flargs/react',
+        find: 'vexla/react',
         replacement: Path.resolve(import.meta.dirname, 'src/react/index.ts'),
       },
       {
-        find: 'flargs/server',
+        find: 'vexla/server',
         replacement: Path.resolve(import.meta.dirname, 'src/server/index.ts'),
       },
       {
-        find: 'flargs/vite',
+        find: 'vexla/vite',
         replacement: Path.resolve(import.meta.dirname, 'src/vite/index.ts'),
       },
       {
-        find: 'flargs/zile',
+        find: 'vexla/zile',
         replacement: Path.resolve(import.meta.dirname, 'src/zile/index.ts'),
       },
-      { find: /^flargs$/, replacement: Path.resolve(import.meta.dirname, 'src/index.ts') },
+      { find: /^vexla$/, replacement: Path.resolve(import.meta.dirname, 'src/index.ts') },
     ],
     exclude: ['**/node_modules/**', '.claude/**', 'dist/**', 'docs/**', 'target/**'],
     globals: true,

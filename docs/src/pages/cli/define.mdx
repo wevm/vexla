@@ -1,17 +1,17 @@
 # define [Creates or replaces a flag in the store]
 
-`flargs define` writes a store definition through `PUT /.flags/definitions/:key`, for a project with no flags file. It needs `write` access. [Store Definitions](/guides/store-definitions) describes the setup.
+`vexla define` writes a store definition through `PUT /.flags/definitions/:key`, for a project with no flags file. It needs `write` access. [Store Definitions](/guides/store-definitions) describes the setup.
 
 ```sh
 # Creates a public boolean flag with the default false
-npx flargs define NEW_CHECKOUT --type boolean --default false --public
+npx vexla define NEW_CHECKOUT --type boolean --default false --public
 ```
 
 ## Signature
 
 ```sh
 # Arguments first, then options
-flargs define <key> [options]
+vexla define <key> [options]
 ```
 
 ## Arguments
@@ -27,13 +27,13 @@ Key of the flag, such as `NEW_CHECKOUT`.
 ### --url
 
 - **Type:** `string`
-- **Default:** `FLARGS_URL`
+- **Default:** `VEXLA_URL`
 
 The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs define NEW_CHECKOUT --url https://api.example.com/.flags
+npx vexla define NEW_CHECKOUT --url https://api.example.com/.flags
 ```
 
 ### --type
@@ -45,7 +45,7 @@ The type of the flag.
 
 ```sh
 # Creates a select flag
-npx flargs define PRICING --type select --default a --options a,b,c
+npx vexla define PRICING --type select --default a --options a,b,c
 ```
 
 ### --default
@@ -57,7 +57,7 @@ The default value. A boolean, number, or JSON default is JSON text, such as `fal
 
 ```sh
 # Creates a JSON flag
-npx flargs define LIMITS --type json --default '{"requests":5}'
+npx vexla define LIMITS --type json --default '{"requests":5}'
 ```
 
 ### --options
@@ -69,7 +69,7 @@ The comma-separated options of a select flag.
 
 ```sh
 # Three options, with the default a
-npx flargs define PRICING --type select --default a --options a,b,c
+npx vexla define PRICING --type select --default a --options a,b,c
 ```
 
 ### --public
@@ -81,7 +81,7 @@ Lets the value reach the browser.
 
 ```sh
 # A public flag
-npx flargs define BANNER --type boolean --default false --public
+npx vexla define BANNER --type boolean --default false --public
 ```
 
 ### --description
@@ -93,7 +93,7 @@ The description of the flag.
 
 ```sh
 # A flag with a description
-npx flargs define BETA --type boolean --default false --description "Beta features."
+npx vexla define BETA --type boolean --default false --description "Beta features."
 ```
 
 ## Output
@@ -107,4 +107,4 @@ npx flargs define BETA --type boolean --default false --description "Beta featur
 | ---------- | --------- | --------------------------------------------------------------------------------------------------------------------- |
 | `API`      | 1         | The server rejects the definition (`400`), declares its flags in a file (`409`), or has no store definitions (`501`). |
 | `API`      | 3         | The token has no `write` access.                                                                                      |
-| `NO_URL`   | 1         | Neither `--url` nor `FLARGS_URL` is set.                                                                              |
+| `NO_URL`   | 1         | Neither `--url` nor `VEXLA_URL` is set.                                                                               |

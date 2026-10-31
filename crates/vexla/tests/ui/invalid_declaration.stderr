@@ -1,0 +1,7 @@
+error: ../../../../crates/vexla/tests/ui/invalid_declaration.env.flags: The default of PRICING is not one of its options (line 2).
+
+       To resolve: Fix the declaration of PRICING in `.env.flags`, or in the store definition.
+ --> tests/ui/invalid_declaration.rs:3:15
+  |
+3 | vexla::flags!("../../../../crates/vexla/tests/ui/invalid_declaration.env.flags");
+  |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

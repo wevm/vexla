@@ -1,17 +1,17 @@
 # link [Returns a signed link that overrides flags until it expires]
 
-`flargs link` calls `POST /.flags/links`, which needs `write` access and a `secret` on the server. The link overrides runtime flags, including private flags, for each browser that opens it. A build flag is rejected.
+`vexla link` calls `POST /.flags/links`, which needs `write` access and a `secret` on the server. The link overrides runtime flags, including private flags, for each browser that opens it. A build flag is rejected.
 
 ```sh
 # Returns a link that sets PRICING to c for one week
-npx flargs link https://app.example.com/checkout PRICING=c
+npx vexla link https://app.example.com/checkout PRICING=c
 ```
 
 ## Signature
 
 ```sh
 # Arguments first, then options
-flargs link <url> <values...> [options]
+vexla link <url> <values...> [options]
 ```
 
 ## Arguments
@@ -33,13 +33,13 @@ Overrides as `key=value`, such as `PRICING=c`. A boolean, number, or JSON value 
 ### --url
 
 - **Type:** `string`
-- **Default:** `FLARGS_URL`
+- **Default:** `VEXLA_URL`
 
 The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs link https://app.example.com/ NEW_CHECKOUT=true --url https://api.example.com/.flags
+npx vexla link https://app.example.com/ NEW_CHECKOUT=true --url https://api.example.com/.flags
 ```
 
 ### --expires
@@ -51,7 +51,7 @@ The lifetime of the link: a number and `m`, `h`, or `d`.
 
 ```sh
 # A link that expires in one hour
-npx flargs link https://app.example.com/ NEW_CHECKOUT=true --expires 1h
+npx vexla link https://app.example.com/ NEW_CHECKOUT=true --expires 1h
 ```
 
 ## Output

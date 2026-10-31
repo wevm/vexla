@@ -1,12 +1,12 @@
 /**
- * @module Overrides: the `flag.*` search parameters and the `flargs` cookie that override flag
+ * @module Overrides: the `flag.*` search parameters and the `vexla` cookie that override flag
  * values for one browser, with HMAC-SHA256 signatures for private flags and share links.
  */
 import * as Definitions from './Definitions.js'
 import * as Errors from './internal/Errors.js'
 
 /** The name of the cookie that holds the overrides of a browser. */
-export const cookie = 'flargs'
+export const cookie = 'vexla'
 
 /** The prefix of override search parameters. */
 export const prefix = 'flag.'
@@ -111,7 +111,7 @@ export declare namespace parse {
     dev?: boolean | undefined
     /** The current time, in milliseconds since the epoch. @default Date.now() */
     now?: number | undefined
-    /** The HMAC secret, such as `FLARGS_SECRET`. A signed input needs it. */
+    /** The HMAC secret, such as `VEXLA_SECRET`. A signed input needs it. */
     secret?: string | undefined
   }
   type ErrorType = InvalidSignatureError
@@ -150,7 +150,7 @@ export declare namespace serialize {
   type Options = {
     /** The expiry of the signature, in milliseconds since the epoch. Required with `secret`. */
     expiresAt?: number | undefined
-    /** The HMAC secret, such as `FLARGS_SECRET`. */
+    /** The HMAC secret, such as `VEXLA_SECRET`. */
     secret?: string | undefined
   }
 }
@@ -166,8 +166,8 @@ export class InvalidSignatureError extends Errors.BaseError {
     super(messages[options.reason], {
       steps: [
         options.reason === 'missing secret'
-          ? 'Set `secret` on the runtime, such as from `FLARGS_SECRET`.'
-          : 'Request a new link with `flargs link`, or `POST /.flags/links`.',
+          ? 'Set `secret` on the runtime, such as from `VEXLA_SECRET`.'
+          : 'Request a new link with `vexla link`, or `POST /.flags/links`.',
       ],
     })
     this.reason = options.reason
@@ -194,7 +194,7 @@ export class NotOverridableError extends Errors.BaseError {
         steps: [
           options.reason === 'build'
             ? 'Set the variable of the flag for the build, or override it in dev mode.'
-            : 'Request a signed link with `flargs link`, or `POST /.flags/links`.',
+            : 'Request a signed link with `vexla link`, or `POST /.flags/links`.',
         ],
       },
     )

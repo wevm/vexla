@@ -1,16 +1,16 @@
 # Store [The contract of the store that holds admin values, and optionally definitions]
 
-A store holds the values that the admin API writes. A store value applies to every request. A host implements the contract on its own database, so Flargs runs no migrations.
+A store holds the values that the admin API writes. A store value applies to every request. A host implements the contract on its own database, so Vexla runs no migrations.
 
 ```ts
-// The Store type of flargs/server
+// The Store type of vexla/server
 type Store = {
   delete: (key: string) => Promise<void>
   get: (keys: readonly string[]) => Promise<Record<string, unknown>>
-  // Optional: lists every key with a value, so flargs prune finds orphan values.
+  // Optional: lists every key with a value, so vexla prune finds orphan values.
   keys?: () => Promise<readonly string[]>
   set: (key: string, value: Json) => Promise<void>
-  // Required only when Flargs.create has no definitions.
+  // Required only when Vexla.create has no definitions.
   definitions?: {
     delete: (key: string) => Promise<void>
     list: () => Promise<Record<string, unknown>>
@@ -40,7 +40,7 @@ type Store = {
 | Change                     | Stored row                    | Behavior                                             |
 | -------------------------- | ----------------------------- | ---------------------------------------------------- |
 | Add a flag                 | none                          | resolves to `decide`, the variable, then the default |
-| Remove a flag              | an orphan value               | ignored by evaluation. `flargs prune` deletes it     |
+| Remove a flag              | an orphan value               | ignored by evaluation. `vexla prune` deletes it      |
 | Change `type` or `options` | a value that fails validation | reported through `onError`, then the next step       |
 | Rename a flag              | the row of the old key        | the new key has no value. The old row is an orphan   |
 
@@ -50,6 +50,6 @@ type Store = {
 | ------------------------------------------ | ------------------------------------------- |
 | [`Store.memory`](/api/server/store/memory) | values and definitions in memory            |
 | [`Store.env`](/api/server/store/env)       | read-only values from environment variables |
-| [`Store.http`](/api/server/store/http)     | the admin API of another Flargs instance    |
+| [`Store.http`](/api/server/store/http)     | the admin API of another Vexla instance     |
 | [`Store.kv`](/api/server/store/kv)         | a Cloudflare KV namespace                   |
 | [`Store.from`](/api/server/store/from)     | a store that the host implements            |

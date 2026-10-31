@@ -1,8 +1,8 @@
 /** @module Runs a Hono app with the middleware behind a local HTTP server. */
 import { Hono } from 'hono'
-import { Definitions, flags } from 'flargs'
-import { type Env, middleware } from 'flargs/hono'
-import { Flargs } from 'flargs/server'
+import { Definitions, flags } from 'vexla'
+import { type Env, middleware } from 'vexla/hono'
+import { Vexla } from 'vexla/server'
 import * as Http from '../../test/Http.js'
 
 const definitions = Definitions.parse({
@@ -11,14 +11,14 @@ const definitions = Definitions.parse({
 })
 
 describe('middleware', () => {
-  test('serves the flargs path, and scopes flags and c.var.flags to the request', async () => {
-    const flargs = Flargs.create({
+  test('serves the vexla path, and scopes flags and c.var.flags to the request', async () => {
+    const vexla = Vexla.create({
       decide: { PRICING: () => 'b' },
       definitions,
       secret: 'test-secret',
     })
-    const app = new Hono<Env<typeof flargs>>()
-    app.use(middleware(flargs))
+    const app = new Hono<Env<typeof vexla>>()
+    app.use(middleware(vexla))
     app.get('/', async (c) =>
       c.json({ flag: flags['NEW_CHECKOUT'], get: await c.var.flags.get('PRICING') }),
     )
@@ -33,7 +33,7 @@ describe('middleware', () => {
         "get": "b",
       }
     `)
-    expect(response.headers.get('set-cookie')).toMatch(/^flargs=/)
+    expect(response.headers.get('set-cookie')).toMatch(/^vexla=/)
     await server.close()
   })
 })

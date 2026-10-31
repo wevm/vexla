@@ -1,13 +1,13 @@
 # transform [Replaces each build flag read in emitted JavaScript with a literal]
 
-`flargs/zile` exports the transform as its default export. A library build calls it on each emitted file, so the published files hold literals and no `flargs` import. [Libraries](/guides/libraries) shows the setup.
+`vexla/zile` exports the transform as its default export. A library build calls it on each emitted file, so the published files hold literals and no `vexla` import. [Libraries](/guides/libraries) shows the setup.
 
 ```ts [build.ts]
-import transform from 'flargs/zile'
+import transform from 'vexla/zile'
 
 // Returns the code with each build flag read replaced.
 const code = transform(
-  `import { flags } from 'flargs';\nexport const a = flags.NEW_ENCODER;\n`,
+  `import { flags } from 'vexla';\nexport const a = flags.NEW_ENCODER;\n`,
   'dist/a.js',
 )
 ```
@@ -24,7 +24,7 @@ transform(code: string, file: string): string
 - **Flags file:** it reads `.env.flags` from the working directory of the build.
 - **Values:** each build flag resolves from its variable in `process.env`, then its default.
 - **Imports:** it removes the `flags` and `useFlag` imports once no read remains.
-- **Unchanged files:** a file that does not contain `flargs` returns unchanged.
+- **Unchanged files:** a file that does not contain `vexla` returns unchanged.
 
 ## Errors
 

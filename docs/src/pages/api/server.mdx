@@ -1,34 +1,34 @@
 import { Card, Cards } from 'vocs'
 
-# flargs/server [The Flargs instance, stores, the dev route, and the admin API]
+# vexla/server [The Vexla instance, stores, the dev route, and the admin API]
 
-`flargs/server` evaluates runtime flags and serves the flags path. It has no dependencies and no Node built-ins, so it runs in Node, Bun, Deno, and edge runtimes.
+`vexla/server` evaluates runtime flags and serves the flags path. It has no dependencies and no Node built-ins, so it runs in Node, Bun, Deno, and edge runtimes.
 
 ```ts [flags.ts]
-import { Flargs, Store } from 'flargs/server'
-import { definitions } from './flargs.gen.js'
+import { Vexla, Store } from 'vexla/server'
+import { definitions } from './vexla.gen.js'
 
 // One instance for each application instance. It listens on no port.
-export const flargs = Flargs.create({
+export const vexla = Vexla.create({
   definitions,
-  secret: process.env.FLARGS_SECRET,
+  secret: process.env.VEXLA_SECRET,
   store: Store.memory(),
 })
 ```
 
 ## Exports
 
-| Export   | Purpose                                                                      |
-| -------- | ---------------------------------------------------------------------------- |
-| `Flargs` | `Flargs.create`, the types of the instance, and the errors of evaluation     |
-| `Store`  | the store contract, and the stores `memory`, `env`, `http`, `kv`, and `from` |
+| Export  | Purpose                                                                      |
+| ------- | ---------------------------------------------------------------------------- |
+| `Vexla` | `Vexla.create`, the types of the instance, and the errors of evaluation      |
+| `Store` | the store contract, and the stores `memory`, `env`, `http`, `kv`, and `from` |
 
 <Cards>
   <Card
-    title="Flargs.create"
+    title="Vexla.create"
     description="Returns the instance: evaluation and the fetch handler of the flags path."
     icon="server"
-    to="/api/server/flargs/create"
+    to="/api/server/vexla/create"
   />
   <Card
     title="Store"

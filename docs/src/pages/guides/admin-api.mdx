@@ -2,9 +2,9 @@
 
 ## Overview
 
-`flargs.fetch` serves the admin API under the flags path, `/.flags` by default. An admin UI, the CLI, CI, and `Store.http` call the same routes. A store value that the admin API writes applies to every request.
+`vexla.fetch` serves the admin API under the flags path, `/.flags` by default. An admin UI, the CLI, CI, and `Store.http` call the same routes. A store value that the admin API writes applies to every request.
 
-`authorize` is the only check on the admin API. It receives the request and returns its access. Flargs defines no credential format, and `FLARGS_SECRET` never authenticates a request.
+`authorize` is the only check on the admin API. It receives the request and returns its access. Vexla defines no credential format, and `VEXLA_SECRET` never authenticates a request.
 
 | Return value | Access                                               | Status of a rejected route |
 | ------------ | ---------------------------------------------------- | -------------------------- |
@@ -24,15 +24,15 @@
 The value routes need a store. Without one, they return `501`.
 
 ```ts [flags.ts]
-import { Flargs, Store } from 'flargs/server'
-import { definitions } from './flargs.gen.js'
+import { Vexla, Store } from 'vexla/server'
+import { definitions } from './vexla.gen.js'
 import * as Admin from './admin.js'
 
-export const flargs = Flargs.create({
+export const vexla = Vexla.create({
   // The session of the admin UI has full access. Other requests have none.
   authorize: async (request) => ((await Admin.verify(request)) ? 'write' : undefined),
   definitions,
-  secret: process.env.FLARGS_SECRET,
+  secret: process.env.VEXLA_SECRET,
   store: Store.from(Admin.flagsTable),
 })
 ```
@@ -94,9 +94,9 @@ GET /.flags/manifest
 [Handshakes](https://github.com/wevm/handshakes) issues short-lived access tokens to the CLI on a device and to CI jobs. `Resource.create` verifies them, and the scopes of the token select the access.
 
 ```ts [flags.ts]
-import { Flargs, Store } from 'flargs/server'
+import { Vexla, Store } from 'vexla/server'
 import { Resource } from 'handshakes/server'
-import { definitions } from './flargs.gen.js'
+import { definitions } from './vexla.gen.js'
 import * as Admin from './admin.js'
 
 // Verifies the bearer tokens of the CLI, CI, and other services.
@@ -105,7 +105,7 @@ const resource = Resource.create({
   resource: 'https://api.example.com',
 })
 
-export const flargs = Flargs.create({
+export const vexla = Vexla.create({
   async authorize(request) {
     // The admin UI session has full access.
     if (await Admin.verify(request)) return 'write'
@@ -119,21 +119,21 @@ export const flargs = Flargs.create({
     return undefined
   },
   definitions,
-  secret: process.env.FLARGS_SECRET,
+  secret: process.env.VEXLA_SECRET,
   store: Store.from(Admin.flagsTable),
 })
 ```
 
-| Caller                      | Credential                                                | Access            |
-| --------------------------- | --------------------------------------------------------- | ----------------- |
-| Admin UI of the host        | the session cookie of the admin UI                        | `write`           |
-| CLI on a device             | a Handshakes token from a device grant, in `FLARGS_TOKEN` | `write`           |
-| CI job                      | a Handshakes token from a token exchange                  | `read`            |
-| `Store.http` in another app | a Handshakes token for that service                       | `read` or `write` |
+| Caller                      | Credential                                               | Access            |
+| --------------------------- | -------------------------------------------------------- | ----------------- |
+| Admin UI of the host        | the session cookie of the admin UI                       | `write`           |
+| CLI on a device             | a Handshakes token from a device grant, in `VEXLA_TOKEN` | `write`           |
+| CI job                      | a Handshakes token from a token exchange                 | `read`            |
+| `Store.http` in another app | a Handshakes token for that service                      | `read` or `write` |
 
 ```sh
 # Runs the CLI with a token that the Handshakes CLI resolves
-FLARGS_TOKEN=$(handshakes token example) npx flargs list --url https://api.example.com/.flags
+VEXLA_TOKEN=$(handshakes token example) npx vexla list --url https://api.example.com/.flags
 ```
 
 ### Signed Links
@@ -161,8 +161,8 @@ Admin routes return no CORS headers. An admin UI on another origin calls the adm
 | --------------------------------- | ------- | ------------------------------------------------------------ |
 | `GET /.flags`                     | `read`  | the dev route page                                           |
 | `GET /.flags/manifest`            | `read`  | the manifest                                                 |
-| `PUT /.flags/overrides`           | `read`  | sets the `flargs` cookie. Body: `{ "values": {} }`           |
-| `DELETE /.flags/overrides`        | `read`  | clears the `flargs` cookie                                   |
+| `PUT /.flags/overrides`           | `read`  | sets the `vexla` cookie. Body: `{ "values": {} }`            |
+| `DELETE /.flags/overrides`        | `read`  | clears the `vexla` cookie                                    |
 | `PUT /.flags/values/:key`         | `write` | sets the store value. Body: `{ "value": true }`              |
 | `DELETE /.flags/values/:key`      | `write` | deletes the store value, also of a key that no flag declares |
 | `PUT /.flags/definitions/:key`    | `write` | creates or replaces a store definition                       |
@@ -174,6 +174,6 @@ Admin routes return no CORS headers. An admin UI on another origin calls the adm
 
 ## More
 
-- **Function:** [`Flargs.create`](/api/server/flargs/create) lists every status code.
+- **Function:** [`Vexla.create`](/api/server/vexla/create) lists every status code.
 - **CLI:** [`list`](/cli/list), [`set`](/cli/set), and [`link`](/cli/link) call these routes.
 - **Remote store:** [`Store.http`](/api/server/store/http) reads the manifest of another instance.

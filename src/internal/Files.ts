@@ -1,4 +1,4 @@
-/** @module Reads the flags file of a project and writes `flargs.gen.ts`, for the build tools and the CLI. */
+/** @module Reads the flags file of a project and writes `vexla.gen.ts`, for the build tools and the CLI. */
 import * as Fs from 'node:fs'
 import * as Path from 'node:path'
 import * as Definitions from '../Definitions.js'
@@ -7,7 +7,7 @@ import * as Definitions from '../Definitions.js'
 export const defaultPath = '.env.flags'
 
 /** The default path of the generated module. */
-export const defaultOut = 'flargs.gen.ts'
+export const defaultOut = 'vexla.gen.ts'
 
 /** Returns the definitions in the flags file at `path`, relative to `root`. */
 export function read(options: read.Options): Definitions.Definitions {
@@ -23,7 +23,7 @@ export declare namespace read {
   }
 }
 
-/** Writes `flargs.gen.ts` when its content changes. Returns `true` when it wrote the file. */
+/** Writes `vexla.gen.ts` when its content changes. Returns `true` when it wrote the file. */
 export function write(definitions: Definitions.Definitions, options: write.Options): boolean {
   const file = Path.resolve(options.root, options.out ?? defaultOut)
   const content = Definitions.generate(definitions, { visibility: options.visibility })

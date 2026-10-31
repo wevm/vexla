@@ -1,5 +1,5 @@
 /**
- * @module Vite entry: reads `.env.flags`, writes `flargs.gen.ts`, and replaces each read of a
+ * @module Vite entry: reads `.env.flags`, writes `vexla.gen.ts`, and replaces each read of a
  * build flag with a literal, so dead branches drop from the bundle.
  */
 import * as Fs from 'node:fs'
@@ -11,8 +11,8 @@ import * as Files from '../internal/Files.js'
 import * as Inline from '../internal/Inline.js'
 import type * as Store from '../server/Store.js'
 
-/** Returns the Flargs Vite plugin. */
-export default function flargs(options: flargs.Options = {}): Plugin {
+/** Returns the Vexla Vite plugin. */
+export default function vexla(options: vexla.Options = {}): Plugin {
   let root = process.cwd()
   let env: Record<string, string | undefined> = {}
   let definitions: Definitions.Definitions = {}
@@ -49,11 +49,11 @@ export default function flargs(options: flargs.Options = {}): Plugin {
     },
 
     enforce: 'pre',
-    name: 'flargs',
+    name: 'vexla',
 
     transform(code, id, transformOptions) {
       if (
-        !code.includes('flargs') ||
+        !code.includes('vexla') ||
         id.includes('/node_modules/') ||
         !/\.[cm]?[jt]sx?$/.test(id.split('?')[0]!)
       )
@@ -92,9 +92,9 @@ export default function flargs(options: flargs.Options = {}): Plugin {
   }
 }
 
-export declare namespace flargs {
+export declare namespace vexla {
   type Options = {
-    /** The path of the generated module, relative to the Vite root. @default 'flargs.gen.ts' */
+    /** The path of the generated module, relative to the Vite root. @default 'vexla.gen.ts' */
     out?: string | undefined
     /** The path of the flags file, relative to the Vite root. @default '.env.flags' */
     path?: string | undefined

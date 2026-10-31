@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Worker routes the flags path to `flargs.fetch`, and runs every other request in `Values.run`. `Store.kv` keeps store values, and optionally definitions, in a KV namespace.
+A Worker routes the flags path to `vexla.fetch`, and runs every other request in `Values.run`. `Store.kv` keeps store values, and optionally definitions, in a KV namespace.
 
 `Values.run` needs `AsyncLocalStorage`, so the Worker needs the `nodejs_compat` compatibility flag. With a compatibility date of `2025-04-01` or later, `process.env` also holds the variables and secrets of the Worker.
 
@@ -23,40 +23,40 @@ A Worker routes the flags path to `flargs.fetch`, and runs every other request i
 
 ```sh
 # Stores the signing secret of overrides and links
-npx wrangler secret put FLARGS_SECRET
+npx wrangler secret put VEXLA_SECRET
 ```
 
 ### Route the Requests
 
-The KV binding exists only inside `fetch`, so the Worker creates the instance there. `Flargs.create` sends no request, and the definitions come from the generated module.
+The KV binding exists only inside `fetch`, so the Worker creates the instance there. `Vexla.create` sends no request, and the definitions come from the generated module.
 
 ```ts [src/index.ts]
-import { Values } from 'flargs'
-import { Flargs, Store } from 'flargs/server'
-import { definitions } from '../flargs.gen.js'
+import { Values } from 'vexla'
+import { Vexla, Store } from 'vexla/server'
+import { definitions } from '../vexla.gen.js'
 import { app } from './app.js'
 
 type Env = { FLAGS: KVNamespace }
 
 export default {
   async fetch(request: Request, env: Env) {
-    const flargs = Flargs.create({
+    const vexla = Vexla.create({
       definitions,
-      // The default env is process.env, which holds the Worker variables and FLARGS_SECRET.
-      secret: process.env.FLARGS_SECRET,
+      // The default env is process.env, which holds the Worker variables and VEXLA_SECRET.
+      secret: process.env.VEXLA_SECRET,
       store: Store.kv(env.FLAGS),
     })
 
     // The dev route, the admin API, and the values endpoint.
     const pathname = new URL(request.url).pathname
-    if (pathname === flargs.path || pathname.startsWith(`${flargs.path}/`))
-      return flargs.fetch(request)
+    if (pathname === vexla.path || pathname.startsWith(`${vexla.path}/`))
+      return vexla.fetch(request)
 
     // Every read of flags inside app.fetch uses this request.
-    const response = await Values.run(flargs, request, () => app.fetch(request))
+    const response = await Values.run(vexla, request, () => app.fetch(request))
 
-    // Persists search parameter overrides in the flargs cookie.
-    const cookie = await flargs.setCookie(request)
+    // Persists search parameter overrides in the vexla cookie.
+    const cookie = await vexla.setCookie(request)
     if (!cookie) return response
     const headers = new Headers(response.headers)
     headers.append('set-cookie', cookie)
@@ -68,7 +68,7 @@ export default {
 ### Read a Flag
 
 ```ts [src/app.ts]
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
 export const app = {
   // The values of the current request, from Values.run.
@@ -80,7 +80,7 @@ export const app = {
 
 ### Hono on Workers
 
-A Hono app on Workers uses `flargs/hono`, which does the routing above. [Hono](/guides/hono) describes it.
+A Hono app on Workers uses `vexla/hono`, which does the routing above. [Hono](/guides/hono) describes it.
 
 ### Consistency
 

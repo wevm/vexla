@@ -3,18 +3,18 @@
 The store keeps values and definitions in one KV namespace. [Cloudflare Workers](/guides/cloudflare-workers) shows the full setup.
 
 ```ts [src/index.ts]
-import { Flargs, Store } from 'flargs/server'
-import { definitions } from '../flargs.gen.js'
+import { Vexla, Store } from 'vexla/server'
+import { definitions } from '../vexla.gen.js'
 
 export default {
   async fetch(request: Request, env: { FLAGS: KVNamespace }) {
     // The binding exists only inside fetch.
-    const flargs = Flargs.create({
+    const vexla = Vexla.create({
       definitions,
-      secret: process.env.FLARGS_SECRET,
+      secret: process.env.VEXLA_SECRET,
       store: Store.kv(env.FLAGS),
     })
-    return flargs.fetch(request)
+    return vexla.fetch(request)
   },
 }
 ```

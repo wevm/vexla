@@ -62,4 +62,4 @@ jobs:
         run: cargo test --workspace
 
       - name: Run cross-language tests
-        run: cargo test -p flargs --test node -- --ignored
+        run: cargo test -p vexla --test node -- --ignored

@@ -2,27 +2,27 @@
 
 ## Overview
 
-`flargs/react` exports `useFlag`. It returns the value of one flag, and renders the component again after `Values.load`. It needs no provider.
+`vexla/react` exports `useFlag`. It returns the value of one flag, and renders the component again after `Values.load`. It needs no provider.
 
-| Environment             | Source of the value                                               |
-| ----------------------- | ----------------------------------------------------------------- |
-| Server, in `Values.run` | the values of the current request                                 |
-| Browser                 | the script from `flargs.script`, or the response of `Values.load` |
+| Environment             | Source of the value                                              |
+| ----------------------- | ---------------------------------------------------------------- |
+| Server, in `Values.run` | the values of the current request                                |
+| Browser                 | the script from `vexla.script`, or the response of `Values.load` |
 
 ## Walkthrough
 
 ### Embed the Values
 
-The server renders the `<script>` element of `flargs.script` into the page. The element holds public values only.
+The server renders the `<script>` element of `vexla.script` into the page. The element holds public values only.
 
 ```tsx [server.tsx]
 import { renderToString } from 'react-dom/server'
-import { flargs } from './flags.js'
+import { vexla } from './flags.js'
 import { App } from './app.js'
 
 export async function render(request: Request) {
   // Public values, escaped so a value cannot close the element.
-  const script = await flargs.script(request)
+  const script = await vexla.script(request)
   const html = renderToString(<App />)
   return `<!doctype html><html><head>${script}</head><body><div id="root">${html}</div></body></html>`
 }
@@ -30,10 +30,10 @@ export async function render(request: Request) {
 
 ### Read a Flag
 
-`useFlag` is typed from `flargs.gen.ts`. The key completes in the editor, and the value has the type of its flag.
+`useFlag` is typed from `vexla.gen.ts`. The key completes in the editor, and the value has the type of its flag.
 
 ```tsx [app.tsx]
-import { useFlag } from 'flargs/react'
+import { useFlag } from 'vexla/react'
 
 export function App() {
   // boolean, from the embedded values in a browser.
@@ -49,7 +49,7 @@ export function App() {
 A client on another origin has no embedded script. It loads the values from the API, and `useFlag` renders again when they arrive.
 
 ```tsx [main.tsx]
-import { Values } from 'flargs'
+import { Values } from 'vexla'
 import { createRoot } from 'react-dom/client'
 import { App } from './app.js'
 
@@ -59,15 +59,15 @@ void Values.load({ url: 'https://api.example.com/.flags' })
 createRoot(document.getElementById('root')!).render(<App />)
 ```
 
-The API sets `cors: { origins: ['https://app.example.com'] }` on `Flargs.create`, so the values endpoint returns CORS headers for the client.
+The API sets `cors: { origins: ['https://app.example.com'] }` on `Vexla.create`, so the values endpoint returns CORS headers for the client.
 
 ### Private Flags
 
-The browser receives public values only. A private flag reads as `undefined` in a browser. With `flargs/vite`, a read of a private flag in browser code fails the build.
+The browser receives public values only. A private flag reads as `undefined` in a browser. With `vexla/vite`, a read of a private flag in browser code fails the build.
 
 ### Retirement
 
-`flargs retire` replaces `useFlag('NEW_CHECKOUT')` with the final value, and removes the `useFlag` import when no read remains.
+`vexla retire` replaces `useFlag('NEW_CHECKOUT')` with the final value, and removes the `useFlag` import when no read remains.
 
 ## More
 

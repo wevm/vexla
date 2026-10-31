@@ -1,7 +1,7 @@
 /**
  * @module Zile entry: replaces each read of a build flag in the emitted JavaScript with a literal,
- * and removes the `flargs` import, so a published library has no runtime dependency on Flargs.
- * Set `"zile": { "transform": "flargs/zile" }` in `package.json`.
+ * and removes the `vexla` import, so a published library has no runtime dependency on Vexla.
+ * Set `"zile": { "transform": "vexla/zile" }` in `package.json`.
  */
 import * as Errors from '../internal/Errors.js'
 import * as Files from '../internal/Files.js'
@@ -13,7 +13,7 @@ import * as Inline from '../internal/Inline.js'
  * @throws {Errors.BaseError} When a runtime flag read stays, since a library resolves build flags only.
  */
 export default function transform(code: string, file: string): string {
-  if (!code.includes('flargs')) return code
+  if (!code.includes('vexla')) return code
 
   const root = process.cwd()
   const definitions = Files.read({ root })

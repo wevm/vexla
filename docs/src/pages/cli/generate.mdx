@@ -1,17 +1,17 @@
-# generate [Writes flargs.gen.ts from the flags file, or from a running server]
+# generate [Writes vexla.gen.ts from the flags file, or from a running server]
 
-`flargs generate` writes the module that holds the definitions and registers their types. With `--url`, it reads `GET /.flags/manifest`, which needs `read` access, so a client in another repository types its reads.
+`vexla generate` writes the module that holds the definitions and registers their types. With `--url`, it reads `GET /.flags/manifest`, which needs `read` access, so a client in another repository types its reads.
 
 ```sh
-# Writes flargs.gen.ts from .env.flags
-npx flargs generate
+# Writes vexla.gen.ts from .env.flags
+npx vexla generate
 ```
 
 ## Signature
 
 ```sh
 # Arguments first, then options
-flargs generate [options]
+vexla generate [options]
 ```
 
 ## Options
@@ -25,7 +25,7 @@ The path of the flags file, relative to the root.
 
 ```sh
 # Reads a flags file in another directory
-npx flargs generate --path config/.env.flags
+npx vexla generate --path config/.env.flags
 ```
 
 ### --root
@@ -37,31 +37,31 @@ The project root.
 
 ```sh
 # Runs in the app package of a monorepo
-npx flargs generate --root apps/web
+npx vexla generate --root apps/web
 ```
 
 ### --url
 
 - **Type:** `string`
-- **Default:** `FLARGS_URL`
+- **Default:** `VEXLA_URL`
 
 The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs generate --url https://api.example.com/.flags
+npx vexla generate --url https://api.example.com/.flags
 ```
 
 ### --out
 
 - **Type:** `string`
-- **Default:** `flargs.gen.ts`
+- **Default:** `vexla.gen.ts`
 
 The path of the generated module, relative to the root.
 
 ```sh
 # Writes the module into src
-npx flargs generate --out src/flargs.gen.ts
+npx vexla generate --out src/vexla.gen.ts
 ```
 
 ### --visibility
@@ -73,7 +73,7 @@ The flags that the module declares. A client declares public flags only.
 
 ```sh
 # Declares every flag of the server, for server code
-npx flargs generate --url https://api.example.com/.flags --visibility all
+npx vexla generate --url https://api.example.com/.flags --visibility all
 ```
 
 ## Output

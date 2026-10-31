@@ -3,9 +3,9 @@
 `flags` is a read-only object. A read is synchronous and takes no request argument. Its type comes from [`Register`](/api/core/register), so each key has the type of its flag.
 
 ```ts [checkout.ts]
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
-// boolean, from flargs.gen.ts
+// boolean, from vexla.gen.ts
 export const label = flags.newCheckout ? 'New checkout' : 'Checkout'
 ```
 
@@ -22,20 +22,20 @@ Without a generated module, `flags` has the values of any definitions, and each 
 
 `flags` reads the first source that applies:
 
-| Context                       | Source                                                                                 |
-| ----------------------------- | -------------------------------------------------------------------------------------- |
-| Inside `Values.run`           | the values of the request, from `AsyncLocalStorage`                                    |
-| A browser (`document` exists) | the response of the last `Values.load`, else the `#__flargs` script of `flargs.script` |
-| Elsewhere                     | every variable of `process.env`, with the type that its text implies                   |
+| Context                       | Source                                                                               |
+| ----------------------------- | ------------------------------------------------------------------------------------ |
+| Inside `Values.run`           | the values of the request, from `AsyncLocalStorage`                                  |
+| A browser (`document` exists) | the response of the last `Values.load`, else the `#__vexla` script of `vexla.script` |
+| Elsewhere                     | every variable of `process.env`, with the type that its text implies                 |
 
 - **Missing keys:** a key with no value in the source reads as `undefined`, not as its default. In a browser, every private flag reads as `undefined`.
 - **No server:** outside a request, `flags.BETA` reads the variable `BETA` through [`Definitions.infer`](/api/core/definitions). An unset variable reads as `undefined`, not as its default.
-- **Integrations:** `flargs/hono` and `Request.toNodeListener` of `flargs/node` call `Values.run` for each request.
+- **Integrations:** `vexla/hono` and `Request.toNodeListener` of `vexla/node` call `Values.run` for each request.
 
 ## Build Flags
 
-`flargs/vite` and `flargs/zile` replace each read of a build flag with a literal. The read `flags.MAINTENANCE_BANNER` becomes `false` in the bundle.
+`vexla/vite` and `vexla/zile` replace each read of a build flag with a literal. The read `flags.MAINTENANCE_BANNER` becomes `false` in the bundle.
 
 ## Retirement
 
-[`flargs retire`](/cli/retire) replaces `flags.<key>` with the final value, and removes the import when no read remains.
+[`vexla retire`](/cli/retire) replaces `flags.<key>` with the final value, and removes the import when no read remains.

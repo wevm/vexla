@@ -3,13 +3,13 @@
 `Values` sets the source of [`flags`](/api/core/flags). On the server, `Values.run` scopes the values of one request with `AsyncLocalStorage`. In a browser, `Values.load` requests the public values from the values endpoint.
 
 ```ts [worker.ts]
-import { Values } from 'flargs'
-import { flargs } from './flags.js'
+import { Values } from 'vexla'
+import { vexla } from './flags.js'
 import { app } from './app.js'
 
 export default {
   // Every read of flags inside app.fetch uses this request.
-  fetch: (request: Request) => Values.run(flargs, request, () => app.fetch(request)),
+  fetch: (request: Request) => Values.run(vexla, request, () => app.fetch(request)),
 }
 ```
 
@@ -17,10 +17,10 @@ export default {
 
 ```ts
 // Evaluates every runtime flag for request, then runs fn with those values in flags
-Values.run(flargs: { evaluate: (request: Request) => Promise<Record<string, unknown>> }, request: Request, fn: () => result): Promise<Awaited<result>>
+Values.run(vexla: { evaluate: (request: Request) => Promise<Record<string, unknown>> }, request: Request, fn: () => result): Promise<Awaited<result>>
 ```
 
-- **Evaluation:** it evaluates every flag, so every `decide` runs once. A flag with an expensive `decide` uses `flargs.get` in place of `flags`.
+- **Evaluation:** it evaluates every flag, so every `decide` runs once. A flag with an expensive `decide` uses `vexla.get` in place of `flags`.
 - **Concurrency:** concurrent requests read their own values.
 - **Runtimes:** Node, Bun, Deno, and Cloudflare Workers with `nodejs_compat`. It reaches `AsyncLocalStorage` through `process.getBuiltinModule`, so a browser bundle never imports `node:async_hooks`.
 - **Errors:** throws an `Error` when the runtime has no `AsyncLocalStorage`.
@@ -39,7 +39,7 @@ Values.load(options?: { fetch?: typeof fetch; url?: string }): Promise<Record<st
 
 - **Page values:** the response replaces the values of the page, and each `Values.subscribe` listener runs.
 - **Overrides:** it copies `flag.*` search parameters of the page to `sessionStorage`, and sends them with each request. `flag.reset` clears them. A signed override keeps its signature.
-- **CORS:** a values endpoint on another origin needs `cors` on `Flargs.create`.
+- **CORS:** a values endpoint on another origin needs `cors` on `Vexla.create`.
 - **Errors:** throws an `Error` when the response status is not `2xx`.
 
 ## Values.subscribe
@@ -49,7 +49,7 @@ Values.load(options?: { fetch?: typeof fetch; url?: string }): Promise<Record<st
 Values.subscribe(fn: () => void): () => void
 ```
 
-`useFlag` of `flargs/react` uses it with `useSyncExternalStore`.
+`useFlag` of `vexla/react` uses it with `useSyncExternalStore`.
 
 ## Values.snapshot
 

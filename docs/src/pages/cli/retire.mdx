@@ -1,17 +1,17 @@
 # retire [Replaces each read of a flag with its final value, and deletes the flag]
 
-`flargs retire` rewrites each read of the flag in the source files of the project, removes dead branches and unused imports, deletes the declaration from `.env.flags`, and writes `flargs.gen.ts` again if it exists. [Retirement](/guides/retirement) describes the rewrite.
+`vexla retire` rewrites each read of the flag in the source files of the project, removes dead branches and unused imports, deletes the declaration from `.env.flags`, and writes `vexla.gen.ts` again if it exists. [Retirement](/guides/retirement) describes the rewrite.
 
 ```sh
 # Replaces each read of NEW_CHECKOUT with true
-npx flargs retire NEW_CHECKOUT --value true
+npx vexla retire NEW_CHECKOUT --value true
 ```
 
 ## Signature
 
 ```sh
 # Arguments first, then options
-flargs retire <key> [options]
+vexla retire <key> [options]
 ```
 
 ## Arguments
@@ -33,7 +33,7 @@ The path of the flags file, relative to the root.
 
 ```sh
 # Reads a flags file in another directory
-npx flargs retire NEW_CHECKOUT --path config/.env.flags
+npx vexla retire NEW_CHECKOUT --path config/.env.flags
 ```
 
 ### --root
@@ -45,19 +45,19 @@ The project root.
 
 ```sh
 # Runs in the app package of a monorepo
-npx flargs retire NEW_CHECKOUT --root apps/web
+npx vexla retire NEW_CHECKOUT --root apps/web
 ```
 
 ### --url
 
 - **Type:** `string`
-- **Default:** `FLARGS_URL`
+- **Default:** `VEXLA_URL`
 
 The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs retire NEW_CHECKOUT --url https://api.example.com/.flags
+npx vexla retire NEW_CHECKOUT --url https://api.example.com/.flags
 ```
 
 ### --value
@@ -69,7 +69,7 @@ The final value, as the text of a variable.
 
 ```sh
 # Keeps option b of the select flag
-npx flargs retire PRICING --value b
+npx vexla retire PRICING --value b
 ```
 
 ### --dry-run
@@ -81,7 +81,7 @@ Writes nothing. The output lists the files that the command would change.
 
 ```sh
 # Lists the files with a read of NEW_CHECKOUT
-npx flargs retire NEW_CHECKOUT --dry-run
+npx vexla retire NEW_CHECKOUT --dry-run
 ```
 
 ## Output

@@ -1,12 +1,12 @@
 # Store.memory [Returns a store in memory, for dev mode and tests]
 
-The store holds values and definitions in the memory of the instance. A restart clears it. `flargs dev` uses it.
+The store holds values and definitions in the memory of the instance. A restart clears it. `vexla dev` uses it.
 
 ```ts [flags.ts]
-import { Flargs, Store } from 'flargs/server'
-import { definitions } from './flargs.gen.js'
+import { Vexla, Store } from 'vexla/server'
+import { definitions } from './vexla.gen.js'
 
-export const flargs = Flargs.create({
+export const vexla = Vexla.create({
   definitions,
   dev: true,
   // Starts with one store value.

@@ -1,17 +1,17 @@
 # undefine [Deletes a flag from the store, with its value]
 
-`flargs undefine` calls `DELETE /.flags/definitions/:key`, which needs `write` access. The store deletes the definition and the value. Reads of the key remain in the code until the next `flargs generate --url` shows them as type errors.
+`vexla undefine` calls `DELETE /.flags/definitions/:key`, which needs `write` access. The store deletes the definition and the value. Reads of the key remain in the code until the next `vexla generate --url` shows them as type errors.
 
 ```sh
 # Deletes the store definition of BETA
-npx flargs undefine BETA
+npx vexla undefine BETA
 ```
 
 ## Signature
 
 ```sh
 # Arguments first, then options
-flargs undefine <key> [options]
+vexla undefine <key> [options]
 ```
 
 ## Arguments
@@ -27,13 +27,13 @@ Key of the flag, such as `NEW_CHECKOUT`.
 ### --url
 
 - **Type:** `string`
-- **Default:** `FLARGS_URL`
+- **Default:** `VEXLA_URL`
 
 The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs undefine NEW_CHECKOUT --url https://api.example.com/.flags
+npx vexla undefine NEW_CHECKOUT --url https://api.example.com/.flags
 ```
 
 ## Output

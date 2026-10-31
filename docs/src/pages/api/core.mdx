@@ -1,11 +1,11 @@
 import { Card, Cards } from 'vocs'
 
-# flargs [Flag values, definitions, and overrides, with no dependencies]
+# vexla [Flag values, definitions, and overrides, with no dependencies]
 
-`flargs` is the core entry. It has no dependencies and no static import of a Node built-in, so it runs in Node, Bun, Deno, edge runtimes, and browsers. Signatures use WebCrypto.
+`vexla` is the core entry. It has no dependencies and no static import of a Node built-in, so it runs in Node, Bun, Deno, edge runtimes, and browsers. Signatures use WebCrypto.
 
 ```ts [app.ts]
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
 // The values of the current request on the server, or of the page in a browser.
 if (flags.NEW_CHECKOUT) renderNewCheckout()
@@ -13,14 +13,14 @@ if (flags.NEW_CHECKOUT) renderNewCheckout()
 
 ## Exports
 
-| Export        | Kind      | Purpose                                                                 |
-| ------------- | --------- | ----------------------------------------------------------------------- |
-| `flags`       | value     | the typed values of the current request or page                         |
-| `Definitions` | namespace | validation of the flags file, variables, the manifest, and types        |
-| `Override`    | namespace | the `flag.*` search parameters and the `flargs` cookie, with signatures |
-| `Values`      | namespace | the request scope on the server, and the page values in a browser       |
-| `Register`    | interface | the registered definitions, which `flargs.gen.ts` augments              |
-| `Registered`  | type      | the registered definitions, or any definitions                          |
+| Export        | Kind      | Purpose                                                                |
+| ------------- | --------- | ---------------------------------------------------------------------- |
+| `flags`       | value     | the typed values of the current request or page                        |
+| `Definitions` | namespace | validation of the flags file, variables, the manifest, and types       |
+| `Override`    | namespace | the `flag.*` search parameters and the `vexla` cookie, with signatures |
+| `Values`      | namespace | the request scope on the server, and the page values in a browser      |
+| `Register`    | interface | the registered definitions, which `vexla.gen.ts` augments              |
+| `Registered`  | type      | the registered definitions, or any definitions                         |
 
 <Cards>
   <Card
@@ -57,7 +57,7 @@ if (flags.NEW_CHECKOUT) renderNewCheckout()
 
 ## Errors
 
-Every error of Flargs extends one base class. `details` holds what failed, and `steps` holds the sentences that resolve it. The message lists the steps under `To resolve:`.
+Every error of Vexla extends one base class. `details` holds what failed, and `steps` holds the sentences that resolve it. The message lists the steps under `To resolve:`.
 
 ```txt
 The default of PRICING is not one of its options.

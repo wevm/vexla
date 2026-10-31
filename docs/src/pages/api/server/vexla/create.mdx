@@ -1,0 +1,107 @@
+# Vexla.create [Returns the instance that evaluates flags and serves the flags path]
+
+The instance holds the definitions, the store, the secret, and `identify`. It listens on no port. `vexla.fetch` is a fetch handler for the dev route, the admin API, and the values endpoint.
+
+```ts [flags.ts]
+import { Vexla, Store } from 'vexla/server'
+import { definitions } from './vexla.gen.js'
+import * as Admin from './admin.js'
+
+export const vexla = Vexla.create({
+  authorize: async (request) => ((await Admin.verify(request)) ? 'write' : undefined),
+  decide: {
+    // Returns undefined to fall through to the variable and the default.
+    PRICING: (user: { plan: string } | undefined) =>
+      user?.plan === 'enterprise' ? 'c' : undefined,
+  },
+  definitions,
+  dev: process.env.NODE_ENV === 'development',
+  identify: (request) => Admin.user(request),
+  secret: process.env.VEXLA_SECRET,
+  store: Store.memory(),
+})
+```
+
+## Signature
+
+```ts
+// Returns the instance
+Vexla.create(options?: Vexla.create.Options): Vexla.Vexla
+```
+
+Outside dev mode, `Vexla.create` throws a `TypeError` when `secret` is not set.
+
+## Options
+
+| Option        | Type                                                             | Default                   |
+| ------------- | ---------------------------------------------------------------- | ------------------------- |
+| `authorize`   | `(request) => Access \| Response \| Promise<Access \| Response>` | no access                 |
+| `cors`        | `{ origins: readonly string[] }`                                 | none                      |
+| `decide`      | functions keyed by runtime flag                                  | none                      |
+| `definitions` | `Definitions`                                                    | the store definitions     |
+| `dev`         | `boolean`                                                        | `false`                   |
+| `env`         | `Record<string, string \| undefined>`                            | `process.env`             |
+| `identify`    | `(request) => unknown`                                           | none                      |
+| `now`         | `() => number`                                                   | `Date.now`                |
+| `onError`     | `(error: unknown) => void`                                       | none                      |
+| `path`        | `string`                                                         | `'/.flags'`               |
+| `secret`      | `string`                                                         | required outside dev mode |
+| `store`       | `Store`                                                          | none                      |
+
+- **`authorize`:** returns the access of an admin request. [Admin API](/guides/admin-api) lists each return value. In dev mode, every request has `'write'`, and `authorize` does not run.
+- **`cors`:** origins that receive CORS headers on the values endpoint. Admin routes return none.
+- **`decide`:** receives the context of `identify`, and returns a value of the flag or `undefined`. A key of a build flag is a type error.
+- **`definitions`:** from `vexla.gen.ts` or `Definitions.parseFile`. Without it, the store definitions apply. Without both, the instance has no flags.
+- **`dev`:** dev mode. Every flag accepts an unsigned override, and the dev route is open. Never inferred from a hostname or a header.
+- **`env`:** the environment. The variable of the same name as a flag, such as `NEW_CHECKOUT`, sets its value.
+- **`onError`:** receives invalid overrides, store values, variables, and `decide` results, and the errors of `decide`, `authorize`, and the store.
+- **`secret`:** the HMAC secret of overrides, the cookie, and links, such as `VEXLA_SECRET`. It never authenticates a request.
+
+## Return Value
+
+| Property      | Type                                        | Behavior                                                                  |
+| ------------- | ------------------------------------------- | ------------------------------------------------------------------------- |
+| `definitions` | `() => Promise<Definitions>`                | returns the definitions in use                                            |
+| `evaluate`    | `(request, options?) => Promise<Values>`    | returns every value. `visibility: 'public'` returns public flags only     |
+| `fetch`       | `(request) => Promise<Response>`            | serves the flags path, and returns `404` outside it                       |
+| `get`         | `(request, key) => Promise<Value>`          | returns one typed value, and runs `decide` for that flag only             |
+| `path`        | `string`                                    | the flags path, without a trailing slash                                  |
+| `script`      | `(request) => Promise<string>`              | returns a `<script>` element with the public values                       |
+| `setCookie`   | `(request) => Promise<string \| undefined>` | returns the `Set-Cookie` value for the `flag.*` parameters of the request |
+
+`get` and `evaluate` cache results for each `Request` object. Several reads in one request run `identify`, the store read, and each `decide` once. `get` throws `Vexla.UnknownFlagError` for an undeclared key.
+
+```ts
+// The element that flags reads in a browser
+'<script type="application/json" id="__vexla">{"NEW_CHECKOUT":false}</script>'
+```
+
+## Routes
+
+| Route                             | Access  | Success                      | Errors                                                                                       |
+| --------------------------------- | ------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `GET /.flags`                     | `read`  | `200`, the dev route page    |                                                                                              |
+| `GET /.flags/manifest`            | `read`  | `200`, the manifest          |                                                                                              |
+| `PUT /.flags/overrides`           | `read`  | `200`, sets the cookie       | `400` `invalid_body`, `build_flag`, `invalid_value`. `404` `unknown_flag`                    |
+| `DELETE /.flags/overrides`        | `read`  | `200`, clears the cookie     |                                                                                              |
+| `PUT /.flags/values/:key`         | `write` | `200`, `{ key, value }`      | `400` `invalid_value`. `404` `unknown_flag`. `501` `no_store`                                |
+| `DELETE /.flags/values/:key`      | `write` | `200`, `{ key }`             | `404` `unknown_flag`. `501` `no_store`                                                       |
+| `PUT /.flags/definitions/:key`    | `write` | `200`, `{ definition, key }` | `400` `invalid_definition`. `409` `definitions_in_file`. `501` `no_store_definitions`        |
+| `DELETE /.flags/definitions/:key` | `write` | `200`, `{ key }`             | `409` `definitions_in_file`. `501` `no_store_definitions`                                    |
+| `POST /.flags/links`              | `write` | `200`, `{ url }`             | `400` `invalid_body`, `build_flag`, `invalid_value`. `404` `unknown_flag`. `501` `no_secret` |
+| `GET /.flags/values`              | none    | `200`, the public values     |                                                                                              |
+
+Every admin route returns `401` `unauthorized` with no access, `403` `forbidden` for a `read` request on a `write` route, `405` `method_not_allowed` for another method, and `503` `definitions_unavailable` when the store cannot return its definitions. An unknown route under the path returns `404` `not_found` after the `write` check.
+
+## Types
+
+- **`Vexla.Vexla<definitions>`:** the instance.
+- **`Vexla.Access`:** `'read' | 'write' | undefined`.
+- **`Vexla.Source`:** `'decide' | 'default' | 'env' | 'override' | 'store'`, the step that selected a value.
+
+## Errors
+
+| Error                               | Thrown when                             |
+| ----------------------------------- | --------------------------------------- |
+| `Vexla.DefinitionsUnavailableError` | the store cannot return its definitions |
+| `Vexla.UnknownFlagError`            | `get` names a key that no flag declares |

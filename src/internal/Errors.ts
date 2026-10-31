@@ -1,4 +1,4 @@
-/** @module The base of the errors that Flargs throws: what failed, then the steps that resolve it. */
+/** @module The base of the errors that Vexla throws: what failed, then the steps that resolve it. */
 
 /**
  * An error whose message states what failed, then the steps that resolve it. `details` and

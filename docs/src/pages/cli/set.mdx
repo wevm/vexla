@@ -1,17 +1,17 @@
 # set [Sets the store value of a flag for every request]
 
-`flargs set` calls `PUT /.flags/values/:key`, which needs `write` access. The value applies to every request until `flargs unset`, unless an override applies first.
+`vexla set` calls `PUT /.flags/values/:key`, which needs `write` access. The value applies to every request until `vexla unset`, unless an override applies first.
 
 ```sh
 # Sets PRICING to b for every request
-npx flargs set PRICING b
+npx vexla set PRICING b
 ```
 
 ## Signature
 
 ```sh
 # Arguments first, then options
-flargs set <key> <value> [options]
+vexla set <key> <value> [options]
 ```
 
 ## Arguments
@@ -33,13 +33,13 @@ The value. For a string or select flag, the text itself. Otherwise, JSON text, s
 ### --url
 
 - **Type:** `string`
-- **Default:** `FLARGS_URL`
+- **Default:** `VEXLA_URL`
 
 The URL of the flags path of a running server.
 
 ```sh
 # Reads the admin API of this server
-npx flargs set NEW_CHECKOUT true --url https://api.example.com/.flags
+npx vexla set NEW_CHECKOUT true --url https://api.example.com/.flags
 ```
 
 ## Output

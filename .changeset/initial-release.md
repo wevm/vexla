@@ -1,5 +1,5 @@
 ---
-'flargs': minor
+'vexla': minor
 ---
 
 Initial release.

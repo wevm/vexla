@@ -2,14 +2,14 @@
 
 ## Overview
 
-A flag exists to merge unfinished work, so each flag has an end. The `@expires` tag marks the date after which a flag is due. `flargs retire` replaces each read with the final value, removes the dead branch, and deletes the declaration.
+A flag exists to merge unfinished work, so each flag has an end. The `@expires` tag marks the date after which a flag is due. `vexla retire` replaces each read with the final value, removes the dead branch, and deletes the declaration.
 
 ```mermaid
 flowchart LR
   %% Each step is one command or one check.
   declare[Declare with expires] --> release[Release through the store]
-  release --> stale[flargs stale lists the flag]
-  stale --> retire[flargs retire]
+  release --> stale[vexla stale lists the flag]
+  stale --> retire[vexla retire]
   retire --> check[tsc and tests]
 ```
 
@@ -29,26 +29,26 @@ A flag is stale from the day after its `@expires` date, in UTC. The dev route ma
 
 ```sh
 # Lists flags past their expires date
-npx flargs stale
+npx vexla stale
 ```
 
 ```json
 { "stale": [{ "expires": "2027-01-31", "key": "NEW_CHECKOUT" }] }
 ```
 
-`flargs check` also reports stale flags. With `--strict`, a stale flag fails the check, so CI enforces the expiry.
+`vexla check` also reports stale flags. With `--strict`, a stale flag fails the check, so CI enforces the expiry.
 
 ### Retire the Flag
 
 ```sh
 # Replaces each read of NEW_CHECKOUT with true, and deletes its declaration
-npx flargs retire NEW_CHECKOUT --value true
+npx vexla retire NEW_CHECKOUT --value true
 ```
 
 Before:
 
 ```ts [src/checkout.ts]
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
 export function checkout(): string {
   // A read of the flag in an if statement
@@ -77,7 +77,7 @@ export function checkout(): string {
 
 ```sh
 # Uses the store value of the running server as the final value
-FLARGS_TOKEN=... npx flargs retire NEW_CHECKOUT --url https://api.example.com/.flags
+VEXLA_TOKEN=... npx vexla retire NEW_CHECKOUT --url https://api.example.com/.flags
 ```
 
 With `--url`, the command also deletes the store value. A failure of this request does not fail the command.
@@ -88,7 +88,7 @@ With `--url`, the command also deletes the store value. A failure of this reques
 
 ```sh
 # Lists the files that contain a read of NEW_CHECKOUT
-npx flargs retire NEW_CHECKOUT --dry-run
+npx vexla retire NEW_CHECKOUT --dry-run
 ```
 
 ### Rewrites
@@ -97,17 +97,17 @@ npx flargs retire NEW_CHECKOUT --dry-run
 - **Branches:** an `if` statement or a conditional expression with a literal condition keeps only the branch that runs.
 - **Imports:** the `flags` and `useFlag` imports are removed when no read remains.
 - **Dynamic reads:** a read with a computed key stays. The `unresolved` field lists its file and line.
-- **Files:** the files that git tracks or does not ignore, with a JavaScript or TypeScript extension. Declaration files and `flargs.gen.ts` are skipped.
+- **Files:** the files that git tracks or does not ignore, with a JavaScript or TypeScript extension. Declaration files and `vexla.gen.ts` are skipped.
 
-The command deletes the declaration from `.env.flags` (its comment lines and its variable), and writes `flargs.gen.ts` again if it exists. The type check and the tests run after it.
+The command deletes the declaration from `.env.flags` (its comment lines and its variable), and writes `vexla.gen.ts` again if it exists. The type check and the tests run after it.
 
 ### Store Definitions
 
-`flargs retire` reads the declaration from `.env.flags`. A flag that the store declares is removed with [`flargs undefine`](/cli/undefine) after a manual rewrite of its reads.
+`vexla retire` reads the declaration from `.env.flags`. A flag that the store declares is removed with [`vexla undefine`](/cli/undefine) after a manual rewrite of its reads.
 
 ### Orphan Values
 
-A store value of a deleted flag stays in the store. [`flargs prune`](/cli/prune) lists these orphan values, and deletes them with `--yes`.
+A store value of a deleted flag stays in the store. [`vexla prune`](/cli/prune) lists these orphan values, and deletes them with `--yes`.
 
 ## More
 

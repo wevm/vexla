@@ -1,5 +1,5 @@
 /** @module Checks the value types that a generated module produces. */
-import type { Definitions } from 'flargs'
+import type { Definitions } from 'vexla'
 
 // The shape that `Definitions.generate` writes, with `as const`.
 const definitions = {

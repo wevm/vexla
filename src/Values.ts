@@ -1,7 +1,7 @@
 /**
  * @module The flag values of the current request or page. On the server, `Values.run` scopes the
  * values of one request with `AsyncLocalStorage`. In a browser, the values come from the script
- * that `flargs.script` embeds, or from `Values.load`. Outside both, values come from `FEATURE_*`
+ * that `vexla.script` embeds, or from `Values.load`. Outside both, values come from `FEATURE_*`
  * environment variables, as in zero config.
  */
 import * as Definitions from './Definitions.js'
@@ -64,7 +64,7 @@ export function snapshot(): Snapshot {
  * @throws {Error} When the runtime has no `AsyncLocalStorage`.
  */
 export async function run<result>(
-  flargs: Evaluator,
+  vexla: Evaluator,
   request: Request,
   fn: () => result,
 ): Promise<Awaited<result>> {
@@ -72,7 +72,7 @@ export async function run<result>(
     throw new Error(
       '`Values.run` needs `AsyncLocalStorage`. Run it in Node, Bun, Deno, or Workers with `nodejs_compat`.',
     )
-  const values = (await flargs.evaluate(request)) as Snapshot
+  const values = (await vexla.evaluate(request)) as Snapshot
   return storage.run(values, () => fn()) as Awaited<result>
 }
 
@@ -90,7 +90,7 @@ export async function load(options: load.Options = {}): Promise<Snapshot> {
     const stored = (() => {
       if (current.has('flag.reset')) return new URLSearchParams()
       try {
-        return new URLSearchParams(sessionStorage.getItem('flargs') ?? '')
+        return new URLSearchParams(sessionStorage.getItem('vexla') ?? '')
       } catch {
         return new URLSearchParams()
       }
@@ -98,7 +98,7 @@ export async function load(options: load.Options = {}): Promise<Snapshot> {
     for (const [name, value] of current)
       if (name.startsWith('flag.') && name !== 'flag.reset') stored.set(name, value)
     try {
-      sessionStorage.setItem('flargs', stored.toString())
+      sessionStorage.setItem('vexla', stored.toString())
     } catch {}
     for (const [name, value] of stored) params.set(name, value)
   }
@@ -130,7 +130,7 @@ export function subscribe(fn: () => void): () => void {
 }
 
 function embedded(): Snapshot {
-  const element = document.getElementById('__flargs')
+  const element = document.getElementById('__vexla')
   if (!element?.textContent) return {}
   try {
     return JSON.parse(element.textContent) as Snapshot

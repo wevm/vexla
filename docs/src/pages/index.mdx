@@ -2,7 +2,7 @@
 description: Feature flags for trunk-based development.
 layout: minimal
 outline: false
-title: Flargs
+title: Vexla
 ---
 
 import { Card, Cards, HomePage } from 'vocs'
@@ -12,7 +12,7 @@ import { Card, Cards, HomePage } from 'vocs'
   <HomePage.Tagline>{'Feature flags for trunk-based development'}</HomePage.Tagline>
   <HomePage.Description>
     {
-      'Flargs declares each flag once in a committed .env.flags file. A build flag resolves in the bundle with no server. A runtime flag resolves on the server of the application, which also serves a dev route and an admin API. No third-party service is necessary.'
+      'Vexla declares each flag once in a committed .env.flags file. A build flag resolves in the bundle with no server. A runtime flag resolves on the server of the application, which also serves a dev route and an admin API. No third-party service is necessary.'
     }
   </HomePage.Description>
   <HomePage.Buttons>
@@ -21,7 +21,7 @@ import { Card, Cards, HomePage } from 'vocs'
     </HomePage.Button>
     <HomePage.Button href="https://github.com/wevm/flargs">GitHub</HomePage.Button>
   </HomePage.Buttons>
-  <HomePage.InstallPackage name="flargs" />
+  <HomePage.InstallPackage name="vexla" />
 </HomePage.Root>
 
 ## Overview
@@ -41,9 +41,9 @@ PRICING=a
 A flag reads the environment variable of the same name. A build flag resolves when the bundle builds, with no server. A runtime flag resolves on the server for each request.
 
 ```ts [app.ts]
-import { flags } from 'flargs'
+import { flags } from 'vexla'
 
-// Typed from flargs.gen.ts. The read is synchronous and takes no request argument.
+// Typed from vexla.gen.ts. The read is synchronous and takes no request argument.
 if (flags.NEW_CHECKOUT) renderNewCheckout()
 ```
 
@@ -64,7 +64,7 @@ if (flags.NEW_CHECKOUT) renderNewCheckout()
   />
   <Card
     title="API Reference"
-    description="Every export of `flargs`, `flargs/server`, and the integration entries."
+    description="Every export of `vexla`, `vexla/server`, and the integration entries."
     icon="braces"
     to="/api/core"
   />

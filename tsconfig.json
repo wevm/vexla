@@ -7,13 +7,13 @@
     "moduleResolution": "nodenext",
     "target": "esnext",
     "paths": {
-      "flargs": ["./src/index.ts"],
-      "flargs/hono": ["./src/hono/index.ts"],
-      "flargs/node": ["./src/node/index.ts"],
-      "flargs/react": ["./src/react/index.ts"],
-      "flargs/server": ["./src/server/index.ts"],
-      "flargs/vite": ["./src/vite/index.ts"],
-      "flargs/zile": ["./src/zile/index.ts"]
+      "vexla": ["./src/index.ts"],
+      "vexla/hono": ["./src/hono/index.ts"],
+      "vexla/node": ["./src/node/index.ts"],
+      "vexla/react": ["./src/react/index.ts"],
+      "vexla/server": ["./src/server/index.ts"],
+      "vexla/vite": ["./src/vite/index.ts"],
+      "vexla/zile": ["./src/zile/index.ts"]
     },
     "types": ["node", "vite-plus/test/globals"],
 

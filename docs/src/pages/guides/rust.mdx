@@ -2,13 +2,13 @@
 
 ## Overview
 
-The `flargs` crate reads the same flags file, override format, and signatures as the TypeScript packages. `flargs::flags!` parses `.env.flags` at compile time and generates typed flags, so Rust needs no generated file. A bad declaration fails the build.
+The `vexla` crate reads the same flags file, override format, and signatures as the TypeScript packages. `vexla::flags!` parses `.env.flags` at compile time and generates typed flags, so Rust needs no generated file. A bad declaration fails the build.
 
-| Crate                | Contents                                                                           |
-| -------------------- | ---------------------------------------------------------------------------------- |
-| `flargs`             | `Key`, `flargs::definitions`, `flargs::overrides`, and `flargs::flags!`            |
-| `flargs-definitions` | the flags file parser, shared by `flargs` (as `flargs::definitions`) and the macro |
-| `flargs-macros`      | `flargs::flags!`, re-exported by the `macros` feature (on by default)              |
+| Crate               | Contents                                                                         |
+| ------------------- | -------------------------------------------------------------------------------- |
+| `vexla`             | `Key`, `vexla::definitions`, `vexla::overrides`, and `vexla::flags!`             |
+| `vexla-definitions` | the flags file parser, shared by `vexla` (as `vexla::definitions`) and the macro |
+| `vexla-macros`      | `vexla::flags!`, re-exported by the `macros` feature (on by default)             |
 
 ## Walkthrough
 
@@ -36,7 +36,7 @@ The path is relative to `CARGO_MANIFEST_DIR`.
 
 ```rust [src/flags.rs]
 // Generates Flags, one Key for each runtime flag, one const for each build flag, and Pricing.
-flargs::flags!(".env.flags");
+vexla::flags!(".env.flags");
 ```
 
 | Generated item                | Example                                                                              |
@@ -59,17 +59,17 @@ if Flags::MAINTENANCE_BANNER {
 
 ### Serve the Flags
 
-`Runtime` resolves runtime flags for each request, in the same order as `Flargs.create`: an override, the store value, `decide`, the environment, then the default. `runtime.layer()` serves the dev route and the admin API under `/.flags`, and scopes values to each request.
+`Runtime` resolves runtime flags for each request, in the same order as `Vexla.create`: an override, the store value, `decide`, the environment, then the default. `runtime.layer()` serves the dev route and the admin API under `/.flags`, and scopes values to each request.
 
 ```rust [src/main.rs]
 use axum::{Router, routing::get};
-use flargs::{MemoryStore, Runtime};
+use vexla::{MemoryStore, Runtime};
 
 // One runtime per process. `decide` receives what `identify` returns.
 let runtime = Runtime::<Flags>::builder()
     .decide(Flags::PRICING, |plan: &String| (plan == "enterprise").then_some(Pricing::C))
     .identify(|parts| plan_of(parts))
-    .secret(std::env::var("FLARGS_SECRET")?)
+    .secret(std::env::var("VEXLA_SECRET")?)
     .store(MemoryStore::new())
     .build()?;
 
@@ -80,11 +80,11 @@ let app = Router::new()
 
 ### Read a Flag
 
-The `flargs::axum::Flags` extractor reads the runtime from the layer. `get` returns the typed value of one flag, and `evaluate` returns every runtime value.
+The `vexla::axum::Flags` extractor reads the runtime from the layer. `get` returns the typed value of one flag, and `evaluate` returns every runtime value.
 
 ```rust [src/checkout.rs]
 // The extractor evaluates the flag for this request only.
-async fn checkout(flags: flargs::axum::Flags<Flags>) -> Result<String, flargs::Error> {
+async fn checkout(flags: vexla::axum::Flags<Flags>) -> Result<String, vexla::Error> {
     Ok(if flags.get(Flags::NEW_CHECKOUT).await? { "new".into() } else { "old".into() })
 }
 ```
@@ -93,11 +93,11 @@ async fn checkout(flags: flargs::axum::Flags<Flags>) -> Result<String, flargs::E
 
 ### Parse Overrides
 
-`flargs::overrides::parse` applies the same rules as `Override.parse` in TypeScript. It verifies the signature before it parses values.
+`vexla::overrides::parse` applies the same rules as `Override.parse` in TypeScript. It verifies the signature before it parses values.
 
 ```rust [src/overrides.rs]
-use flargs::definitions;
-use flargs::overrides::{self, ParseOptions};
+use vexla::definitions;
+use vexla::overrides::{self, ParseOptions};
 
 // Parses the query string of a request against the flags file.
 let definitions = definitions::parse_file(include_str!("../.env.flags"))?;
@@ -109,30 +109,30 @@ let overrides = overrides::parse(
 
 ### Remote Store
 
-With the `client` feature, `HttpStore` reads and writes the admin API of another Flargs server, such as a TypeScript admin service. It caches the manifest for five seconds. `reqwest` has no TLS backend by default, so a service that calls an `https` URL enables one on its own `reqwest` dependency.
+With the `client` feature, `HttpStore` reads and writes the admin API of another Vexla server, such as a TypeScript admin service. It caches the manifest for five seconds. `reqwest` has no TLS backend by default, so a service that calls an `https` URL enables one on its own `reqwest` dependency.
 
 ```rust [src/main.rs]
-use flargs::client::HttpStore;
+use vexla::client::HttpStore;
 
 // The token is a bearer token that the remote `authorize` accepts.
-let store = HttpStore::new("https://api.example.com/.flags").token(std::env::var("FLARGS_TOKEN")?);
+let store = HttpStore::new("https://api.example.com/.flags").token(std::env::var("VEXLA_TOKEN")?);
 let runtime = Runtime::<Flags>::builder().secret(secret).store(store).build()?;
 ```
 
 ### Build Values From the Admin API
 
-With the `build` feature, `flargs::build::pull` in `build.rs` sets each build flag variable from the admin API. A build flag then takes the store value, then the local variable, then the default.
+With the `build` feature, `vexla::build::pull` in `build.rs` sets each build flag variable from the admin API. A build flag then takes the store value, then the local variable, then the default.
 
 ```rust [build.rs]
-// Reads the manifest with FLARGS_TOKEN and prints `cargo:rustc-env` lines.
-fn main() -> Result<(), flargs::client::Error> {
-    flargs::build::pull("https://api.example.com/.flags")
+// Reads the manifest with VEXLA_TOKEN and prints `cargo:rustc-env` lines.
+fn main() -> Result<(), vexla::client::Error> {
+    vexla::build::pull("https://api.example.com/.flags")
 }
 ```
 
 ### Retirement
 
-After [`flargs retire`](/cli/retire) removes a declaration from `.env.flags`, `flargs::flags!` no longer generates its items. `flargs retire` rewrites TypeScript reads only. Each read of the removed key fails to compile, so the compiler lists the reads to replace.
+After [`vexla retire`](/cli/retire) removes a declaration from `.env.flags`, `vexla::flags!` no longer generates its items. `vexla retire` rewrites TypeScript reads only. Each read of the removed key fails to compile, so the compiler lists the reads to replace.
 
 ## More
 

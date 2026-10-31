@@ -1,20 +1,20 @@
 # CLI [Generates types, checks the environment, and changes store values]
 
-The `flargs` binary reads the flags file of a project, and calls the admin API of a running server. The commands fall into two groups.
+The `vexla` binary reads the flags file of a project, and calls the admin API of a running server. The commands fall into two groups.
 
-| Group     | Commands                                                             | Input                      |
-| --------- | -------------------------------------------------------------------- | -------------------------- |
-| Local     | `check`, `dev`, `generate`, `retire`, `stale`                        | the flags file             |
-| Admin API | `define`, `get`, `link`, `list`, `prune`, `set`, `undefine`, `unset` | `--url`, else `FLARGS_URL` |
+| Group     | Commands                                                             | Input                     |
+| --------- | -------------------------------------------------------------------- | ------------------------- |
+| Local     | `check`, `dev`, `generate`, `retire`, `stale`                        | the flags file            |
+| Admin API | `define`, `get`, `link`, `list`, `prune`, `set`, `undefine`, `unset` | `--url`, else `VEXLA_URL` |
 
 `generate` and `retire` also accept `--url`.
 
 ```sh
-# Writes flargs.gen.ts from .env.flags
-npx flargs generate
+# Writes vexla.gen.ts from .env.flags
+npx vexla generate
 
-# Lists every flag of a running server. FLARGS_TOKEN holds the admin token.
-npx flargs list --url https://api.example.com/.flags
+# Lists every flag of a running server. VEXLA_TOKEN holds the admin token.
+npx vexla list --url https://api.example.com/.flags
 ```
 
 ## Commands
@@ -24,7 +24,7 @@ npx flargs list --url https://api.example.com/.flags
 | [`check`](/cli/check)       | Fails when the environment sets an invalid flag value, and reports stale flags.        |
 | [`define`](/cli/define)     | Creates or replaces a flag in the store, for a project with no flags file.             |
 | [`dev`](/cli/dev)           | Serves the dev route for `.env.flags`, for an application with no TypeScript server.   |
-| [`generate`](/cli/generate) | Writes `flargs.gen.ts` from `.env.flags`, or from the manifest of a running server.    |
+| [`generate`](/cli/generate) | Writes `vexla.gen.ts` from `.env.flags`, or from the manifest of a running server.     |
 | [`get`](/cli/get)           | Returns one flag of a running server, with its definition, value, and source.          |
 | [`link`](/cli/link)         | Returns a signed link that overrides flags, including private flags, until it expires. |
 | [`list`](/cli/list)         | Lists every flag of a running server, with its value and source.                       |
@@ -37,12 +37,12 @@ npx flargs list --url https://api.example.com/.flags
 
 ## Credentials
 
-The CLI reads the admin token from `FLARGS_TOKEN`, and sends it as `Authorization: Bearer`. It never accepts a token in argv, and no output holds the token. `authorize` on the server decides the access of the token.
+The CLI reads the admin token from `VEXLA_TOKEN`, and sends it as `Authorization: Bearer`. It never accepts a token in argv, and no output holds the token. `authorize` on the server decides the access of the token.
 
-| Variable       | Purpose                                                             |
-| -------------- | ------------------------------------------------------------------- |
-| `FLARGS_TOKEN` | the bearer token of the admin API                                   |
-| `FLARGS_URL`   | the URL of the flags path, such as `https://api.example.com/.flags` |
+| Variable      | Purpose                                                             |
+| ------------- | ------------------------------------------------------------------- |
+| `VEXLA_TOKEN` | the bearer token of the admin API                                   |
+| `VEXLA_URL`   | the URL of the flags path, such as `https://api.example.com/.flags` |
 
 ## Shared Options
 
@@ -50,7 +50,7 @@ The CLI reads the admin token from `FLARGS_TOKEN`, and sends it as `Authorizatio
 | -------- | ------------------------------------------------ | --------------------- |
 | `--path` | `check`, `dev`, `generate`, `retire`, `stale`    | `.env.flags`          |
 | `--root` | `check`, `dev`, `generate`, `retire`, `stale`    | the working directory |
-| `--url`  | the admin API commands, `generate`, and `retire` | `FLARGS_URL`          |
+| `--url`  | the admin API commands, `generate`, and `retire` | `VEXLA_URL`           |
 
 ## Output
 
@@ -60,7 +60,7 @@ An error holds a `code` and a `message` that ends with the steps that resolve it
 
 ```txt
 code: NO_URL
-message: "No URL names the admin API. To resolve: Pass `--url`, or set FLARGS_URL."
+message: "No URL names the admin API. To resolve: Pass `--url`, or set VEXLA_URL."
 ```
 
 ## Exit Codes
