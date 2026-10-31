@@ -93,7 +93,7 @@ LIMITS={"requests":100}
 MAINTENANCE_BANNER=false
 ```
 
-`@type` is required: `{boolean}`, `{number}`, `{string}`, `{json}`, or a union of string literals for a select flag. A flag is private unless it has `@public`, and a private value never reaches a browser. A `@build` flag resolves when the bundle builds.
+`@type` is `{boolean}`, `{number}`, `{string}`, `{json}`, or a union of string literals for a select flag. Without `@type`, the type is inferred from the default. A flag is private unless it has `@public`, and a private value never reaches a browser. A `@build` flag resolves when the bundle builds.
 
 A `.gitignore` entry such as `.env*` also ignores `.env.flags`. Add `!.env.flags` after it, so the file is committed.
 

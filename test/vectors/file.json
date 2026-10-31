@@ -64,14 +64,73 @@
       }
     },
     {
-      "name": "missing type",
-      "text": "BETA=false\n",
-      "error": "BETA"
+      "name": "a type inferred from the default",
+      "text": "# Use the new checkout flow.\n# @public\nNEW_CHECKOUT=false\n\nRETRIES=3\n\nRATIO=-0.5\n\nLIMITS={\"requests\":100}\n\nHOSTS=[\"a\",\"b\"]\n\nTITLE=Hello\n\nVERSION=1e3\n\nEMPTY=\n",
+      "output": {
+        "EMPTY": {
+          "build": false,
+          "default": "",
+          "public": false,
+          "type": "string"
+        },
+        "HOSTS": {
+          "build": false,
+          "default": ["a", "b"],
+          "public": false,
+          "type": "json"
+        },
+        "LIMITS": {
+          "build": false,
+          "default": {
+            "requests": 100
+          },
+          "public": false,
+          "type": "json"
+        },
+        "NEW_CHECKOUT": {
+          "build": false,
+          "default": false,
+          "description": "Use the new checkout flow.",
+          "public": true,
+          "type": "boolean"
+        },
+        "RATIO": {
+          "build": false,
+          "default": -0.5,
+          "public": false,
+          "type": "number"
+        },
+        "RETRIES": {
+          "build": false,
+          "default": 3,
+          "public": false,
+          "type": "number"
+        },
+        "TITLE": {
+          "build": false,
+          "default": "Hello",
+          "public": false,
+          "type": "string"
+        },
+        "VERSION": {
+          "build": false,
+          "default": "1e3",
+          "public": false,
+          "type": "string"
+        }
+      }
     },
     {
       "name": "a blank line detaches the comment",
-      "text": "# @type {boolean}\n\nBETA=false\n",
-      "error": "BETA"
+      "text": "# @type {string}\n\nBETA=false\n",
+      "output": {
+        "BETA": {
+          "build": false,
+          "default": false,
+          "public": false,
+          "type": "boolean"
+        }
+      }
     },
     {
       "name": "unknown type",

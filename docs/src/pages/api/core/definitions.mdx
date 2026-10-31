@@ -54,7 +54,7 @@ Each key is the name of the environment variable of its flag, such as `NEW_CHECK
 Definitions.parseFile(text: string): Definitions
 ```
 
-Each variable declares a flag. Its name is the key, and its value is the default. The comment lines directly above it hold the description and the `@type`, `@public`, `@build`, and `@expires` tags. [Flags File](/guides/flags-file) describes each tag. Throws `InvalidDeclarationError` with the line number for an invalid line, a missing `@type`, an unknown type or tag, a flag declared twice, or an invalid default.
+Each variable declares a flag. Its name is the key, and its value is the default. The comment lines directly above it hold the description and the `@type`, `@public`, `@build`, and `@expires` tags. Without `@type`, the type is inferred from the default as `Definitions.infer` infers it. [Flags File](/guides/flags-file) describes each tag. Throws `InvalidDeclarationError` with the line number for an invalid line, an unknown type or tag, a flag declared twice, or an invalid default.
 
 ### Definitions.removeFromFile
 

@@ -108,7 +108,8 @@ export function parse(input: unknown): Definitions {
  * the key of the flag, and its value is the default. Comment lines directly above it hold the description and tags:
  *
  * - `@type {boolean}`, `{number}`, `{string}`, `{json}`, or a union of string literals such as
- *   `{'a' | 'b'}` for a select flag. Required.
+ *   `{'a' | 'b'}` for a select flag. Without `@type`, the type is inferred from the default as
+ *   {@link infer} infers it: a boolean, a number, a JSON object or array, or a string.
  * - `@public`: the value may reach a browser.
  * - `@build`: the value resolves when the bundle builds.
  * - `@expires 2027-01-31`: the date after which the flag is due for retirement.
@@ -171,8 +172,15 @@ export function parseFile(text: string): Definitions {
     }
 
     if (description.length > 0) declaration['description'] = description.join(' ')
+    // Without `@type`, the type is the type of the value that `infer` returns for the default.
     if (!('type' in declaration))
-      throw fail(key, `The flag ${key} needs a \`@type\` tag, such as \`# @type {boolean}\`.`)
+      declaration['type'] = (() => {
+        const value = infer(entry.value)
+        if (typeof value === 'boolean') return 'boolean'
+        if (typeof value === 'number') return 'number'
+        if (typeof value === 'string') return 'string'
+        return 'json'
+      })()
 
     declaration['default'] = (() => {
       const type = declaration['type']

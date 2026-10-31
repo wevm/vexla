@@ -10,7 +10,7 @@ TypeScript and Rust read the same file. `.env`, `.env.local`, or the deploy envi
 
 ### Declare a Flag
 
-Every flag needs a `@type` tag. The variable name is the key, so `NEW_CHECKOUT` declares the flag that `flags.NEW_CHECKOUT` reads.
+A `@type` tag declares the type. Without it, the type is inferred from the default: `true` or `false` is a boolean, a decimal is a number, a JSON object or array is JSON, and other text is a string. The variable name is the key, so `NEW_CHECKOUT` declares the flag that `flags.NEW_CHECKOUT` reads.
 
 ```sh [.env.flags]
 # Use the new checkout flow.
@@ -23,7 +23,7 @@ NEW_CHECKOUT=false
 # @type {'a' | 'b' | 'c'}
 PRICING=a
 
-# @type {json}
+# A JSON object, so the type is inferred as {json}.
 LIMITS={"requests":100}
 
 # Show the maintenance banner. Several tags may share one line.
@@ -33,7 +33,7 @@ MAINTENANCE_BANNER=false
 
 | Tag        | Meaning                                                                          | Default  |
 | ---------- | -------------------------------------------------------------------------------- | -------- |
-| `@type`    | `{boolean}`, `{number}`, `{string}`, `{json}`, or a union such as `{'a' \| 'b'}` | required |
+| `@type`    | `{boolean}`, `{number}`, `{string}`, `{json}`, or a union such as `{'a' \| 'b'}` | inferred |
 | `@public`  | the value may reach the browser                                                  | private  |
 | `@build`   | the flag is a build flag, which resolves when the bundle builds                  | runtime  |
 | `@expires` | a date (`YYYY-MM-DD`) after which the flag is due for retirement                 | none     |

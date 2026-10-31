@@ -309,7 +309,8 @@ pub fn parse(input: &Json) -> Result<Definitions, InvalidDeclarationError> {
 /// tags:
 ///
 /// - `@type {boolean}`, `{number}`, `{string}`, `{json}`, or a union of string literals such as
-///   `{'a' | 'b'}` for a select flag. Required.
+///   `{'a' | 'b'}` for a select flag. Without `@type`, the type is inferred from the default as
+///   [`infer`] infers it: a boolean, a number, a JSON object or array, or a string.
 /// - `@public`: the value may reach a browser.
 /// - `@build`: the value resolves when the bundle builds.
 /// - `@expires 2027-01-31`: the date after which the flag is due for retirement.
@@ -403,12 +404,13 @@ pub fn parse_file(text: &str) -> Result<Definitions, InvalidDeclarationError> {
                 Value::String(description.join(" ")),
             );
         }
-        let Some(r#type) = r#type else {
-            return Err(fail(
-                &key,
-                format!("The flag {key} needs a `@type` tag, such as `# @type {{boolean}}`."),
-            ));
-        };
+        // Without `@type`, the type is the type of the value that `infer` returns for the default.
+        let r#type = r#type.unwrap_or_else(|| match infer(&entry.value) {
+            Value::Bool(_) => Type::Boolean,
+            Value::Number(_) => Type::Number,
+            Value::String(_) => Type::String,
+            _ => Type::Json,
+        });
         declaration.insert("type".to_owned(), Value::String(r#type.as_str().to_owned()));
 
         let text = Value::String(entry.value.clone());
