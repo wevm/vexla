@@ -47,7 +47,7 @@ Read github.com/wevm/flargs, add Flargs to my project, and put my unfinished wor
 - **Declared.** Each flag has one declaration, one type, and one default, in a committed file.
 - **Typed.** Every read carries the type of its flag, so a misspelled or removed flag fails the type check.
 - **Private.** A flag can stay on the server. Only a `@public` flag reaches a browser.
-- **Short-lived.** A flag has an end. `@expires` marks it as due, `flargs stale` lists it, `flargs retire` replaces its reads with the final value, and `flargs prune` clears stored values of removed flags.
+- **Retirement.** A release flag can declare its end. `@expires` marks it as due, `flargs stale` lists it, `flargs retire` replaces its reads with the final value, and `flargs prune` clears stored values of removed flags. A flag without `@expires`, such as a kill switch, stays until it is removed.
 - **Incremental.** Environment variables, a dev route, and an admin API use the same declarations and the same reads.
 - **Self-hosted.** Flags live in the application and its database, with no third-party service.
 - **Portable.** The core, server, and browser entries have no dependencies, and run in Node, Bun, Deno, edge runtimes, and browsers.
