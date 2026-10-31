@@ -39,7 +39,7 @@ Extra work such as feature flags, staged migrations, and two configurations at o
 Paste this prompt into a coding agent:
 
 ```txt
-Read github.com/wevm/flargs, add Vexla to my project, and put my unfinished work behind flags so it merges to main.
+Read github.com/wevm/vexla, add Vexla to my project, and put my unfinished work behind flags so it merges to main.
 ```
 
 ## Philosophy
@@ -66,6 +66,13 @@ Read github.com/wevm/flargs, add Vexla to my project, and put my unfinished work
 - **Integrations:** a fetch handler for Next.js, Cloudflare Workers, and Bun, plus Hono, Node, React, and Vite.
 - **CLI and MCP:** the `vexla` command lists, sets, and links flags, checks the environment, and generates types.
 - **Rust:** `vexla::flags!` reads `.env.flags` at compile time and generates typed flags.
+
+## Install
+
+```sh
+# Adds vexla to the project
+npm install vexla
+```
 
 ## Usage
 

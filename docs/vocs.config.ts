@@ -4,7 +4,7 @@ import { defineConfig } from 'vocs/config'
 export default defineConfig({
   description: 'Feature flags for trunk-based development.',
   editLink: {
-    link: 'https://github.com/wevm/flargs/edit/main/docs/src/pages/:path',
+    link: 'https://github.com/wevm/vexla/edit/main/docs/src/pages/:path',
     text: 'Suggest changes to this page',
   },
   iconUrl: '/favicon.svg',
@@ -94,7 +94,7 @@ export default defineConfig({
       text: 'CLI Reference',
     },
   ],
-  socials: [{ icon: 'github', link: 'https://github.com/wevm/flargs' }],
+  socials: [{ icon: 'github', link: 'https://github.com/wevm/vexla' }],
   title: 'Vexla',
   topNav: [
     { link: '/introduction/getting-started', match: '/introduction', text: 'Docs' },
