@@ -70,7 +70,6 @@ Read github.com/wevm/vexla, add Vexla to my project, and put my unfinished work 
 ## Install
 
 ```sh
-# Adds vexla to the project
 npm install vexla
 ```
 
