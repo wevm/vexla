@@ -31,7 +31,6 @@
   "description": "Feature flags for trunk-based development.",
   "type": "module",
   "version": "0.0.0",
-  "private": true,
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -90,10 +89,10 @@
     "incur": "catalog:"
   },
   "peerDependencies": {
-    "hono": "catalog:",
-    "react": "catalog:",
-    "typescript": "catalog:",
-    "vite": "catalog:"
+    "hono": "catalog:peers",
+    "react": "catalog:peers",
+    "typescript": "catalog:peers",
+    "vite": "catalog:peers"
   },
   "peerDependenciesMeta": {
     "hono": {

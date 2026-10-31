@@ -24,3 +24,10 @@ catalog:
   'vocs': '2.10.3'
   'waku': '1.0.0-rc.3'
   'zile': '0.0.30'
+
+catalogs:
+  peers:
+    'hono': '^4.0.0'
+    'react': '>=18.0.0'
+    'typescript': '>=5.0.0'
+    'vite': '>=6.0.0'

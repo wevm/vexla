@@ -1,0 +1,5 @@
+---
+'flargs': minor
+---
+
+Initial release.
