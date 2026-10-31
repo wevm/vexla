@@ -72,7 +72,9 @@ import { flags } from 'vexla'
 
 export const app = {
   // The values of the current request, from Values.run.
-  fetch: (request: Request) => new Response(flags.newCheckout ? 'New checkout' : 'Checkout'),
+  fetch(request: Request) {
+    return new Response(flags.newCheckout ? 'New checkout' : 'Checkout')
+  },
 }
 ```
 

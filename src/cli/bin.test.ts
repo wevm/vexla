@@ -174,8 +174,9 @@ describe('admin API', () => {
   test('list, set, get, link, and prune, with the token from VEXLA_TOKEN', async () => {
     const store = Store.memory({ values: { OLD_FLAG: true } })
     const vexla = Vexla.create({
-      authorize: (request) =>
-        request.headers.get('authorization') === 'Bearer secret-token' ? 'write' : undefined,
+      authorize(request) {
+        return request.headers.get('authorization') === 'Bearer secret-token' ? 'write' : undefined
+      },
       definitions: Definitions.parseFile(file),
       secret: 'test-secret',
       store,

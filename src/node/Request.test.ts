@@ -48,7 +48,11 @@ describe('toNodeListener', () => {
         () => {
           throw new Error('broken')
         },
-        { onError: (error) => errors.push(error) },
+        {
+          onError(error) {
+            errors.push(error)
+          },
+        },
       ),
     )
     expect((await fetch(server.url)).status).toMatchInlineSnapshot(`500`)

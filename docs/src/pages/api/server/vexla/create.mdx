@@ -8,15 +8,20 @@ import { definitions } from './vexla.gen.js'
 import * as Admin from './admin.js'
 
 export const vexla = Vexla.create({
-  authorize: async (request) => ((await Admin.verify(request)) ? 'write' : undefined),
+  async authorize(request) {
+    return (await Admin.verify(request)) ? 'write' : undefined
+  },
   decide: {
     // Returns undefined to fall through to the variable and the default.
-    PRICING: (user: { plan: string } | undefined) =>
-      user?.plan === 'enterprise' ? 'c' : undefined,
+    PRICING(user: { plan: string } | undefined) {
+      return user?.plan === 'enterprise' ? 'c' : undefined
+    },
   },
   definitions,
   dev: process.env.NODE_ENV === 'development',
-  identify: (request) => Admin.user(request),
+  identify(request) {
+    return Admin.user(request)
+  },
   secret: process.env.VEXLA_SECRET,
   store: Store.memory(),
 })

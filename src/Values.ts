@@ -40,13 +40,20 @@ const listeners = new Set<() => void>()
  * synchronous. A key with no value reads as `undefined`.
  */
 export const flags = new Proxy({} as Snapshot, {
-  get: (_, key) => (typeof key === 'string' ? snapshot()[key] : undefined),
-  getOwnPropertyDescriptor: (_, key) =>
-    typeof key === 'string' && key in snapshot()
+  get(_, key) {
+    return typeof key === 'string' ? snapshot()[key] : undefined
+  },
+  getOwnPropertyDescriptor(_, key) {
+    return typeof key === 'string' && key in snapshot()
       ? { configurable: true, enumerable: true, value: snapshot()[key], writable: false }
-      : undefined,
-  has: (_, key) => typeof key === 'string' && key in snapshot(),
-  ownKeys: () => Object.keys(snapshot()),
+      : undefined
+  },
+  has(_, key) {
+    return typeof key === 'string' && key in snapshot()
+  },
+  ownKeys() {
+    return Object.keys(snapshot())
+  },
 }) as Readonly<Definitions.Values<Registered>>
 
 /** Returns the current values: the request scope, then the page, then the environment. */

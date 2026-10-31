@@ -30,7 +30,9 @@ import * as Admin from './admin.js'
 
 export const vexla = Vexla.create({
   // The session of the admin UI has full access. Other requests have none.
-  authorize: async (request) => ((await Admin.verify(request)) ? 'write' : undefined),
+  async authorize(request) {
+    return (await Admin.verify(request)) ? 'write' : undefined
+  },
   definitions,
   secret: process.env.VEXLA_SECRET,
   store: Store.from(Admin.flagsTable),

@@ -9,7 +9,9 @@ import { app } from './app.js'
 
 export default {
   // Every read of flags inside app.fetch uses this request.
-  fetch: (request: Request) => Values.run(vexla, request, () => app.fetch(request)),
+  fetch(request: Request) {
+    return Values.run(vexla, request, () => app.fetch(request))
+  },
 }
 ```
 

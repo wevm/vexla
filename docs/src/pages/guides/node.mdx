@@ -37,7 +37,9 @@ Http.createServer(
   Request.toNodeListener(handler, {
     vexla,
     // A handler error returns 500 and reaches onError.
-    onError: (error) => console.error(error),
+    onError(error) {
+      console.error(error)
+    },
   }),
 ).listen(3000)
 ```

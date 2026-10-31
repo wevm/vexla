@@ -27,9 +27,15 @@ export function middleware<vexla extends Vexla.Vexla<any>>(
       return vexla.fetch(request)
 
     c.set('flags', {
-      evaluate: () => vexla.evaluate(request) as never,
-      get: (key) => vexla.get(request, key) as never,
-      script: () => vexla.script(request),
+      evaluate() {
+        return vexla.evaluate(request) as never
+      },
+      get(key) {
+        return vexla.get(request, key) as never
+      },
+      script() {
+        return vexla.script(request)
+      },
     })
 
     await Values.run(vexla, request, next)

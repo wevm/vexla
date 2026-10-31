@@ -8,21 +8,24 @@ import { db } from './db.js'
 
 // Maps the three required operations to queries on a flags table.
 export const store = Store.from({
-  delete: async (key) =>
-    void (await db.query('update flags set value = null where key = $1', [key])),
-  get: async (keys) =>
-    Object.fromEntries(
+  async delete(key) {
+    await db.query('update flags set value = null where key = $1', [key])
+  },
+  async get(keys) {
+    return Object.fromEntries(
       (
         await db.query('select key, value from flags where key = any($1) and value is not null', [
           keys,
         ])
       ).rows.map((row) => [row.key, row.value]),
-    ),
-  set: async (key, value) =>
-    void (await db.query(
+    )
+  },
+  async set(key, value) {
+    await db.query(
       'insert into flags (key, value) values ($1, $2) on conflict (key) do update set value = $2',
       [key, value],
-    )),
+    )
+  },
 })
 ```
 

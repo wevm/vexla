@@ -14,11 +14,12 @@ export async function listen(
 
   return {
     // Clients keep connections alive, so `close` ends them instead of waiting for them to idle.
-    close: () =>
-      new Promise<void>((resolve, reject) => {
+    close() {
+      return new Promise<void>((resolve, reject) => {
         server.closeAllConnections()
         server.close((error) => (error ? reject(error) : resolve()))
-      }),
+      })
+    },
     url: `http://127.0.0.1:${address.port}`,
   }
 }

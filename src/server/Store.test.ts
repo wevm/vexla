@@ -10,8 +10,9 @@ const definitions = Definitions.parse({
 describe('http', () => {
   test('a value set on the remote vexla applies to the local runtime', async () => {
     const remote = Vexla.create({
-      authorize: (request) =>
-        request.headers.get('authorization') === 'Bearer admin' ? 'write' : undefined,
+      authorize(request) {
+        return request.headers.get('authorization') === 'Bearer admin' ? 'write' : undefined
+      },
       definitions,
       secret: 'remote-secret',
       store: Store.memory(),
@@ -35,7 +36,9 @@ describe('http', () => {
 
   test('store definitions through a remote vexla, with no flags file', async () => {
     const remote = Vexla.create({
-      authorize: () => 'write',
+      authorize() {
+        return 'write'
+      },
       secret: 'remote-secret',
       store: Store.memory(),
     })

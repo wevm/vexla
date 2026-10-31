@@ -13,7 +13,11 @@ const definitions = Definitions.parse({
 describe('middleware', () => {
   test('serves the vexla path, and scopes flags and c.var.flags to the request', async () => {
     const vexla = Vexla.create({
-      decide: { PRICING: () => 'b' },
+      decide: {
+        PRICING() {
+          return 'b'
+        },
+      },
       definitions,
       secret: 'test-secret',
     })

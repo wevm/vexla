@@ -137,9 +137,13 @@ export function http(options: http.Options): Store {
   }
 
   return {
-    delete: (key) => write('DELETE', `/values/${encodeURIComponent(key)}`),
+    delete(key) {
+      return write('DELETE', `/values/${encodeURIComponent(key)}`)
+    },
     definitions: {
-      delete: (key) => write('DELETE', `/definitions/${encodeURIComponent(key)}`),
+      delete(key) {
+        return write('DELETE', `/definitions/${encodeURIComponent(key)}`)
+      },
       async list() {
         const fields = [
           'build',
@@ -160,7 +164,9 @@ export function http(options: http.Options): Store {
           ]),
         )
       },
-      set: (key, definition) => write('PUT', `/definitions/${encodeURIComponent(key)}`, definition),
+      set(key, definition) {
+        return write('PUT', `/definitions/${encodeURIComponent(key)}`, definition)
+      },
     },
     async get(keys) {
       const flags = (await manifest()).flags
@@ -180,7 +186,9 @@ export function http(options: http.Options): Store {
         ...(current.orphans ?? []),
       ]
     },
-    set: (key, value) => write('PUT', `/values/${encodeURIComponent(key)}`, { value }),
+    set(key, value) {
+      return write('PUT', `/values/${encodeURIComponent(key)}`, { value })
+    },
   }
 }
 
@@ -227,7 +235,9 @@ export function kv(namespace: KvNamespace): Store {
   }
 
   return {
-    delete: (key) => namespace.delete(`value:${key}`),
+    delete(key) {
+      return namespace.delete(`value:${key}`)
+    },
     definitions: {
       async delete(key) {
         await namespace.delete(`definition:${key}`)
@@ -241,7 +251,9 @@ export function kv(namespace: KvNamespace): Store {
           ),
         )
       },
-      set: (key, definition) => namespace.put(`definition:${key}`, JSON.stringify(definition)),
+      set(key, definition) {
+        return namespace.put(`definition:${key}`, JSON.stringify(definition))
+      },
     },
     async get(keys) {
       const entries = await Promise.all(
@@ -249,8 +261,12 @@ export function kv(namespace: KvNamespace): Store {
       )
       return Object.fromEntries(entries.filter((entry) => entry[1] !== null))
     },
-    keys: () => list('value:'),
-    set: (key, value) => namespace.put(`value:${key}`, JSON.stringify(value)),
+    keys() {
+      return list('value:')
+    },
+    set(key, value) {
+      return namespace.put(`value:${key}`, JSON.stringify(value))
+    },
   }
 }
 

@@ -66,6 +66,7 @@ Source commit: `78decd57e6823ec5de899a5acb8bbdb9c227b3a3`. Retrieved 2026-10-30.
 - Prefer immediately invoked function expressions (IIFEs) with explicit branches and early returns over nested or complex ternary expressions. Keep simple two-way ternaries when both branches are easy to scan. This applies to executable code, not TypeScript conditional types.
 - For a fallible local derivation, prefer an IIFE expression over a mutable variable assigned across `try` and `catch` blocks.
 - Never destructure parameters in function definitions, including arrow functions, callbacks, and methods. Accept a named parameter and destructure inside the body when reading several properties. When normalizing one field, read `options.field` directly instead of creating a second name.
+- Write a function in an object literal as a method (`authorize(request) { ... }`), not as an arrow property (`authorize: (request) => ...`). This applies to options, `decide`, stores, and returned instances. Keep arrow types (`delete: (key: string) => Promise<void>`) in type members, because `strictFunctionTypes` checks method signatures bivariantly.
 - Prefer short names whose meaning is clear from local context, such as `options`, `client`, `entry`, and `fn`.
 - Keep wire formats, ordered tuples, protocol fields, and other order-sensitive shapes explicit. Do not alphabetize data whose order has meaning. Manifest and wire fields keep their documented names at the wire boundary only.
 - Avoid new `any`. Use a precise boundary type, validation, narrowing, or the smallest justified assertion.

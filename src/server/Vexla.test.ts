@@ -46,11 +46,14 @@ describe('evaluate', () => {
     const store = Store.memory({ values: { TITLE: 'Stored' } })
     const server = await serve({
       decide: {
-        PRICING: (user: { plan: string } | undefined) =>
-          user?.plan === 'enterprise' ? 'c' : undefined,
+        PRICING(user: { plan: string } | undefined) {
+          return user?.plan === 'enterprise' ? 'c' : undefined
+        },
       },
       env: { LIMITS: '{"requests":5}', TITLE: 'From env' },
-      identify: (request) => ({ plan: request.headers.get('x-plan') ?? 'free' }),
+      identify(request) {
+        return { plan: request.headers.get('x-plan') ?? 'free' }
+      },
       store,
     })
 
@@ -76,12 +79,20 @@ describe('evaluate', () => {
   test('an invalid store value or decide result falls through and reaches onError', async () => {
     const errors: string[] = []
     const server = await serve({
-      decide: { PRICING: () => 'z' as never },
-      onError: (error) => errors.push((error as Error).name),
+      decide: {
+        PRICING() {
+          return 'z' as never
+        },
+      },
+      onError(error) {
+        errors.push((error as Error).name)
+      },
       store: Store.from({
-        delete: async () => {},
-        get: async () => ({ TITLE: 42 }),
-        set: async () => {},
+        async delete() {},
+        async get() {
+          return { TITLE: 42 }
+        },
+        async set() {},
       }),
     })
 
@@ -101,8 +112,14 @@ describe('evaluate', () => {
     const calls: string[] = []
     const vexla = Vexla.create({
       decide: {
-        PRICING: () => (calls.push('PRICING'), 'b'),
-        TITLE: () => (calls.push('TITLE'), undefined),
+        PRICING() {
+          calls.push('PRICING')
+          return 'b'
+        },
+        TITLE() {
+          calls.push('TITLE')
+          return undefined
+        },
       },
       definitions,
       secret,
@@ -189,7 +206,7 @@ describe('overrides', () => {
 describe('fetch', () => {
   test('access: undefined is 401, read cannot write, a Response passes through', async () => {
     const server = await serve({
-      authorize: (request) => {
+      authorize(request) {
         const role = request.headers.get('x-role')
         if (role === 'challenge')
           return new Response('challenge', {
@@ -225,10 +242,12 @@ describe('fetch', () => {
   test('an authorize error means no access', async () => {
     const errors: unknown[] = []
     const server = await serve({
-      authorize: () => {
+      authorize() {
         throw new Error('database down')
       },
-      onError: (error) => errors.push(error),
+      onError(error) {
+        errors.push(error)
+      },
     })
     expect((await fetch(`${server.url}/.flags/manifest`)).status).toMatchInlineSnapshot(`401`)
     expect(errors.length).toMatchInlineSnapshot(`1`)
@@ -347,7 +366,11 @@ describe('fetch', () => {
   })
 
   test('links override a private flag until they expire', async () => {
-    const server = await serve({ authorize: () => 'write' })
+    const server = await serve({
+      authorize() {
+        return 'write'
+      },
+    })
     const { url } = await (
       await fetch(`${server.url}/.flags/links`, {
         body: JSON.stringify({
@@ -411,11 +434,11 @@ describe('fetch', () => {
       store: {
         ...Store.memory(),
         definitions: {
-          delete: async () => {},
-          list: async () => {
+          async delete() {},
+          async list() {
             throw new Error('database down')
           },
-          set: async () => {},
+          async set() {},
         },
       },
     })

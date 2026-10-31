@@ -145,14 +145,20 @@ import { Vexla, Store } from 'vexla/server'
 import { definitions } from './vexla.gen.js'
 
 export const vexla = Vexla.create({
-  authorize: (request) => Admin.access(request),
+  authorize(request) {
+    return Admin.access(request)
+  },
   decide: {
     // Returns undefined to fall through to the store value or the default.
-    PRICING: (user) => (user?.plan === 'enterprise' ? 'c' : undefined),
+    PRICING(user) {
+      return user?.plan === 'enterprise' ? 'c' : undefined
+    },
   },
   definitions,
   dev: process.env.NODE_ENV === 'development',
-  identify: (request) => Session.user(request),
+  identify(request) {
+    return Session.user(request)
+  },
   secret: process.env.VEXLA_SECRET,
   store: Store.from(database.flags),
 })
@@ -240,7 +246,7 @@ The admin API lives under `/.flags`. `authorize` returns the access of each requ
 
 ```ts
 // The admin UI session writes. CI tokens from Handshakes read.
-authorize: async (request) => {
+async authorize(request) {
   if (await Admin.verify(request)) return 'write'
 
   const result = await resource.verify(request)

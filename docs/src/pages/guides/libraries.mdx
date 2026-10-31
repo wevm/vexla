@@ -89,7 +89,14 @@ export default {
   input: 'src/index.ts',
   output: { dir: 'dist' },
   // Rewrites each module after the TypeScript plugin emits JavaScript.
-  plugins: [{ name: 'vexla', transform: (code: string, id: string) => transform(code, id) }],
+  plugins: [
+    {
+      name: 'vexla',
+      transform(code: string, id: string) {
+        return transform(code, id)
+      },
+    },
+  ],
 }
 ```
 

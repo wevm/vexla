@@ -23,7 +23,9 @@ import * as Admin from './admin.js'
 
 // No definitions option: the store holds the definitions and the values.
 export const vexla = Vexla.create({
-  authorize: async (request) => ((await Admin.verify(request)) ? 'write' : undefined),
+  async authorize(request) {
+    return (await Admin.verify(request)) ? 'write' : undefined
+  },
   secret: process.env.VEXLA_SECRET,
   store: Store.from(Admin.flagsTable),
 })
@@ -77,35 +79,43 @@ import { db, flags } from './db.js'
 // Maps each store operation to a Drizzle query on the reference table.
 export const flagsTable = Store.from({
   definitions: {
-    delete: async (key) => void (await db.delete(flags).where(eq(flags.key, key))),
-    list: async () =>
-      Object.fromEntries(
+    async delete(key) {
+      await db.delete(flags).where(eq(flags.key, key))
+    },
+    async list() {
+      return Object.fromEntries(
         (await db.select().from(flags).where(isNotNull(flags.definition))).map((row) => [
           row.key,
           row.definition,
         ]),
-      ),
-    set: async (key, definition) =>
-      void (await db
+      )
+    },
+    async set(key, definition) {
+      await db
         .insert(flags)
         .values({ definition, key })
-        .onConflictDoUpdate({ set: { definition }, target: flags.key })),
+        .onConflictDoUpdate({ set: { definition }, target: flags.key })
+    },
   },
-  delete: async (key) =>
-    void (await db.update(flags).set({ value: null }).where(eq(flags.key, key))),
-  get: async (keys) =>
-    Object.fromEntries(
+  async delete(key) {
+    await db.update(flags).set({ value: null }).where(eq(flags.key, key))
+  },
+  async get(keys) {
+    return Object.fromEntries(
       (await db.select().from(flags).where(inArray(flags.key, keys)))
         .filter((row) => row.value !== null)
         .map((row) => [row.key, row.value]),
-    ),
-  keys: async () =>
-    (await db.select().from(flags).where(isNotNull(flags.value))).map((row) => row.key),
-  set: async (key, value) =>
-    void (await db
+    )
+  },
+  async keys() {
+    return (await db.select().from(flags).where(isNotNull(flags.value))).map((row) => row.key)
+  },
+  async set(key, value) {
+    await db
       .insert(flags)
       .values({ key, value })
-      .onConflictDoUpdate({ set: { value }, target: flags.key })),
+      .onConflictDoUpdate({ set: { value }, target: flags.key })
+  },
 })
 ```
 
