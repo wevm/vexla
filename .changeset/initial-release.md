@@ -1,5 +1,0 @@
----
-'vexla': patch
----
-
-Initial release.
