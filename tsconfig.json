@@ -13,6 +13,7 @@
       "vexla/react": ["./src/react/index.ts"],
       "vexla/server": ["./src/server/index.ts"],
       "vexla/vite": ["./src/vite/index.ts"],
+      "vexla/vitest": ["./src/vitest/index.ts"],
       "vexla/zile": ["./src/zile/index.ts"]
     },
     "types": ["node", "vite-plus/test/globals"],

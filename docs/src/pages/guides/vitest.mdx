@@ -1,0 +1,106 @@
+# Vitest [Runs each test with runtime flag values that the test declares]
+
+## Overview
+
+`vexla/vitest` exports `create`, which returns `test` and `describe` functions. Each test runs in `Values.run`, so `flags` holds the values that the instance evaluates. `test.flags` and `describe.flags` set runtime flag values for one test or one block.
+
+| Function                 | Scope                               | Precedence                    |
+| ------------------------ | ----------------------------------- | ----------------------------- |
+| `test`                   | one test, with the evaluated values | the values of the instance    |
+| `describe.flags(values)` | each test in the block              | over the values of the parent |
+| `test.flags(values)`     | one test                            | over the values of each block |
+
+A build flag compiles to a literal, so a test cannot set it. Set the variable of a build flag in the environment of the test run instead.
+
+## Walkthrough
+
+### Create the Functions
+
+`create` receives the instance and the `describe` and `test` functions of Vitest. A project with Vite+ passes `vite-plus/test` instead of `vitest`.
+
+```ts [test/flags.ts]
+import * as vitest from 'vitest'
+import { Vexla } from 'vexla/server'
+import { create } from 'vexla/vitest'
+import { definitions } from '../vexla.gen.js'
+
+// Tests that do not set a value receive the default, or the value of decide.
+export const { describe, test } = create({
+  vitest,
+  vexla: Vexla.create({ definitions, dev: true }),
+})
+```
+
+### Set Values
+
+`test.flags` returns a `test` function. Modifiers such as `concurrent`, `skip`, and `for` follow it, and chained calls merge.
+
+```ts [pricing.test.ts]
+import { flags } from 'vexla'
+import { describe, test } from './test/flags.js'
+
+// Runs with the default value of PRICING.
+test('shows the monthly price', async ({ expect }) => {
+  expect(await renderPricing()).toContain('per month')
+})
+
+// Runs with PRICING set to 'b'.
+test.flags({ PRICING: 'b' })('shows the annual price', async ({ expect }) => {
+  expect(await renderPricing()).toContain('per year')
+})
+
+// Each test in the block runs with PRICING set to 'c'.
+describe.flags({ PRICING: 'c' })('variant c', () => {
+  test('hides the trial', async ({ expect }) => {
+    expect(await renderPricing()).not.toContain('trial')
+  })
+})
+```
+
+### Validate Values
+
+The definitions type the values, so an unknown key, a value outside `options`, or a build flag is a type error. At runtime, the same values fail the test before it runs.
+
+```ts [pricing.test.ts]
+// Fails: No flag declares the key PRICNG.
+test.flags({ PRICNG: 'b' })('typo', () => {})
+```
+
+## Recipes
+
+### Every Option
+
+A loop declares one test for each option of a select flag.
+
+```ts [pricing.test.ts]
+// One test for each variant.
+for (const variant of ['a', 'b', 'c'] as const)
+  test.flags({ PRICING: variant })(`renders variant ${variant}`, async ({ expect }) => {
+    expect(await renderPricing()).toBeTruthy()
+  })
+```
+
+### Concurrent Tests
+
+`Values.run` scopes the values with `AsyncLocalStorage`, so concurrent tests with different values do not share them.
+
+```ts [pricing.test.ts]
+// Both tests run at the same time, each with its own value.
+test.flags({ PRICING: 'b' }).concurrent('variant b', async () => {})
+test.flags({ PRICING: 'c' }).concurrent('variant c', async () => {})
+```
+
+### Skip by Value
+
+`flags` outside a test reads the environment, so a condition on a build flag reads the variable of the test run.
+
+```ts [checkout.test.ts]
+// Runs the block only when the test run sets NEW_CHECKOUT=true.
+describe.skipIf(process.env.NEW_CHECKOUT !== 'true')('new checkout', () => {})
+```
+
+## More
+
+- **Function:** [`create`](/api/vitest) lists the types and the errors.
+- **Values:** [`Values.run`](/api/core/values) scopes the values of one request.
+- **Build flags:** [Vite](/guides/vite) replaces each read of a build flag with a literal.

@@ -1,0 +1,60 @@
+# create [Returns test and describe functions that set runtime flag values]
+
+`vexla/vitest` exports `create`, its types, and `BuildFlagError`. [Vitest](/guides/vitest) shows the full setup.
+
+```ts [test/flags.ts]
+import * as vitest from 'vitest'
+import { create } from 'vexla/vitest'
+import { vexla } from '../flags.js'
+
+// test.flags and describe.flags set values. Other tests receive the values of vexla.
+export const { describe, test } = create({ vexla, vitest })
+```
+
+## Signature
+
+```ts
+// One pair of functions for one instance
+create(options: {
+  vexla: Vexla.Vexla
+  vitest: { describe: SuiteAPI; test: TestAPI }
+}): { describe: Describe; test: Test }
+```
+
+## Options
+
+| Option   | Type                 | Behavior                                                |
+| -------- | -------------------- | ------------------------------------------------------- |
+| `vexla`  | `Vexla.Vexla`        | evaluates every value that the test does not set        |
+| `vitest` | `{ describe, test }` | the functions of `vitest` or `vite-plus/test` to extend |
+
+## Behavior
+
+1. Each test reads the values of `describe.flags` from the outer block to the inner block, then the values of `test.flags`. A later value takes precedence.
+2. Before the test runs, each value is checked against the definitions of `vexla`.
+3. The test runs in `Values.run` with the values of `vexla.evaluate`, and the values of step 1 take precedence over them.
+
+`create` registers an `aroundEach` hook in the current file. Vitest isolates each test file by default, so each file that imports the module of `create` registers the hook. With `isolate: false`, call `create` in each test file.
+
+## Return Value
+
+| Property         | Type                               | Behavior                                      |
+| ---------------- | ---------------------------------- | --------------------------------------------- |
+| `test`           | `Test`                             | `test` of Vitest, with a `flags` fixture      |
+| `test.flags`     | `(values) => Test`                 | returns a `test` function that sets `values`  |
+| `describe`       | `Describe`                         | `describe` of Vitest                          |
+| `describe.flags` | `(values) => (name, options?, fn)` | declares a block whose tests receive `values` |
+
+## Errors
+
+| Error                           | Cause                                |
+| ------------------------------- | ------------------------------------ |
+| `Override.UnknownFlagError`     | no flag declares the key             |
+| `Definitions.InvalidValueError` | the value is not a value of the flag |
+| `BuildFlagError`                | the flag is a build flag             |
+
+## Types
+
+- **`Flags<definitions>`:** the runtime flag values that a test can set. Build flags are absent.
+- **`Test<definitions>`:** the type of `test`.
+- **`Describe<definitions>`:** the type of `describe`.

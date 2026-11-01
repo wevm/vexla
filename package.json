@@ -23,6 +23,7 @@
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
+    "vitest": "catalog:",
     "zile": "catalog:"
   },
   "packageManager": "pnpm@11.25.0",
@@ -73,6 +74,11 @@
       "types": "./dist/vite/index.d.ts",
       "default": "./dist/vite/index.js"
     },
+    "./vitest": {
+      "src": "./src/vitest/index.ts",
+      "types": "./dist/vitest/index.d.ts",
+      "default": "./dist/vitest/index.js"
+    },
     "./zile": {
       "src": "./src/zile/index.ts",
       "types": "./dist/zile/index.d.ts",
@@ -92,7 +98,8 @@
     "hono": "catalog:peers",
     "react": "catalog:peers",
     "typescript": "catalog:peers",
-    "vite": "catalog:peers"
+    "vite": "catalog:peers",
+    "vitest": "catalog:peers"
   },
   "peerDependenciesMeta": {
     "hono": {
@@ -105,6 +112,9 @@
       "optional": true
     },
     "vite": {
+      "optional": true
+    },
+    "vitest": {
       "optional": true
     }
   },

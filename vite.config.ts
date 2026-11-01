@@ -26,6 +26,10 @@ export default defineConfig({
         replacement: Path.resolve(import.meta.dirname, 'src/vite/index.ts'),
       },
       {
+        find: 'vexla/vitest',
+        replacement: Path.resolve(import.meta.dirname, 'src/vitest/index.ts'),
+      },
+      {
         find: 'vexla/zile',
         replacement: Path.resolve(import.meta.dirname, 'src/zile/index.ts'),
       },
