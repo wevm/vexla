@@ -1,49 +1,41 @@
-# create [Returns test and describe functions that set runtime flag values]
+# withFlags [Returns test options that set runtime flag values]
 
-`vexla/vitest` exports `create`, its types, and `BuildFlagError`. [Vitest](/guides/vitest) shows the full setup.
+`vexla/vitest` exports `withFlags`, `setup`, the `Flags` type, and `BuildFlagError`. [Vitest](/guides/vitest) shows the full setup.
 
-```ts [test/flags.ts]
-import * as vitest from 'vitest'
-import { create } from 'vexla/vitest'
-import { vexla } from '../flags.js'
+```ts [pricing.test.ts]
+import { test } from 'vitest'
+import { withFlags } from 'vexla/vitest'
 
-// test.flags and describe.flags set values. Other tests receive the values of vexla.
-export const { describe, test } = create({ vexla, vitest })
+// Runs with PRICING set to 'b'. The second argument holds the other options of the test.
+test('shows the annual price', withFlags({ PRICING: 'b' }, { timeout: 10_000 }), async () => {})
 ```
 
-## Signature
+## withFlags
 
 ```ts
-// One pair of functions for one instance
-create(options: {
-  vexla: Vexla.Vexla
-  vitest: { describe: SuiteAPI; test: TestAPI }
-}): { describe: Describe; test: Test }
+// Options for test or describe of Vitest
+withFlags(values: Flags, options?: SuiteOptions): SuiteOptions
 ```
 
-## Options
+`withFlags` returns `options` with `values` in `meta`. The setup file reads `meta` of the test and of each outer block.
 
-| Option   | Type                 | Behavior                                                |
-| -------- | -------------------- | ------------------------------------------------------- |
-| `vexla`  | `Vexla.Vexla`        | evaluates every value that the test does not set        |
-| `vitest` | `{ describe, test }` | the functions of `vitest` or `vite-plus/test` to extend |
+1. The values of the outer block apply first, then the values of each inner block, then the values of the test. A later value takes precedence.
+2. Before the test runs, each value is checked against the definitions.
+3. The test runs in `Values.run`. The values of step 1 take precedence over the evaluated values.
 
-## Behavior
+## setup
 
-1. Each test reads the values of `describe.flags` from the outer block to the inner block, then the values of `test.flags`. A later value takes precedence.
-2. Before the test runs, each value is checked against the definitions of `vexla`.
-3. The test runs in `Values.run` with the values of `vexla.evaluate`, and the values of step 1 take precedence over them.
+```ts
+// Registers the aroundEach hook. The setup file of the Vite plugin calls it.
+setup(options: { aroundEach: typeof aroundEach; vexla: Vexla.Vexla }): void
+```
 
-`create` registers an `aroundEach` hook in the current file. Vitest isolates each test file by default, so each file that imports the module of `create` registers the hook. With `isolate: false`, call `create` in each test file.
+| Option       | Type          | Behavior                                                  |
+| ------------ | ------------- | --------------------------------------------------------- |
+| `aroundEach` | `aroundEach`  | the `aroundEach` function of `vitest` or `vite-plus/test` |
+| `vexla`      | `Vexla.Vexla` | evaluates every value that a test does not set            |
 
-## Return Value
-
-| Property         | Type                               | Behavior                                      |
-| ---------------- | ---------------------------------- | --------------------------------------------- |
-| `test`           | `Test`                             | `test` of Vitest, with a `flags` fixture      |
-| `test.flags`     | `(values) => Test`                 | returns a `test` function that sets `values`  |
-| `describe`       | `Describe`                         | `describe` of Vitest                          |
-| `describe.flags` | `(values) => (name, options?, fn)` | declares a block whose tests receive `values` |
+The setup file of the plugin uses `Vexla.create` in dev mode, with the definitions of the flags file and the variables of the flags. In browser mode, `setup` registers no hook, since a browser has no `AsyncLocalStorage`.
 
 ## Errors
 
@@ -56,5 +48,3 @@ create(options: {
 ## Types
 
 - **`Flags<definitions>`:** the runtime flag values that a test can set. Build flags are absent.
-- **`Test<definitions>`:** the type of `test`.
-- **`Describe<definitions>`:** the type of `describe`.

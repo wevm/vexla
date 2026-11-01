@@ -2,6 +2,7 @@ dist
 node_modules
 *.tsbuildinfo
 .bin-*
+.vitest-*
 .claude
 /target
 .agent

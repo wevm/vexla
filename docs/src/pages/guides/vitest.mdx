@@ -2,56 +2,52 @@
 
 ## Overview
 
-`vexla/vitest` exports `create`, which returns `test` and `describe` functions. Each test runs in `Values.run`, so `flags` holds the values that the instance evaluates. `test.flags` and `describe.flags` set runtime flag values for one test or one block.
+In a Vitest run, the [Vite plugin](/guides/vite) adds a setup file. Each test then runs in `Values.run`, so `flags` holds the default of each flag, or the value of its variable. `withFlags` of `vexla/vitest` returns test options that set runtime flag values for one test or one block.
 
-| Function                 | Scope                               | Precedence                    |
-| ------------------------ | ----------------------------------- | ----------------------------- |
-| `test`                   | one test, with the evaluated values | the values of the instance    |
-| `describe.flags(values)` | each test in the block              | over the values of the parent |
-| `test.flags(values)`     | one test                            | over the values of each block |
+| Options                           | Scope                  | Precedence                          |
+| --------------------------------- | ---------------------- | ----------------------------------- |
+| none                              | one test               | the defaults and the variables      |
+| `withFlags(values)` on `describe` | each test in the block | over the values of the outer blocks |
+| `withFlags(values)` on `test`     | one test               | over the values of each block       |
 
 A build flag compiles to a literal, so a test cannot set it. Set the variable of a build flag in the environment of the test run instead.
 
 ## Walkthrough
 
-### Create the Functions
+### Add the Plugin
 
-`create` receives the instance and the `describe` and `test` functions of Vitest. A project with Vite+ passes `vite-plus/test` instead of `vitest`.
+Vitest reads the Vite config, so the plugin of a Vite project also applies to its tests. A project without Vite adds the plugin to `vitest.config.ts`.
 
-```ts [test/flags.ts]
-import * as vitest from 'vitest'
-import { Vexla } from 'vexla/server'
-import { create } from 'vexla/vitest'
-import { definitions } from '../vexla.gen.js'
+```ts [vitest.config.ts]
+import vexla from 'vexla/vite'
+import { defineConfig } from 'vitest/config'
 
-// Tests that do not set a value receive the default, or the value of decide.
-export const { describe, test } = create({
-  vitest,
-  vexla: Vexla.create({ definitions, dev: true }),
-})
+// Adds the setup file in a Vitest run, and replaces each read of a build flag with a literal.
+export default defineConfig({ plugins: [vexla()] })
 ```
 
 ### Set Values
 
-`test.flags` returns a `test` function. Modifiers such as `concurrent`, `skip`, and `for` follow it, and chained calls merge.
+`withFlags` receives the values, then the other options of the test or the block. A test file imports `test` and `describe` from Vitest.
 
 ```ts [pricing.test.ts]
-import { flags } from 'vexla'
-import { describe, test } from './test/flags.js'
+import { describe, expect, test } from 'vitest'
+import { withFlags } from 'vexla/vitest'
+import { renderPricing } from './pricing.js'
 
 // Runs with the default value of PRICING.
-test('shows the monthly price', async ({ expect }) => {
+test('shows the monthly price', async () => {
   expect(await renderPricing()).toContain('per month')
 })
 
-// Runs with PRICING set to 'b'.
-test.flags({ PRICING: 'b' })('shows the annual price', async ({ expect }) => {
+// Runs with PRICING set to 'b', and a timeout of 10 seconds.
+test('shows the annual price', withFlags({ PRICING: 'b' }, { timeout: 10_000 }), async () => {
   expect(await renderPricing()).toContain('per year')
 })
 
 // Each test in the block runs with PRICING set to 'c'.
-describe.flags({ PRICING: 'c' })('variant c', () => {
-  test('hides the trial', async ({ expect }) => {
+describe('variant c', withFlags({ PRICING: 'c' }), () => {
+  test('hides the trial', async () => {
     expect(await renderPricing()).not.toContain('trial')
   })
 })
@@ -59,11 +55,11 @@ describe.flags({ PRICING: 'c' })('variant c', () => {
 
 ### Validate Values
 
-The definitions type the values, so an unknown key, a value outside `options`, or a build flag is a type error. At runtime, the same values fail the test before it runs.
+The registered definitions type the values, so an unknown key, a value outside `options`, or a build flag is a type error. At runtime, the same values fail the test before it runs.
 
 ```ts [pricing.test.ts]
 // Fails: No flag declares the key PRICNG.
-test.flags({ PRICNG: 'b' })('typo', () => {})
+test('typo', withFlags({ PRICNG: 'b' }), () => {})
 ```
 
 ## Recipes
@@ -75,7 +71,7 @@ A loop declares one test for each option of a select flag.
 ```ts [pricing.test.ts]
 // One test for each variant.
 for (const variant of ['a', 'b', 'c'] as const)
-  test.flags({ PRICING: variant })(`renders variant ${variant}`, async ({ expect }) => {
+  test(`renders variant ${variant}`, withFlags({ PRICING: variant }), async () => {
     expect(await renderPricing()).toBeTruthy()
   })
 ```
@@ -86,21 +82,25 @@ for (const variant of ['a', 'b', 'c'] as const)
 
 ```ts [pricing.test.ts]
 // Both tests run at the same time, each with its own value.
-test.flags({ PRICING: 'b' }).concurrent('variant b', async () => {})
-test.flags({ PRICING: 'c' }).concurrent('variant c', async () => {})
+test.concurrent('variant b', withFlags({ PRICING: 'b' }), async () => {})
+test.concurrent('variant c', withFlags({ PRICING: 'c' }), async () => {})
 ```
 
-### Skip by Value
+### Without the Plugin
 
-`flags` outside a test reads the environment, so a condition on a build flag reads the variable of the test run.
+A project without the plugin calls `setup` in its own setup file. The instance can then use `decide` or a store.
 
-```ts [checkout.test.ts]
-// Runs the block only when the test run sets NEW_CHECKOUT=true.
-describe.skipIf(process.env.NEW_CHECKOUT !== 'true')('new checkout', () => {})
+```ts [test/setup.ts]
+import { aroundEach } from 'vitest'
+import { setup } from 'vexla/vitest'
+import { vexla } from '../flags.js'
+
+// Registers the hook that runs each test in Values.run.
+setup({ aroundEach, vexla })
 ```
 
 ## More
 
-- **Function:** [`create`](/api/vitest) lists the types and the errors.
+- **Functions:** [`withFlags` and `setup`](/api/vitest) list the types and the errors.
+- **Plugin:** [`vexla/vite`](/api/vite) describes the setup file.
 - **Values:** [`Values.run`](/api/core/values) scopes the values of one request.
-- **Build flags:** [Vite](/guides/vite) replaces each read of a build flag with a literal.

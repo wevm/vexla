@@ -66,7 +66,7 @@ export default defineConfig({
         { items: [{ link: '/api/hono', text: 'middleware' }], text: 'vexla/hono' },
         { items: [{ link: '/api/react', text: 'useFlag' }], text: 'vexla/react' },
         { items: [{ link: '/api/vite', text: 'vexla' }], text: 'vexla/vite' },
-        { items: [{ link: '/api/vitest', text: 'create' }], text: 'vexla/vitest' },
+        { items: [{ link: '/api/vitest', text: 'withFlags' }], text: 'vexla/vitest' },
         { items: [{ link: '/api/zile', text: 'transform' }], text: 'vexla/zile' },
       ],
       text: 'API Reference',

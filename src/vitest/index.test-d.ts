@@ -1,7 +1,7 @@
-/** @module Checks the types of the values that `test.flags` and `describe.flags` accept. */
-import * as vitest from 'vitest'
+/** @module Checks the types of `withFlags`, `setup`, and the flag values that a test can set. */
+import { aroundEach, describe as vitestDescribe, test as vitestTest } from 'vitest'
 import { Vexla } from 'vexla/server'
-import { create, type Flags } from 'vexla/vitest'
+import { type Flags, setup, withFlags } from 'vexla/vitest'
 
 // The shape that `Definitions.generate` writes, with `as const`.
 const definitions = {
@@ -23,48 +23,34 @@ const definitions = {
   },
 } as const
 
-const vexla = Vexla.create({ definitions, dev: true })
-const flagged = create({ vexla, vitest })
-
-describe('create', () => {
-  test('types the values of test.flags from the definitions', () => {
-    flagged.test.flags({ PRICING: 'b' })
-    flagged.test.flags({ NEW_CHECKOUT: true, PRICING: 'c' }).flags({ PRICING: 'a' })
-
-    // @ts-expect-error 'd' is not an option of PRICING.
-    flagged.test.flags({ PRICING: 'd' })
-    // @ts-expect-error No flag declares PRICNG.
-    flagged.test.flags({ PRICNG: 'b' })
-    // @ts-expect-error BANNER is a build flag.
-    flagged.test.flags({ BANNER: true })
-  })
-
-  test('types the values of describe.flags from the definitions', () => {
-    flagged.describe.flags({ PRICING: 'b' })('block', () => {})
-    flagged.describe.flags({ PRICING: 'b' })('block', { skip: true }, () => {})
-
-    // @ts-expect-error 'd' is not an option of PRICING.
-    flagged.describe.flags({ PRICING: 'd' })
-    // @ts-expect-error BANNER is a build flag.
-    flagged.describe.flags({ BANNER: true })
-  })
-
-  test('keeps the modifiers of test after test.flags', () => {
-    flagged.test.flags({ PRICING: 'b' }).concurrent('concurrent', () => {})
-    flagged.test.flags({ PRICING: 'b' }).skip('skip', () => {})
-    flagged.test.flags({ PRICING: 'b' }).for([1, 2])('for %i', () => {})
-  })
-
-  test('omits build flags from Flags', () => {
+describe('Flags', () => {
+  test('types runtime flags from the definitions, and omits build flags', () => {
     expectTypeOf<Flags<typeof definitions>>().toEqualTypeOf<{
       readonly NEW_CHECKOUT?: boolean
       readonly PRICING?: 'a' | 'b' | 'c'
     }>()
   })
+})
 
-  test('types the flags fixture', () => {
-    flagged.test('fixture', (context) => {
-      expectTypeOf(context.flags).toEqualTypeOf<Flags<typeof definitions>>()
-    })
+describe('withFlags', () => {
+  test('returns options that test and describe of Vitest accept', () => {
+    vitestTest('test', withFlags({ PRICING: 'b' }), () => {})
+    vitestTest('options', withFlags({ PRICING: 'b' }, { timeout: 10_000 }), () => {})
+    vitestDescribe('block', withFlags({ PRICING: 'b' }, { shuffle: true }), () => {})
+  })
+
+  test('keeps the options it receives', () => {
+    expectTypeOf(withFlags({}, { timeout: 10_000 }).timeout).toEqualTypeOf<10_000>()
+  })
+
+  test('rejects a value that is not an option', () => {
+    // @ts-expect-error `timeout` is a number.
+    withFlags({}, { timeout: 'slow' })
+  })
+})
+
+describe('setup', () => {
+  test('accepts aroundEach of Vitest and an instance', () => {
+    setup({ aroundEach, vexla: Vexla.create({ definitions, dev: true }) })
   })
 })

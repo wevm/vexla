@@ -1,6 +1,7 @@
 /**
  * @module Vite entry: reads `.env.flags`, writes `vexla.gen.ts`, and replaces each read of a
- * build flag with a literal, so dead branches drop from the bundle.
+ * build flag with a literal, so dead branches drop from the bundle. In a Vitest run, it adds a
+ * setup file that runs each test in `Values.run`.
  */
 import * as Fs from 'node:fs'
 import * as Path from 'node:path'
@@ -11,11 +12,17 @@ import * as Files from '../internal/Files.js'
 import * as Inline from '../internal/Inline.js'
 import type * as Store from '../server/Store.js'
 
+// The setup file of a Vitest run. Vitest resolves a setup file against the root, so the plugin
+// matches the base name, and the null byte marks the resolved module as virtual.
+const setupFile = 'vexla:vitest-setup'
+const setupId = `\0${setupFile}`
+
 /** Returns the Vexla Vite plugin. */
 export default function vexla(options: vexla.Options = {}): Plugin {
   let root = process.cwd()
   let env: Record<string, string | undefined> = {}
   let definitions: Definitions.Definitions = {}
+  let loading: Promise<void> | undefined
   let values: Record<string, Definitions.Json> = {}
 
   const load = async () => {
@@ -30,8 +37,16 @@ export default function vexla(options: vexla.Options = {}): Plugin {
 
   return {
     async buildStart() {
-      await load()
+      loading = load()
+      await loading
       this.addWatchFile(Path.resolve(root, options.path ?? Files.defaultPath))
+    },
+
+    // Vitest reads `test` from the Vite config. A Vite build ignores it.
+    config(config) {
+      if (!process.env['VITEST']) return undefined
+      const file = Path.resolve(config.root ?? process.cwd(), setupFile)
+      return { test: { setupFiles: [file] } } as never
     },
 
     configResolved(config) {
@@ -49,7 +64,39 @@ export default function vexla(options: vexla.Options = {}): Plugin {
     },
 
     enforce: 'pre',
+
+    async load(id) {
+      if (id !== setupId) return undefined
+      await (loading ??= load())
+
+      // The setup file imports Vitest from the root, as test files do, so both reach one copy.
+      const importer = Path.join(root, 'index.ts')
+      const vitest = (await this.resolve('vite-plus/test', importer)) ? 'vite-plus/test' : 'vitest'
+      // Only the variables of flags reach the module, so no other secret enters the module graph.
+      const flagEnv = Object.fromEntries(
+        Object.keys(definitions).flatMap((key) =>
+          env[key] === undefined ? [] : [[key, env[key]]],
+        ),
+      )
+
+      return [
+        `import { aroundEach } from ${JSON.stringify(vitest)}`,
+        "import { Vexla } from 'vexla/server'",
+        "import { setup } from 'vexla/vitest'",
+        '',
+        'setup({',
+        '  aroundEach,',
+        `  vexla: Vexla.create({ definitions: ${JSON.stringify(definitions)}, dev: true, env: ${JSON.stringify(flagEnv)} }),`,
+        '})',
+        '',
+      ].join('\n')
+    },
+
     name: 'vexla',
+
+    resolveId(id) {
+      return Path.basename(id) === setupFile ? setupId : undefined
+    },
 
     transform(code, id, transformOptions) {
       if (

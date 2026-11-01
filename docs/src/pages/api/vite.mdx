@@ -33,5 +33,6 @@ vexla(options?: vexla.Options): Plugin
 - **Values:** each build flag resolves from `store`, then its variable, then its default. Variables come from `process.env` and the `.env` files of the Vite mode.
 - **Rewrite:** in each JavaScript or TypeScript module outside `node_modules`, a read of a build flag through the `flags` import of `vexla`, or `useFlag` of `vexla/react`, becomes a literal.
 - **Private flags:** in browser code, a read of a private flag, build or runtime, fails the build. Server code (`ssr`) may read any flag.
+- **Vitest:** in a Vitest run, the plugin adds a setup file that calls [`setup`](/api/vitest) of `vexla/vitest`. Each test runs in `Values.run`, and [`withFlags`](/api/vitest) sets values for a test or a block.
 - **Dev server:** a change of the flags file writes the module again and triggers a full reload.
 - **Dependency:** the rewrite uses the TypeScript compiler API, so `typescript` must be installed.
