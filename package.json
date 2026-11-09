@@ -31,7 +31,7 @@
   "name": "vexla",
   "description": "Feature flags for trunk-based development.",
   "type": "module",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "MIT",
   "repository": {
     "type": "git",
